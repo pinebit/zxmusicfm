@@ -27,6 +27,16 @@ const START_LATENCY_SECONDS = 0.02;
 const CENTER_GAIN = Math.SQRT1_2;
 const MIX_HEADROOM = 0.5;
 
+// Master post-processing chain applied to the stereo mix, in order:
+// sub-sonic high-pass → bass low-shelf → safety limiter → high-frequency
+// low-pass, then the volume gain node. Tuned for the YM/AY square-wave sound.
+const SUBSONIC_HZ = 25; // high-pass: block DC / subsonic energy
+const FILTER_Q = Math.SQRT1_2; // Butterworth (flat) response for HP/LP
+const BASS_SHELF_HZ = 180; // low-shelf corner
+const BASS_SHELF_DB = 4; // low-shelf boost
+const LIMITER_THRESHOLD_DB = -1; // catch peaks the boost pushes past 0 dBFS
+const SMOOTHING_HZ = 15_000; // low-pass: tame harsh highs / aliasing
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
@@ -88,6 +98,9 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private listeners = new Set<PlaybackAdapterListener>();
   private audioContext: AudioContext | undefined;
   private gainNode: GainNode | undefined;
+  // Head of the master post-processing chain; every scheduled source connects
+  // here. The chain runs to `gainNode` and is built once in `buildAudioGraph`.
+  private masterInput: AudioNode | undefined;
   private scheduledSources = new Set<AudioBufferSourceNode>();
   private scheduler: ReturnType<typeof globalThis.setInterval> | undefined;
   private nextScheduleTime = 0;
@@ -376,6 +389,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     const context = this.audioContext;
     this.audioContext = undefined;
     this.gainNode = undefined;
+    this.masterInput = undefined;
     if (context !== undefined && context.state !== 'closed') {
       void context.close();
     }
@@ -397,12 +411,47 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       new AudioContext({ sampleRate: OFFLINE_SAMPLE_RATE });
     this.audioContext = context;
     if (this.gainNode === undefined) {
-      const gain = context.createGain();
-      gain.connect(context.destination);
-      this.gainNode = gain;
-      this.updateGain();
+      this.buildAudioGraph(context);
     }
     return context;
+  }
+
+  // Builds the fixed output graph once: sources → highpass → bass → limiter →
+  // smoothing → gain(volume) → destination. Sources connect to `masterInput`
+  // (the highpass), so the whole chain colors every scheduled buffer.
+  private buildAudioGraph(context: AudioContext): void {
+    const gain = context.createGain();
+    gain.connect(context.destination);
+    this.gainNode = gain;
+    this.updateGain();
+
+    const highpass = context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = SUBSONIC_HZ;
+    highpass.Q.value = FILTER_Q;
+
+    const bass = context.createBiquadFilter();
+    bass.type = 'lowshelf';
+    bass.frequency.value = BASS_SHELF_HZ;
+    bass.gain.value = BASS_SHELF_DB;
+
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = LIMITER_THRESHOLD_DB;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.1;
+
+    const smoothing = context.createBiquadFilter();
+    smoothing.type = 'lowpass';
+    smoothing.frequency.value = SMOOTHING_HZ;
+    smoothing.Q.value = FILTER_Q;
+
+    highpass.connect(bass);
+    bass.connect(limiter);
+    limiter.connect(smoothing);
+    smoothing.connect(gain);
+    this.masterInput = highpass;
   }
 
   private updateGain(): void {
@@ -490,7 +539,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       });
       const source = context.createBufferSource();
       source.buffer = buffer;
-      source.connect(gain);
+      source.connect(this.masterInput ?? gain);
       source.addEventListener(
         'ended',
         () => {

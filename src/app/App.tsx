@@ -517,9 +517,6 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
     <main className="app-shell">
       <header className="brand-header">
         <div className="brand-titles">
-          <p className="eyebrow">
-            CURATED CHIP MUSIC · THREE CHANNELS · ONE MACHINE
-          </p>
           <h1>ZX-MUSIC.FM</h1>
         </div>
         <a

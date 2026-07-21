@@ -89,6 +89,15 @@ export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
         </p>
       </section>
       <section>
+        <h3>Curation</h3>
+        <p>
+          The track list is curated solely at the author&rsquo;s discretion and
+          reflects a private, humble opinion. It is not a ranking or a statement
+          of relative merit, and the inclusion or omission of any track, author,
+          or group implies no judgment.
+        </p>
+      </section>
+      <section>
         <h3>Playback engine</h3>
         <p>
           <a

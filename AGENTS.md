@@ -48,6 +48,7 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 - Keep high-frequency meter and waveform work out of React render cycles. Publish only semantic transitions and coarse position updates.
 - The browser runtime contract is finite, seekable generated YM. Do not add prerecorded audio fallback, overlapping playback, crossfades, or browser-side tracker parsing.
 - Maintain the exact A/B/C channel identity, waveform colors, mix behavior, volume semantics, sequencing, persistence, Media Session, and error recovery as currently implemented.
+- The stereo mix passes through a fixed master processing chain before the volume gain node: sub-sonic high-pass, bass low-shelf, safety limiter, then high-frequency low-pass. Preserve the chain and its order; retune only by explicit product decision. The offline render that feeds per-channel waveforms stays dry (unprocessed).
 - Cold-load transfer (HTML, CSS, initial JS, catalog, waveform pack, initially used fonts, above-the-fold images) stays under 500 KB, excluding the lazy engine and music. Target LCP under 2.5 s and CLS under 0.1, and keep meter and waveform animation near 55 fps or better during playback.
 
 ## Accessibility and interface
