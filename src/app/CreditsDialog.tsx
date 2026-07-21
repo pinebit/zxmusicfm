@@ -79,7 +79,7 @@ export function CreditsDialog({ open, tracks, onClose }: CreditsDialogProps) {
       <section>
         <h3>Application</h3>
         <p>
-          ZX-SPECTRUM.FM project source is available under the MIT License. The
+          ZX-MUSIC.FM project source is available under the MIT License. The
           original wordmark, interface, and Spectrum-inspired artwork do not
           imply endorsement by Sinclair or any rights holder.
         </p>

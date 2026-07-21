@@ -61,7 +61,7 @@ test('shows a recoverable inline track error without silently skipping', async (
   await page.getByRole('button', { name: 'Play Solitude' }).click();
   await expect(page.getByText('This track could not be loaded.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry track' })).toBeVisible();
-  await expect(page.getByText('error', { exact: true })).toBeVisible();
+  await expect(page.getByText('Playback status: error')).toBeAttached();
 });
 
 test('fits the acceptance widths and stacks only when space requires it', async ({
@@ -85,12 +85,30 @@ test('fits the acceptance widths and stacks only when space requires it', async 
     ).toBeLessThanOrEqual(dimensions.viewport);
     const track = await page.locator('.track-panel').boundingBox();
     const meters = await page.locator('.meter-panel').boundingBox();
+    const transport = await page.locator('.transport').boundingBox();
+    const volume = await page
+      .getByRole('slider', { name: 'Master volume' })
+      .boundingBox();
     expect(track).not.toBeNull();
     expect(meters).not.toBeNull();
-    if (track === null || meters === null) continue;
+    expect(transport).not.toBeNull();
+    expect(volume).not.toBeNull();
+    if (
+      track === null ||
+      meters === null ||
+      transport === null ||
+      volume === null
+    )
+      continue;
     if (width <= 760)
       expect(meters.y).toBeGreaterThan(track.y + track.height - 1);
     else expect(Math.abs(meters.y - track.y)).toBeLessThan(2);
+    expect(volume.x).toBeGreaterThan(transport.x + transport.width - 1);
+    expect(
+      Math.abs(
+        volume.y + volume.height / 2 - (transport.y + transport.height / 2),
+      ),
+    ).toBeLessThan(3);
   }
 
   await page.setViewportSize({ width: 720, height: 450 });

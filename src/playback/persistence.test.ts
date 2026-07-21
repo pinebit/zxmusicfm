@@ -18,7 +18,6 @@ describe('player persistence', () => {
         selectedTrackId: 'proof',
         positionSeconds: 5,
         volume: 0.4,
-        muted: true,
         autoPlayNext: false,
         shuffle: true,
       },
@@ -30,7 +29,6 @@ describe('player persistence', () => {
       selectedTrackId: 'proof',
       positionSeconds: 2,
       volume: 0.4,
-      muted: true,
       autoPlayNext: false,
       shuffle: true,
     });
@@ -45,7 +43,6 @@ describe('player persistence', () => {
           selectedTrackId: 'proof',
           positionSeconds: 0.75,
           volume: 'loud',
-          muted: false,
           autoPlayNext: true,
           shuffle: false,
         },

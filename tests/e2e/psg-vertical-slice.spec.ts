@@ -4,6 +4,7 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
   page,
 }) => {
   await page.goto('/');
+  await expect(page.getByRole('button', { name: /mute/iu })).toHaveCount(0);
 
   const solitude = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { name: 'Solitude', exact: true }),
@@ -16,14 +17,36 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     solitude.getByRole('link', { name: 'Original source' }),
   ).toHaveAttribute('href', 'https://zxart.ee/eng/authors/p/pator/solitude/');
   await expect(solitude.locator('.waveform-canvas')).toBeVisible();
+  const onAir = page.getByText('ON AIR', { exact: true });
+  await expect(onAir).toBeVisible();
+  await expect(onAir).not.toHaveClass(/is-live/u);
 
+  const restingNeedleTransforms = await Promise.all(
+    ['A', 'B', 'C'].map((channel) =>
+      page
+        .locator(`.meter-${channel.toLowerCase()} .meter-needle`)
+        .evaluate((needle) => getComputedStyle(needle).transform),
+    ),
+  );
   await page.getByRole('button', { name: 'Play Solitude' }).click();
   await expect(
     page.getByRole('button', { name: 'Pause Solitude' }),
   ).toBeVisible({
     timeout: 15_000,
   });
-  for (const channel of ['A', 'B', 'C']) {
+  await expect(onAir).toHaveClass(/is-live/u);
+  await expect(page.locator('.on-air-lamp')).toHaveCSS(
+    'background-color',
+    'rgb(255, 57, 73)',
+  );
+  const transportSurface = await page
+    .getByRole('button', { name: 'Previous track' })
+    .evaluate((button) => getComputedStyle(button).backgroundImage);
+  const volumeSurface = await page
+    .getByRole('slider', { name: 'Master volume' })
+    .evaluate((knob) => getComputedStyle(knob).backgroundImage);
+  expect(transportSurface).toBe(volumeSurface);
+  for (const [index, channel] of ['A', 'B', 'C'].entries()) {
     await expect
       .poll(async () =>
         page
@@ -31,6 +54,13 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
           .evaluate((meter: HTMLMeterElement) => meter.value),
       )
       .toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        page
+          .locator(`.meter-${channel.toLowerCase()} .meter-needle`)
+          .evaluate((needle) => getComputedStyle(needle).transform),
+      )
+      .not.toBe(restingNeedleTransforms[index]);
   }
 
   await page.getByRole('button', { name: 'Pause Solitude' }).click();
@@ -44,8 +74,6 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
   for (let index = 0; index < 3; index += 1) await volume.press('PageUp');
   for (let index = 0; index < 5; index += 1) await volume.press('ArrowRight');
   await expect(volume).toHaveAttribute('aria-valuenow', '35');
-  await page.getByRole('button', { name: 'Mute' }).click();
-  await expect(page.getByRole('button', { name: 'Unmute' })).toBeVisible();
 
   await page.reload();
   await expect(
@@ -57,7 +85,6 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
   await expect(
     page.getByRole('slider', { name: 'Master volume' }),
   ).toHaveAttribute('aria-valuenow', '35');
-  await expect(page.getByRole('button', { name: 'Unmute' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Play Solitude' }).click();
   await expect(

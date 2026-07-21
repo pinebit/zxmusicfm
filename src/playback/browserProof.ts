@@ -57,12 +57,6 @@ export async function runBrowserPlaybackProof(
       Object.values(adapter.getChannelLevels()).some((level) => level > 0),
       'Live channel levels did not update.',
     );
-    adapter.setMuted(true);
-    assertProof(
-      Object.values(adapter.getChannelLevels()).every((level) => level === 0),
-      'Mute did not silence the channel levels.',
-    );
-    adapter.setMuted(false);
     adapter.setVolume(0);
     assertProof(
       Object.values(adapter.getChannelLevels()).every((level) => level === 0),

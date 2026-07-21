@@ -1,4 +1,4 @@
-# ZX-SPECTRUM.FM
+# ZX-MUSIC.FM
 
 It is a simple, polished public web application for listening to a curated collection of ZX Spectrum music tracks. The MVP is a music player rather than a community archive or a technical emulation showcase. It does not include user accounts or an administration interface.
 
@@ -6,7 +6,7 @@ It is a simple, polished public web application for listening to a curated colle
 
 The webapp is a single-page application. Its visual direction is a modern, polished interface strongly inspired by ZX Spectrum hardware and branding, rather than a literal recreation of a 1980s interface. It uses a dark charcoal hardware-panel theme, warm cream and amber meters, and restrained Spectrum-inspired red, yellow, green, and cyan accents. The MVP has no light theme.
 
-It uses an original **ZX-SPECTRUM.FM** wordmark and a Spectrum-inspired color stripe motif. It must not present itself as an official Sinclair or ZX Spectrum product or use a historical logo in a way that implies endorsement. Appropriately licensed fonts are bundled locally, with a geometric display face for branding and a highly legible sans-serif for controls and metadata. The application makes no remote font requests and does not use a pixel font for body text.
+It uses an original **ZX-MUSIC.FM** wordmark and a Spectrum-inspired color stripe motif. It must not present itself as an official Sinclair or ZX Spectrum product or use a historical logo in a way that implies endorsement. Appropriately licensed fonts are bundled locally, with a geometric display face for branding and a highly legible sans-serif for controls and metadata. The application makes no remote font requests and does not use a pixel font for body text.
 
 The top-level design is a two-pane layout:
 
@@ -23,9 +23,9 @@ The track list is a single scrollable collection. Search, filtering, and categor
 
 When the catalog contains only one valid track, Auto-Play Next stops at its end rather than implicitly repeating it. Shuffle is disabled whenever fewer than two valid tracks are present, with an accessible explanation that more tracks are required.
 
-A valid empty development catalog shows the normal application shell, a clear **No tracks available** empty state, and disabled playback, sequencing, seek, volume, and mute controls. It does not show a catalog error or placeholder track. Public/release validation prevents deployment of that state by enforcing the 20–30-track rule.
+A valid empty development catalog shows the normal application shell, a clear **No tracks available** empty state, and disabled playback, sequencing, seek, and volume controls. It does not show a catalog error or placeholder track. Public/release validation prevents deployment of that state by enforcing the 20–30-track rule.
 
-The player also persists the selected track and its playback position locally. While playing, it checkpoints the position at most once every five seconds; it also saves immediately after pause, a committed seek, a track change, and the browser's `pagehide` event. Persistence is best-effort and never delays or blocks playback or navigation. After a page reload, it restores that track and position along with the volume, mute, Auto-Play Next, and Shuffle settings. The restored track is visibly selected at the saved position but remains paused until the user presses Play.
+The player also persists the selected track and its playback position locally. While playing, it checkpoints the position at most once every five seconds; it also saves immediately after pause, a committed seek, a track change, and the browser's `pagehide` event. Persistence is best-effort and never delays or blocks playback or navigation. After a page reload, it restores that track and position along with the volume, Auto-Play Next, and Shuffle settings. The restored track is visibly selected at the saved position but remains paused until the user presses Play.
 
 The application never starts audio merely because the page was opened or reloaded. Initial playback always requires the user to press Play. Auto-Play Next applies only after user-initiated playback reaches the end of a track.
 
@@ -51,7 +51,7 @@ If the user manually selects a track during a shuffled cycle, it plays immediate
 
 The Media Session Next action follows the active curated or shuffled sequence. Previous walks backward through tracks actually listened to during the current page session. If there is no prior listening history, Previous restarts the selected track. Listening history is not persisted across reloads.
 
-Around the two panes, there are stylized, original ZX Spectrum-inspired graphics and the original ZX-SPECTRUM.FM wordmark.
+Around the two panes, there are stylized, original ZX Spectrum-inspired graphics and the original ZX-MUSIC.FM wordmark.
 
 An Equalizer panel may be considered after the MVP but is explicitly outside the MVP scope.
 
@@ -81,14 +81,16 @@ If a track cannot be loaded, decoded, or played, its row displays a clear inline
 
 ### Channel Level Indicators Panel
 
-Each indicator is a physical analogue-style VU meter with a moving needle, a scale, warm illumination, and a clear A, B, or C label. It shows the current level of the corresponding AY/YM audio channel in real time. Genuine per-channel data is used on every supported proof-of-concept path. A defensive visual approximation may be used only on an unsupported browser/runtime path where audio still works but channel taps are unavailable; it must be labeled as approximate in an accessible status and cannot be used to pass engine or supported-browser acceptance.
+Each indicator is a physical analogue-style VU meter shaped as an old hi-fi half-dome, with a moving needle, arched scale, warm illumination, glass highlight, metal pivot, and a clear A, B, or C label. It shows the current level of the corresponding AY/YM audio channel in real time. Genuine per-channel data is used on every supported proof-of-concept path. A defensive visual approximation may be used only on an unsupported browser/runtime path where audio still works but channel taps are unavailable; it must be labeled as approximate in an accessible status and cannot be used to pass engine or supported-browser acceptance.
 
-The meter panel also shows the selected track's title, author, and elapsed/total time. Before any track has been selected, it displays a concise invitation to choose a track without inventing placeholder metadata.
+The meter panel uses the conventional broadcast label **ON AIR** with a red hardware lamp that illuminates only while playback is active. The lamp is decorative: playback state remains apparent from the Play/Pause control and is live-announced to assistive technology without adding a visible status word. The panel also shows the selected track's title, author, and elapsed/total time. Before any track has been selected, it displays a concise invitation to choose a track without inventing placeholder metadata.
 
 Needles update at animation-frame cadence from a 50 ms rolling RMS level per channel. Map `-48 dBFS` or lower to the resting position and `0 dBFS` to full scale, clamp outside that range, and apply exponential smoothing with a 60 ms attack time and 300 ms release time. They settle to zero when playback is paused, stopped, finished, loading, or in an error state. Meter animation must not drive React component renders on every frame; use an animation-appropriate rendering path and clean it up when the component unmounts or the page is hidden.
-The MVP includes a hardware-inspired rotary master-volume knob with accessible slider semantics, range `0` through `100`, and a separate mute button. Up/Right increase and Down/Left decrease by one percentage point, Page Up/Down change by ten points, and Home/End set zero/100. Pointer dragging uses a linear gesture—up or right increases and down or left decreases—rather than requiring the user to trace a circle. Values clamp to the range and are announced as percentages. The volume setting persists locally across page reloads.
+The MVP includes a hardware-inspired rotary master-volume knob with accessible slider semantics and range `0` through `100`. Up/Right increase and Down/Left decrease by one percentage point, Page Up/Down change by ten points, and Home/End set zero/100. Pointer dragging uses a linear gesture—up or right increases and down or left decreases—rather than requiring the user to trace a circle. Values clamp to the range and are announced as percentages. The volume setting persists locally across page reloads.
 
-On a first visit, master volume is 80% and unmuted. Muting preserves the prior nonzero volume and unmuting restores it. Moving the volume above zero while muted also unmutes. Moving it to zero produces silent output and presents the control as muted without discarding the last nonzero value.
+Previous, Play/Pause, and Next use matching circular machined controls with the same dimensional graphite surface, bevel, highlight, and shadow language as the volume knob. Play/Pause is larger and uses an amber symbol, while all controls retain native button semantics and visible focus treatment. The three transport controls and the volume knob stay aligned in one control row at every supported responsive width.
+
+On a first visit, master volume is 80%. Moving it to zero produces silent output.
 
 Playback uses conventional equal-power stereo placement derived from `channelLayout`. For `ABC`, channel A is fully left, B is centered, and C is fully right. For `ACB`, A is fully left, C is centered, and B is fully right. The adapter applies one fixed, track-independent mix headroom that prevents ordinary three-channel output from clipping. It uses the pinned engine's chip-accurate nonlinear AY or YM amplitude model selected by `chipType`; it does not apply per-track peak normalization, loudness normalization, automatic gain control, compression, or limiting. The master-volume control is the only listener-controlled gain stage.
 
@@ -116,7 +118,7 @@ Automated component and browser checks include an accessibility scanner and fail
 
 ### Playback Engine
 
-The application owns one playback controller and at most one active playback-engine instance. Components issue commands to this controller rather than calling the engine or Web Audio APIs directly. The controller owns selection, requested and actual position, playback lifecycle, volume, mute, sequencing, history, errors, and engine cleanup. It lazily creates at most one `AudioContext` after an allowed user gesture, reuses it across track changes, resumes it after browser suspension only through a user-permitted path, and closes it when the controller is permanently disposed. A new track replaces the previous engine content; simultaneous or overlapping track engines are outside the MVP.
+The application owns one playback controller and at most one active playback-engine instance. Components issue commands to this controller rather than calling the engine or Web Audio APIs directly. The controller owns selection, requested and actual position, playback lifecycle, volume, sequencing, history, errors, and engine cleanup. It lazily creates at most one `AudioContext` after an allowed user gesture, reuses it across track changes, resumes it after browser suspension only through a user-permitted path, and closes it when the controller is permanently disposed. A new track replaces the previous engine content; simultaneous or overlapping track engines are outside the MVP.
 
 The controller exposes an explicit discriminated state machine:
 
@@ -191,7 +193,7 @@ Continuous integration is intentionally minimal: it performs a TypeScript sanity
 
 The MVP has no service worker, installable PWA behavior, or offline mode. It also has no analytics, advertising, tracking, cookies, or remote telemetry. Local storage is used only for the user-controlled playback state described in this document.
 
-Unavailable, quota-limited, or corrupt local storage never blocks playback. The application uses safe in-memory defaults for the session and discards only stored values that fail validation. If a persisted track ID no longer exists in the generated catalog, clear only the saved track and position while retaining valid volume, mute, Auto-Play Next, and Shuffle settings.
+Unavailable, quota-limited, or corrupt local storage never blocks playback. The application uses safe in-memory defaults for the session and discards only stored values that fail validation. If a persisted track ID no longer exists in the generated catalog, clear only the saved track and position while retaining valid volume, Auto-Play Next, and Shuffle settings.
 
 Persist all player preferences under the single local-storage key `zx-spectrum-fm.player.v1` as JSON with exactly these fields:
 
@@ -199,7 +201,6 @@ Persist all player preferences under the single local-storage key `zx-spectrum-f
 - `selectedTrackId`: a track ID string or `null`.
 - `positionSeconds`: a finite nonnegative number.
 - `volume`: a finite number from `0` through `1`.
-- `muted`: a boolean.
 - `autoPlayNext`: a boolean.
 - `shuffle`: a boolean.
 
@@ -425,7 +426,7 @@ If `ym2149-rs` fails a mandatory criterion, reproduce the failure with the small
 
 ### Phase 3: Real PSG Vertical Slice
 
-Complete the production PSG parser, PSG-to-YM6 converter, common canonical-runtime generator contract, waveform packer, catalog generator, import/update/remove commands, provenance, atomic writes, and stale-output checks. Use the specified direct URL and metadata to import `pator-solitude` as the first real catalog entry. Then implement the smallest end-to-end application slice that loads the real catalog and waveform pack, starts `Solitude` after a user gesture, plays the generated YM6, pauses and resumes, seeks, restores a saved position paused, displays true A/B/C waveform layers and live meters, changes volume and mute, reaches the correct end, and links to its original source.
+Complete the production PSG parser, PSG-to-YM6 converter, common canonical-runtime generator contract, waveform packer, catalog generator, import/update/remove commands, provenance, atomic writes, and stale-output checks. Use the specified direct URL and metadata to import `pator-solitude` as the first real catalog entry. Then implement the smallest end-to-end application slice that loads the real catalog and waveform pack, starts `Solitude` after a user gesture, plays the generated YM6, pauses and resumes, seeks, restores a saved position paused, displays true A/B/C waveform layers and live meters, changes volume, reaches the correct end, and links to its original source.
 
 This phase passes only when the authoritative PSG, derived YM6, waveform data, provenance, and catalog all pass the automated equivalence and freshness checks; the track is audibly reviewed in at least one supported desktop browser; and the vertical slice works without mocked audio or metadata. A problem with the real seed track reopens the engine or converter gate rather than being hidden in UI code.
 

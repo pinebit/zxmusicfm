@@ -366,17 +366,18 @@ function PlayerApplication({
           )}
         </section>
 
-        <aside className="meter-panel" aria-labelledby="meters-heading">
+        <aside className="meter-panel" aria-label="Playback deck">
           <div className="meter-heading">
-            <div>
-              <p className="section-kicker">LIVE OUTPUT</p>
-              <h2 id="meters-heading">Channel meters</h2>
-            </div>
-            <span
-              className={`status-lamp ${snapshot.status}`}
-              aria-live="polite"
+            <p
+              className={`section-kicker on-air-sign${
+                snapshot.status === 'playing' ? ' is-live' : ''
+              }`}
             >
-              {snapshot.status}
+              <span className="on-air-lamp" aria-hidden="true" />
+              ON AIR
+            </p>
+            <span className="visually-hidden" aria-live="polite">
+              Playback status: {snapshot.status}
             </span>
           </div>
           {selectedTrack === undefined ? (
@@ -393,50 +394,50 @@ function PlayerApplication({
           )}
           <ChannelMeters adapter={controller.getAdapter()} />
 
-          <div className="transport" aria-label="Playback controls">
-            <button
-              type="button"
-              disabled={controlsDisabled || selectedTrack === undefined}
-              aria-label="Previous track"
-              onClick={() => controller.previous()}
-            >
-              <span aria-hidden="true">|◀</span>
-            </button>
-            <button
-              className="transport-primary"
-              type="button"
-              disabled={
-                controlsDisabled ||
-                selectedTrack === undefined ||
-                snapshot.status === 'loading'
-              }
-              aria-label={
-                snapshot.status === 'playing'
-                  ? 'Pause selected track'
-                  : 'Play selected track'
-              }
-              onClick={() =>
-                snapshot.status === 'playing'
-                  ? controller.pause()
-                  : controller.playSelected()
-              }
-            >
-              <span aria-hidden="true">
-                {snapshot.status === 'playing' ? 'Ⅱ' : '▶'}
-              </span>
-            </button>
-            <button
-              type="button"
-              disabled={controlsDisabled || catalog.tracks.length < 2}
-              aria-label="Next track"
-              onClick={() => controller.next()}
-            >
-              <span aria-hidden="true">▶|</span>
-            </button>
-          </div>
+          <div className="deck-controls">
+            <div className="transport" aria-label="Playback controls">
+              <button
+                type="button"
+                disabled={controlsDisabled || selectedTrack === undefined}
+                aria-label="Previous track"
+                onClick={() => controller.previous()}
+              >
+                <span aria-hidden="true">|◀</span>
+              </button>
+              <button
+                className="transport-primary"
+                type="button"
+                disabled={
+                  controlsDisabled ||
+                  selectedTrack === undefined ||
+                  snapshot.status === 'loading'
+                }
+                aria-label={
+                  snapshot.status === 'playing'
+                    ? 'Pause selected track'
+                    : 'Play selected track'
+                }
+                onClick={() =>
+                  snapshot.status === 'playing'
+                    ? controller.pause()
+                    : controller.playSelected()
+                }
+              >
+                <span aria-hidden="true">
+                  {snapshot.status === 'playing' ? 'Ⅱ' : '▶'}
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={controlsDisabled || catalog.tracks.length < 2}
+                aria-label="Next track"
+                onClick={() => controller.next()}
+              >
+                <span aria-hidden="true">▶|</span>
+              </button>
+            </div>
 
-          <div className="volume-control">
-            <div>
+            <div className="volume-control">
               <p className="control-label">MASTER</p>
               <VolumeKnob
                 value={snapshot.preferences.volume * 100}
@@ -444,24 +445,6 @@ function PlayerApplication({
                 onChange={(value) => controller.setVolume(value / 100)}
               />
             </div>
-            <button
-              type="button"
-              className="mute-button"
-              disabled={!hasTracks}
-              aria-label={
-                snapshot.preferences.muted || snapshot.preferences.volume === 0
-                  ? 'Unmute'
-                  : 'Mute'
-              }
-              aria-pressed={
-                snapshot.preferences.muted || snapshot.preferences.volume === 0
-              }
-              onClick={() => controller.toggleMute()}
-            >
-              {snapshot.preferences.muted || snapshot.preferences.volume === 0
-                ? 'UNMUTE'
-                : 'MUTE'}
-            </button>
           </div>
         </aside>
       </div>
@@ -523,7 +506,7 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
           <p className="eyebrow">
             CURATED CHIP MUSIC · THREE CHANNELS · ONE MACHINE
           </p>
-          <h1>ZX-SPECTRUM.FM</h1>
+          <h1>ZX-MUSIC.FM</h1>
           <p className="brand-intro">
             Original AY/YM music, preserved and played in the browser.
           </p>

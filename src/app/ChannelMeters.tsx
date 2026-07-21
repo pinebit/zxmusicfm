@@ -7,6 +7,11 @@ type ChannelMetersProps = {
 };
 
 export function ChannelMeters({ adapter }: ChannelMetersProps) {
+  const gaugeRefs = useRef<Record<'A' | 'B' | 'C', HTMLDivElement | null>>({
+    A: null,
+    B: null,
+    C: null,
+  });
   const meterRefs = useRef<Record<'A' | 'B' | 'C', HTMLMeterElement | null>>({
     A: null,
     B: null,
@@ -34,7 +39,13 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
         const meter = meterRefs.current[channel];
         if (meter !== null) {
           meter.value = smoothed[channel];
-          meter.style.setProperty('--meter-level', String(smoothed[channel]));
+        }
+        const gauge = gaugeRefs.current[channel];
+        if (gauge !== null) {
+          gauge.style.setProperty(
+            '--meter-angle',
+            `${-148 + smoothed[channel] * 116}deg`,
+          );
         }
       }
       frame = requestAnimationFrame(update);
@@ -46,7 +57,13 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
   return (
     <div className="meter-bank" aria-label="Live AY channel levels">
       {(['A', 'B', 'C'] as const).map((channel) => (
-        <div className={`meter meter-${channel.toLowerCase()}`} key={channel}>
+        <div
+          ref={(element) => {
+            gaugeRefs.current[channel] = element;
+          }}
+          className={`meter meter-${channel.toLowerCase()}`}
+          key={channel}
+        >
           <span className="meter-scale" aria-hidden="true">
             −48 · −24 · 0
           </span>

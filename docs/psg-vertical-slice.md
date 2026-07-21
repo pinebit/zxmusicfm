@@ -70,8 +70,8 @@ The Phase 3 interface:
   generated 173.02-second end;
 - displays genuine per-channel levels using direct animation-frame meter
   updates with the specified dB mapping and attack/release smoothing;
-- changes master volume and mute and restores the selected track, paused
-  position, volume, and mute state after reload; and
+- changes master volume and restores the selected track, paused position, and
+  volume after reload; and
 - links directly to the original source page.
 
 Automated Playwright acceptance covers desktop Chromium, Firefox, WebKit, and

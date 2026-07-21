@@ -46,7 +46,7 @@ describe('PSG and YM canonical runtime formats', () => {
       chipClockHz: 1_773_400,
       frameRateHz: 50,
       title: 'Round trip',
-      author: 'ZX-SPECTRUM.FM',
+      author: 'ZX-MUSIC.FM',
     });
     const parsed = parseYm6(bytes);
 

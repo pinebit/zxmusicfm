@@ -1,4 +1,4 @@
-# ZX-SPECTRUM.FM Implementation Plan
+# ZX-MUSIC.FM Implementation Plan
 
 `IDEA.md` is the authoritative product and technical specification. This file defines only the stable high-level implementation sequence, not a progress log or a place for detailed task notes. Complete each phase before proceeding to the next. Throughout every phase, leave all work uncommitted and unstaged; do not create tags, configure or modify remotes, publish a repository, open pull requests, or push anything.
 

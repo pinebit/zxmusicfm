@@ -47,7 +47,6 @@ export type PlaybackAdapter = {
   stop(): void;
   seek(positionSeconds: number): Promise<void>;
   setVolume(volume: number): void;
-  setMuted(muted: boolean): void;
   getChannelLevels(): ChannelLevels;
   renderOffline(
     track: RuntimeTrack,

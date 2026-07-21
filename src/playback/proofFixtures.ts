@@ -103,7 +103,7 @@ export function createSyntheticAy(looping: boolean): Uint8Array {
     52,
     looping ? 'Synthetic AY loop' : 'Synthetic AY finite',
   );
-  writeString(result, 72, 'ZX-SPECTRUM.FM');
+  writeString(result, 72, 'ZX-MUSIC.FM');
   writeString(result, 88, 'Project-created Phase 2 fixture');
 
   const code: number[] = [];
@@ -166,7 +166,7 @@ export async function captureSyntheticAyAsYm6(
     chipClockHz: AY_CHIP_CLOCK,
     frameRateHz: AY_FRAME_RATE,
     title: 'Synthetic AY capture',
-    author: 'ZX-SPECTRUM.FM',
+    author: 'ZX-MUSIC.FM',
     comment: 'Phase 2 deterministic capture',
   });
 }
@@ -182,7 +182,7 @@ export function createProofRuntimeTrack(
       chipClockHz: options.chipClockHz ?? 1_773_400,
       frameRateHz,
       title: options.title ?? 'Phase 2 proof',
-      author: options.author ?? 'ZX-SPECTRUM.FM',
+      author: options.author ?? 'ZX-MUSIC.FM',
       comment: options.comment ?? 'Project-created synthetic fixture',
     }),
     durationSeconds: frames.length / frameRateHz,

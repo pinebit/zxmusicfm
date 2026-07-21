@@ -87,7 +87,6 @@ export class PlayerController {
   private disposed = false;
   private ticker: number | undefined;
   private lastCheckpointAt = 0;
-  private lastNonzeroVolume: number;
   private shuffleQueue: string[] = [];
   private history: string[] = [];
 
@@ -114,7 +113,6 @@ export class PlayerController {
       preferences.selectedTrackId === null
         ? undefined
         : this.tracksById.get(preferences.selectedTrackId);
-    this.lastNonzeroVolume = preferences.volume > 0 ? preferences.volume : 0.8;
     this.snapshot = {
       status: track === undefined ? 'idle' : 'ready',
       selectedTrackId: track?.id ?? null,
@@ -252,28 +250,11 @@ export class PlayerController {
 
   setVolume(volume: number): void {
     const nextVolume = clamp(Number.isFinite(volume) ? volume : 0, 0, 1);
-    if (nextVolume > 0) this.lastNonzeroVolume = nextVolume;
-    const muted = nextVolume === 0 ? true : false;
     this.adapter?.setVolume(nextVolume);
-    this.adapter?.setMuted(muted);
     this.setPreferences({
       ...this.snapshot.preferences,
       volume: nextVolume,
-      muted,
     });
-  }
-
-  toggleMute(): void {
-    const preferences = this.snapshot.preferences;
-    const currentlyMuted = preferences.muted || preferences.volume === 0;
-    const muted = !currentlyMuted;
-    const volume =
-      !muted && preferences.volume === 0
-        ? this.lastNonzeroVolume
-        : preferences.volume;
-    this.adapter?.setVolume(volume);
-    this.adapter?.setMuted(muted);
-    this.setPreferences({ ...preferences, volume, muted });
   }
 
   persistNow(): void {
@@ -425,7 +406,6 @@ export class PlayerController {
       throw new Error('Player controller has been disposed.');
     }
     adapter.setVolume(this.snapshot.preferences.volume);
-    adapter.setMuted(this.snapshot.preferences.muted);
     this.adapterUnsubscribe = adapter.subscribe((next) => {
       this.handleAdapterSnapshot(next);
     });
@@ -605,7 +585,7 @@ export class PlayerController {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.author,
-      album: 'ZX-SPECTRUM.FM',
+      album: 'ZX-MUSIC.FM',
       artwork: [
         { src: '/app-icon.svg', sizes: '512x512', type: 'image/svg+xml' },
       ],

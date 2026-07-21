@@ -96,7 +96,6 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private anchorPositionSeconds = 0;
   private levels: ChannelLevels = EMPTY_LEVELS;
   private volume = 1;
-  private muted = false;
   private loadGeneration = 0;
   private disposed = false;
 
@@ -239,20 +238,14 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.updateGain();
   }
 
-  setMuted(muted: boolean): void {
-    this.muted = muted;
-    this.updateGain();
-  }
-
   getChannelLevels(): ChannelLevels {
     if (!isPlayingStatus(this.status)) {
       return EMPTY_LEVELS;
     }
-    const gain = this.muted ? 0 : this.volume;
     return {
-      A: this.levels.A * gain,
-      B: this.levels.B * gain,
-      C: this.levels.C * gain,
+      A: this.levels.A * this.volume,
+      B: this.levels.B * this.volume,
+      C: this.levels.C * this.volume,
     };
   }
 
@@ -400,7 +393,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
 
   private updateGain(): void {
     if (this.gainNode !== undefined) {
-      this.gainNode.gain.value = this.muted ? 0 : this.volume;
+      this.gainNode.gain.value = this.volume;
     }
   }
 

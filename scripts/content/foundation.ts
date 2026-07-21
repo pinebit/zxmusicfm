@@ -540,8 +540,8 @@ async function prepareTrack(
       author: input.sidecar.author,
       comment:
         trackerConversion === null
-          ? `Converted from ${path.basename(input.sourcePath)} by ZX-SPECTRUM.FM`
-          : `Converted from ${sourceFormat} through ZXTune PSG by ZX-SPECTRUM.FM`,
+          ? `Converted from ${path.basename(input.sourcePath)} by ZX-MUSIC.FM`
+          : `Converted from ${sourceFormat} through ZXTune PSG by ZX-MUSIC.FM`,
     });
     runtimeMode = 'convert';
   } else if (sourceFormat === 'AY') {
@@ -553,7 +553,7 @@ async function prepareTrack(
       frameRateHz,
       title: input.sidecar.title,
       author: input.sidecar.author,
-      comment: `Captured from AY subsong ${input.sidecar.subsong} by ZX-SPECTRUM.FM`,
+      comment: `Captured from AY subsong ${input.sidecar.subsong} by ZX-MUSIC.FM`,
     });
     runtimeMode = 'convert';
   } else {
@@ -573,7 +573,7 @@ async function prepareTrack(
       frameRateHz,
       title: input.sidecar.title,
       author: input.sidecar.author,
-      comment: 'Normalized by ZX-SPECTRUM.FM',
+      comment: 'Normalized by ZX-MUSIC.FM',
     });
     frames = prepared.frames;
     runtime = prepared.bytes;

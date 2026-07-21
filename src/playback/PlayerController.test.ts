@@ -99,9 +99,6 @@ class FakeAdapter implements PlaybackAdapter {
   setVolume(volume: number): void {
     void volume;
   }
-  setMuted(muted: boolean): void {
-    void muted;
-  }
 
   getChannelLevels() {
     return { A: 0, B: 0, C: 0 } as const;

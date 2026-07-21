@@ -1,4 +1,4 @@
-# ZX-SPECTRUM.FM
+# ZX-MUSIC.FM
 
 The implementation follows [IDEA.md](docs/IDEA.md) and the gated sequence in
 [PLAN.md](docs/PLAN.md). The application now includes the real Pator
