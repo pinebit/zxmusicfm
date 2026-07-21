@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Klav - Satisfaction 8 (1994).stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "e76975666256b807d1fbe6a4c77ffe95bf721fb8ce765849f62a95ac2d2f6fa4",
+  "sourceByteLength": 2050,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "fa659ab2210321439865863cd2c4d04a741031f049a5b19fca7d4fdd62c83151",
+  "runtimeByteLength": 97375,
+  "frameCount": 6079,
+  "durationSeconds": 121.58,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "c99dfbc02ad38f023b4b90f74c7d9639988451bd68422f4e573d511deb7edb56",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "e76975666256b807d1fbe6a4c77ffe95bf721fb8ce765849f62a95ac2d2f6fa4",
+    "psgSha256": "6c615893708af283aca8df5348d8ba936b02cfdeaf127e6cf6f33f7c417bdeb8",
+    "psgByteLength": 65324
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Klav - BEAT.stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "ffd03ef78c0f2ace1c0c72008bf289c9fb41b0cc6d24d948b5fec58d2f891765",
+  "sourceByteLength": 2831,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "82e1d215c2588565486eb4e1052bd59278873c7a80ccc30a80044f9fd4f27982",
+  "runtimeByteLength": 184405,
+  "frameCount": 11519,
+  "durationSeconds": 230.38,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "5434b2b34d6aed727bfb55dae24405da96cb580c1c0f65d04d3b97b6131f34f5",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "ffd03ef78c0f2ace1c0c72008bf289c9fb41b0cc6d24d948b5fec58d2f891765",
+    "psgSha256": "3ed2900dffbddfd16b75344404481208583c0bcdc342a99523bf8c48675d4db6",
+    "psgByteLength": 128598
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Klav - Satisfaction 6 (1994).stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "b3b868cc4c5f40f7261b6fd3b71e6bd236fa480128025588ccd9367f9ae952f1",
+  "sourceByteLength": 3569,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "a71fb5a1bd562b0ae789bca161843cf8365bcca8bcbb88099dc8acd9b9ddd0fa",
+  "runtimeByteLength": 196703,
+  "frameCount": 12287,
+  "durationSeconds": 245.74,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "5ba8d1a12f40ba297dd3fb28ce067a6304cfc88a320937ef447b17d49f79fc27",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "b3b868cc4c5f40f7261b6fd3b71e6bd236fa480128025588ccd9367f9ae952f1",
+    "psgSha256": "e7a835133914d0ee9a031f1f897679be364f222a4f01d15bd8e78fb8e53e25d0",
+    "psgByteLength": 105138
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

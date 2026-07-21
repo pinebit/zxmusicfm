@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Matty - Batman The Movie - Level 5 - The Cathedral (AY) 7 (1989).ay",
+  "sourceFormat": "AY",
+  "sourceSha256": "7d2f5f03eb432676229fdd93f1339982fc76d0596d8e7c6ccbcc59fcbbd024e4",
+  "sourceByteLength": 7532,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "5379afa39fd3ec0a7e5d6255c101c30bfe5f026b2c362116aa4d3b6792b9f2c3",
+  "runtimeByteLength": 106503,
+  "frameCount": 6650,
+  "durationSeconds": 133,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "992a93740e8be284f4a7b55116f30a75c99e2458bb682af79262ea8cef3f021a",
+  "trackerConversion": null,
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "klav-satisfaction-6",
+  "order": 8,
+  "title": "Satisfaction 6",
+  "author": "Klav",
+  "sourceUrl": "https://zxart.ee/eng/authors/k/klav/satisfaction-6/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1994
+}
