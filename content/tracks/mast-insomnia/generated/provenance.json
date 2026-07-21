@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "insomnia.pt3",
+  "originalFileName": "source.pt3",
   "sourceFormat": "PT3",
   "sourceSha256": "61b05096f151590d7f9a7aa099a68db32b39a07965a3d6f231a281548e515f97",
   "sourceByteLength": 7064,
@@ -27,7 +27,7 @@
     "psgSha256": "d173060d976ec3e751545b4173c5e5851461bdb014a5c0446a5343e80455c595",
     "psgByteLength": 72747
   },
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

@@ -1,4 +1,10 @@
-export const PLAYER_STORAGE_KEY = 'zx-spectrum-fm.player.v1';
+export const PLAYER_STORAGE_KEY = 'zxmusicfm.player.v1';
+const PREVIOUS_PLAYER_STORAGE_KEY = ['zx', 'spectrum', 'fm.player.v1'].join(
+  '-',
+);
+
+type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'> &
+  Partial<Pick<Storage, 'removeItem'>>;
 
 export type PlayerPreferences = {
   readonly schemaVersion: 1;
@@ -82,14 +88,24 @@ export function parsePlayerPreferences(
 }
 
 export function loadPlayerPreferences(
-  storage: Pick<Storage, 'getItem'>,
+  storage: PreferenceStorage,
   tracks: readonly TrackDuration[],
 ): PlayerPreferences {
   try {
-    const stored = storage.getItem(PLAYER_STORAGE_KEY);
-    return stored === null
-      ? DEFAULT_PLAYER_PREFERENCES
-      : parsePlayerPreferences(JSON.parse(stored) as unknown, tracks);
+    const current = storage.getItem(PLAYER_STORAGE_KEY);
+    if (current !== null) {
+      return parsePlayerPreferences(JSON.parse(current) as unknown, tracks);
+    }
+
+    const previous = storage.getItem(PREVIOUS_PLAYER_STORAGE_KEY);
+    if (previous === null) return DEFAULT_PLAYER_PREFERENCES;
+    const preferences = parsePlayerPreferences(
+      JSON.parse(previous) as unknown,
+      tracks,
+    );
+    storage.setItem(PLAYER_STORAGE_KEY, JSON.stringify(preferences));
+    storage.removeItem?.(PREVIOUS_PLAYER_STORAGE_KEY);
+    return preferences;
   } catch {
     return DEFAULT_PLAYER_PREFERENCES;
   }

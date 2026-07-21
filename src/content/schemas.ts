@@ -108,7 +108,7 @@ export const generatedProvenanceSchema = z.strictObject({
     .nullable(),
   waveformSha256: sha256Schema,
   trackerConversion: trackerConversionSchema.nullable(),
-  preparationTool: z.literal('zx-spectrum-fm-content-v1'),
+  preparationTool: z.literal('zxmusicfm-content-v1'),
   engine: z.strictObject({
     name: z.literal('ym2149-rs'),
     commit: z.literal('b3096aac0dcab6dd1d82c0209f579761943aadc6'),

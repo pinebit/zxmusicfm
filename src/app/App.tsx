@@ -453,7 +453,7 @@ function PlayerApplication({
         <p>Independent, curated ZX Spectrum music radio.</p>
         <nav aria-label="Project and credits">
           <a
-            href="https://github.com/pinebit/zxspectrumfm"
+            href="https://github.com/pinebit/zxmusicfm"
             target="_blank"
             rel="noopener noreferrer"
           >

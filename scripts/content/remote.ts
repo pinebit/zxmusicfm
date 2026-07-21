@@ -123,7 +123,7 @@ async function requestOnce(
         headers: {
           Accept: 'application/octet-stream',
           'Accept-Encoding': 'identity',
-          'User-Agent': 'zx-spectrum-fm-content/1',
+          'User-Agent': 'zxmusicfm-content/1',
         },
         lookup: (_hostname, options, callback) => {
           const requestedFamily =

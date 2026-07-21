@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "megamix-laser-dance.asc",
+  "originalFileName": "source.asc",
   "sourceFormat": "ASC",
   "sourceSha256": "51cc9c9aabb16e3f203e611cbd617c95708566c0e69f8916be836f91229f144d",
   "sourceByteLength": 2338,
@@ -27,7 +27,7 @@
     "psgSha256": "36c539c36ddb68646f00cd048ffdca5e4d6f4252468a7017803a7436759ee8ee",
     "psgByteLength": 21376
   },
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

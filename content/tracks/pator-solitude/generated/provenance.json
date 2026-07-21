@@ -19,7 +19,7 @@
   "durationOverride": null,
   "waveformSha256": "3b5e87b99641b79cba1bcbf8d5c9da99ef9240e85fdbfad89d749338f5c065fe",
   "trackerConversion": null,
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

@@ -12,7 +12,7 @@ export const TRACKER_FORMATS = ['PT3', 'STC', 'ASC'] as const;
 export type TrackerFormat = (typeof TRACKER_FORMATS)[number];
 export type TrackerExtension = '.pt3' | '.stc' | '.asc';
 
-const dockerImage = `zx-spectrum-fm-zxtune:${ZXTUNE_COMMIT.slice(0, 12)}`;
+const dockerImage = `zxmusicfm-zxtune:${ZXTUNE_COMMIT.slice(0, 12)}`;
 function resolveDockerfile(): string {
   try {
     return fileURLToPath(new URL('./zxtune/Dockerfile', import.meta.url));
@@ -127,7 +127,7 @@ export async function convertTrackerToPsg(
   extension: TrackerExtension,
 ): Promise<TrackerConversion> {
   await ensureImage();
-  const work = await mkdtemp(path.join(tmpdir(), 'zxspectrumfm-zxtune-'));
+  const work = await mkdtemp(path.join(tmpdir(), 'zxmusicfm-zxtune-'));
   try {
     const sourceName = `input${extension}`;
     await writeFile(path.join(work, sourceName), source);

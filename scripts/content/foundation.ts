@@ -635,7 +635,7 @@ async function prepareTrack(
     durationOverride,
     waveformSha256: sha256(waveform),
     trackerConversion,
-    preparationTool: 'zx-spectrum-fm-content-v1',
+    preparationTool: 'zxmusicfm-content-v1',
     engine: { name: 'ym2149-rs', commit: engineCommit },
   };
   const catalog: PreparedTrack['catalog'] = {

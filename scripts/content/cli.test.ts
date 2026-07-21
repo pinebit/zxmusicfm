@@ -20,7 +20,7 @@ async function command(root: string, argumentsList: readonly string[]) {
 
 describe('atomic content commands', () => {
   it('imports, updates, rejects collisions without writes, and removes a PSG', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'zxspectrumfm-cli-'));
+    const root = await mkdtemp(path.join(os.tmpdir(), 'zxmusicfm-cli-'));
     await cp('vendor', path.join(root, 'vendor'), { recursive: true });
     await writeFile(path.join(root, 'fixture.psg'), createSyntheticPsg());
 

@@ -96,7 +96,7 @@ Playback uses conventional equal-power stereo placement derived from `channelLay
 
 ### The Footer
 
-The footer links to the planned source repository at https://github.com/pinebit/zxspectrumfm and to [ZX-Art's ZX Spectrum music collection](https://zxart.ee/eng/music/). It also contains a Credits/License control similar in purpose to https://aym-js.emaxilde.net/license/.
+The footer links to the planned source repository at https://github.com/pinebit/zxmusicfm and to [ZX-Art's ZX Spectrum music collection](https://zxart.ee/eng/music/). It also contains a Credits/License control similar in purpose to https://aym-js.emaxilde.net/license/.
 
 Activating Credits/License opens an accessible modal dialog without changing routes. The dialog groups notices into application, playback engine, dependencies, and music credits; traps focus while open; closes by its close control or Escape; and restores focus to the trigger. Its content is derived from maintained project data rather than duplicated across UI components. The music section lists every public track with its title, author, and original source link, plus its year and notes when present.
 
@@ -195,7 +195,7 @@ The MVP has no service worker, installable PWA behavior, or offline mode. It als
 
 Unavailable, quota-limited, or corrupt local storage never blocks playback. The application uses safe in-memory defaults for the session and discards only stored values that fail validation. If a persisted track ID no longer exists in the generated catalog, clear only the saved track and position while retaining valid volume, Auto-Play Next, and Shuffle settings.
 
-Persist all player preferences under the single local-storage key `zx-spectrum-fm.player.v1` as JSON with exactly these fields:
+Persist all player preferences under the single local-storage key `zxmusicfm.player.v1` as JSON with exactly these fields. On first read after the project rename, migrate valid preferences from the former project-name key and remove that key when storage permits:
 
 - `schemaVersion`: `1`.
 - `selectedTrackId`: a track ID string or `null`.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "insult3m.stc",
+  "originalFileName": "source.stc",
   "sourceFormat": "STC",
   "sourceSha256": "5ba8e3c6da17c63d8adc283913c76c1fc3210dac2da858f7bfa6ceb4a1e5c09d",
   "sourceByteLength": 1981,
@@ -27,7 +27,7 @@
     "psgSha256": "e896e2a1a28b1b8bec07c1530a33bea9336f94d70ba1c798106a2fac0f9224bd",
     "psgByteLength": 32436
   },
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

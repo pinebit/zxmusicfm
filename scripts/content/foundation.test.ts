@@ -12,9 +12,7 @@ import {
 } from './foundation.ts';
 
 async function createTemporaryRoot(): Promise<string> {
-  const root = await mkdtemp(
-    path.join(os.tmpdir(), 'zxspectrumfm-foundation-'),
-  );
+  const root = await mkdtemp(path.join(os.tmpdir(), 'zxmusicfm-foundation-'));
   await mkdir(path.join(root, 'public'), { recursive: true });
   return root;
 }

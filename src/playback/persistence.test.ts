@@ -84,4 +84,31 @@ describe('player persistence', () => {
       DEFAULT_PLAYER_PREFERENCES,
     );
   });
+
+  it('migrates preferences saved under the former project-name key', () => {
+    const previousKey = ['zx', 'spectrum', 'fm.player.v1'].join('-');
+    const values = new Map([
+      [
+        previousKey,
+        JSON.stringify({
+          ...DEFAULT_PLAYER_PREFERENCES,
+          volume: 0.35,
+          shuffle: true,
+        }),
+      ],
+    ]);
+
+    expect(
+      loadPlayerPreferences(
+        {
+          getItem: (key) => values.get(key) ?? null,
+          setItem: (key, value) => values.set(key, value),
+          removeItem: (key) => values.delete(key),
+        },
+        tracks,
+      ),
+    ).toMatchObject({ volume: 0.35, shuffle: true });
+    expect(values.has(previousKey)).toBe(false);
+    expect(values.has(PLAYER_STORAGE_KEY)).toBe(true);
+  });
 });

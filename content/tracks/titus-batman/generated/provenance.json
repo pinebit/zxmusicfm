@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "batman4.asc",
+  "originalFileName": "source.asc",
   "sourceFormat": "ASC",
   "sourceSha256": "0e58f203c93a5afbce1e23dbdcd6f62b84af9ee43372839f94a8512a05cb7910",
   "sourceByteLength": 1983,
@@ -27,7 +27,7 @@
     "psgSha256": "9e3445b61fe8d58ccd60eeb0af72786847fa6ef4288a6906eb51fae47536d106",
     "psgByteLength": 15978
   },
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

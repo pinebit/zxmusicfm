@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "assorty2.stc",
+  "originalFileName": "source.stc",
   "sourceFormat": "STC",
   "sourceSha256": "06b999ec9d69c3c74159ee955105feb000eb08df6c0896be181ca99a9a5d0c31",
   "sourceByteLength": 2778,
@@ -27,7 +27,7 @@
     "psgSha256": "bdc5068e2dcbf16da8bf2bd4c7d41c5d2a2699c365df2b1f9259b5037797c1a4",
     "psgByteLength": 65600
   },
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

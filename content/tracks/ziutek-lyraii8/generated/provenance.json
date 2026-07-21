@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "lyraii8.stc",
+  "originalFileName": "source.stc",
   "sourceFormat": "STC",
   "sourceSha256": "22f324c7df68df3152bd38321ab94e0e55518ecc001858ad7ae2ecdaf347037b",
   "sourceByteLength": 2367,
@@ -27,7 +27,7 @@
     "psgSha256": "de17fee9226efb83276c8272555b78ee0378ebb654851ab218ebf32561bffb2a",
     "psgByteLength": 71240
   },
-  "preparationTool": "zx-spectrum-fm-content-v1",
+  "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
     "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"

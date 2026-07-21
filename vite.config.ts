@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       {
-        name: 'zx-spectrum-fm-production-metadata',
+        name: 'zxmusicfm-production-metadata',
         transformIndexHtml: {
           order: 'post',
           handler: (html) => {
