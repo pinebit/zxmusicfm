@@ -41,14 +41,6 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
   ).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.locator('.seven-segment-display')).toHaveAttribute(
-    'aria-label',
-    /elapsed of 2:53 total/u,
-  );
-  await expect(page.locator('.dot-matrix-display')).toHaveAttribute(
-    'aria-label',
-    'Solitude by Pator',
-  );
   await expect(onAir).toHaveClass(/is-live/u);
   await expect(page.locator('.on-air-lamp')).toHaveCSS(
     'background-color',
@@ -101,27 +93,16 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     page.getByRole('slider', { name: 'Master volume' }),
   ).toHaveAttribute('aria-valuenow', '35');
 
+  // Auto-play-next is always on: reaching the end advances to the next track.
   await page.getByRole('button', { name: 'Play Solitude' }).click();
   await expect(
     page.getByRole('button', { name: 'Pause Solitude' }),
   ).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'Pause Solitude' }).click();
-  const autoPlayNext = page.getByRole('checkbox', {
-    name: 'Auto-Play Next',
-  });
-  await page
-    .locator('label.deck-option')
-    .filter({ hasText: 'Auto Next' })
-    .click();
-  await expect(autoPlayNext).not.toBeChecked();
-  await page.getByRole('slider', { name: 'Seek Solitude' }).fill('172.8');
-  await page.getByRole('button', { name: 'Play Solitude' }).click();
-  await expect(page.getByRole('button', { name: 'Play Solitude' })).toBeVisible(
-    {
-      timeout: 5_000,
-    },
-  );
+  await page.getByRole('slider', { name: 'Seek Solitude' }).fill('172.9');
   await expect(
-    page.getByRole('slider', { name: 'Seek Solitude' }),
-  ).toHaveAttribute('aria-valuetext', /2:53 of 2:53/u);
+    page.getByRole('button', { name: 'Pause Insomnia' }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole('button', { name: 'Play Solitude' }),
+  ).toBeVisible();
 });

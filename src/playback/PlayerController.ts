@@ -245,13 +245,6 @@ export class PlayerController {
     }
   }
 
-  setAutoPlayNext(enabled: boolean): void {
-    this.setPreferences({
-      ...this.snapshot.preferences,
-      autoPlayNext: enabled,
-    });
-  }
-
   setShuffle(enabled: boolean): void {
     this.shuffleQueue = [];
     this.setPreferences({ ...this.snapshot.preferences, shuffle: enabled });
@@ -431,10 +424,9 @@ export class PlayerController {
         error: null,
       });
       this.persistPosition(next.durationSeconds);
-      if (
-        this.snapshot.preferences.autoPlayNext &&
-        this.catalog.tracks.length > 1
-      ) {
+      // Auto-play-next is always on: reaching the end advances to the next
+      // track whenever the catalog holds more than one.
+      if (this.catalog.tracks.length > 1) {
         const nextTrackId = this.takeNextTrack();
         if (nextTrackId !== undefined) this.selectFromSequence(nextTrackId);
       }

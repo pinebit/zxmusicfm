@@ -11,7 +11,6 @@ export type PlayerPreferences = {
   readonly selectedTrackId: string | null;
   readonly positionSeconds: number;
   readonly volume: number;
-  readonly autoPlayNext: boolean;
   readonly shuffle: boolean;
 };
 
@@ -20,7 +19,6 @@ export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
   selectedTrackId: null,
   positionSeconds: 0,
   volume: 0.8,
-  autoPlayNext: true,
   shuffle: false,
 };
 
@@ -76,10 +74,6 @@ export function parsePlayerPreferences(
     selectedTrackId,
     positionSeconds,
     volume: finiteRange(value.volume, 0, 1, DEFAULT_PLAYER_PREFERENCES.volume),
-    autoPlayNext:
-      typeof value.autoPlayNext === 'boolean'
-        ? value.autoPlayNext
-        : DEFAULT_PLAYER_PREFERENCES.autoPlayNext,
     shuffle:
       typeof value.shuffle === 'boolean'
         ? value.shuffle

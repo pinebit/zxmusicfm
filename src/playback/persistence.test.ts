@@ -18,7 +18,6 @@ describe('player persistence', () => {
         selectedTrackId: 'proof',
         positionSeconds: 5,
         volume: 0.4,
-        autoPlayNext: false,
         shuffle: true,
       },
       tracks,
@@ -29,7 +28,6 @@ describe('player persistence', () => {
       selectedTrackId: 'proof',
       positionSeconds: 2,
       volume: 0.4,
-      autoPlayNext: false,
       shuffle: true,
     });
     expect(restored).not.toHaveProperty('playing');
@@ -43,7 +41,6 @@ describe('player persistence', () => {
           selectedTrackId: 'proof',
           positionSeconds: 0.75,
           volume: 'loud',
-          autoPlayNext: true,
           shuffle: false,
         },
         tracks,

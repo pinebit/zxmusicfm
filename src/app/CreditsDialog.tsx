@@ -59,7 +59,6 @@ export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
     >
       <div className="dialog-heading">
         <div>
-          <p className="section-kicker">OPEN SOURCE & ATTRIBUTION</p>
           <h2 id="credits-title">Credits / License</h2>
         </div>
         <button
@@ -105,7 +104,7 @@ export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
       </section>
       <section>
         <h3>Dependencies</h3>
-        <ul className="credit-list compact">
+        <ul className="credit-list">
           {dependencyNotices.map((dependency) => (
             <li key={dependency.name}>
               <a

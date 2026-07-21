@@ -25,9 +25,8 @@ import type {
 } from '../playback/PlayerController.ts';
 import { ChannelMeters } from './ChannelMeters.tsx';
 import { CreditsDialog } from './CreditsDialog.tsx';
-import { DotMatrixTrackDisplay } from './DotMatrixTrackDisplay.tsx';
 import { formatTime } from './formatTime.ts';
-import { SevenSegmentTime } from './SevenSegmentTime.tsx';
+import { PositionLeds } from './PositionLeds.tsx';
 import { VolumeKnob } from './VolumeKnob.tsx';
 import { WaveformSeek } from './WaveformSeek.tsx';
 
@@ -50,6 +49,9 @@ type WaveformState =
     };
 
 const initialState: CatalogState = { status: 'loading' };
+
+// Footer wordmark shows the major.minor line (e.g. "0.1" from "0.1.0").
+const APP_VERSION = packageMetadata.version.split('.').slice(0, 2).join('.');
 
 function catalogReducer(
   _state: CatalogState,
@@ -133,6 +135,13 @@ function PlayerApplication({
   const [waveformAttempt, setWaveformAttempt] = useState(0);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const creditsTrigger = useRef<HTMLButtonElement>(null);
+  const [volumeActive, setVolumeActive] = useState(false);
+  const volumeTimer = useRef<number | undefined>(undefined);
+  const flashVolume = useCallback(() => {
+    setVolumeActive(true);
+    window.clearTimeout(volumeTimer.current);
+    volumeTimer.current = window.setTimeout(() => setVolumeActive(false), 900);
+  }, []);
   const capable = hasRequiredCapabilities();
   const hasTracks = catalog.tracks.length > 0;
   const controlsDisabled = !capable || !hasTracks;
@@ -190,6 +199,8 @@ function PlayerApplication({
   }, [capable, controller, snapshot.selectedTrackId, snapshot.status]);
 
   useEffect(() => controller.activate(), [controller]);
+
+  useEffect(() => () => window.clearTimeout(volumeTimer.current), []);
 
   const selectedTrack = catalog.tracks.find(
     ({ id }) => id === snapshot.selectedTrackId,
@@ -355,64 +366,51 @@ function PlayerApplication({
           </div>
           {selectedTrack === undefined ? (
             <p className="choose-track">Choose a track to start listening.</p>
-          ) : (
-            <div className="now-playing">
-              <DotMatrixTrackDisplay
-                title={selectedTrack.title}
-                author={selectedTrack.author}
-              />
-              <SevenSegmentTime
-                elapsed={formatTime(snapshot.positionSeconds)}
-                total={formatTime(selectedTrack.durationSeconds)}
-              />
-            </div>
-          )}
+          ) : null}
           <ChannelMeters
             adapter={controller.getAdapter()}
             playing={snapshot.status === 'playing'}
           />
+          <PositionLeds
+            fraction={
+              volumeActive
+                ? snapshot.preferences.volume
+                : snapshot.durationSeconds > 0
+                  ? snapshot.positionSeconds / snapshot.durationSeconds
+                  : 0
+            }
+            mode={volumeActive ? 'volume' : 'position'}
+            paused={snapshot.status === 'paused'}
+          />
 
-          <fieldset
-            className="deck-options"
-            aria-label="Playback sequence settings"
-          >
-            <legend className="visually-hidden">Playback sequence</legend>
-            <label className="deck-option">
-              <input
-                type="checkbox"
-                aria-label="Auto-Play Next"
-                checked={snapshot.preferences.autoPlayNext}
-                disabled={!hasTracks}
-                onChange={(event) =>
-                  controller.setAutoPlayNext(event.currentTarget.checked)
-                }
-              />
-              <span className="deck-option-face" aria-hidden="true" />
-              <span className="deck-option-name">Auto Next</span>
-            </label>
-            <label className="deck-option">
-              <input
-                type="checkbox"
-                checked={snapshot.preferences.shuffle}
+          <div className="deck-controls">
+            <div className="deck-options">
+              <button
+                type="button"
+                className="deck-toggle"
+                aria-label="Shuffle"
+                aria-pressed={snapshot.preferences.shuffle}
                 disabled={catalog.tracks.length < 2}
                 aria-describedby={
                   catalog.tracks.length < 2 ? 'shuffle-help' : undefined
                 }
-                onChange={(event) =>
-                  controller.setShuffle(event.currentTarget.checked)
+                onClick={() =>
+                  controller.setShuffle(!snapshot.preferences.shuffle)
                 }
-              />
-              <span className="deck-option-face" aria-hidden="true" />
-              <span className="deck-option-name">Shuffle</span>
-            </label>
-            {catalog.tracks.length < 2 ? (
-              <span id="shuffle-help" className="visually-hidden">
-                Shuffle needs at least two tracks.
-              </span>
-            ) : null}
-          </fieldset>
+              >
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                  </svg>
+                </span>
+              </button>
+              {catalog.tracks.length < 2 ? (
+                <span id="shuffle-help" className="visually-hidden">
+                  Shuffle needs at least two tracks.
+                </span>
+              ) : null}
+            </div>
 
-          <div className="deck-controls">
             <div className="transport" aria-label="Playback controls">
               <button
                 type="button"
@@ -459,7 +457,10 @@ function PlayerApplication({
               <VolumeKnob
                 value={snapshot.preferences.volume * 100}
                 disabled={!hasTracks}
-                onChange={(value) => controller.setVolume(value / 100)}
+                onChange={(value) => {
+                  controller.setVolume(value / 100);
+                  flashVolume();
+                }}
               />
             </div>
           </div>
@@ -467,24 +468,15 @@ function PlayerApplication({
       </div>
 
       <footer className="site-footer">
-        <div className="footer-meta">
-          <p>Independent, curated ZX Spectrum music radio.</p>
-          <data
-            className="app-version"
-            value={packageMetadata.version}
-            aria-label={`Application version ${packageMetadata.version}`}
-          >
-            v{packageMetadata.version}
-          </data>
-        </div>
+        <a
+          className="footer-brand"
+          href="https://github.com/pinebit/zxmusicfm"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ZX-MUSIC.FM V{APP_VERSION}
+        </a>
         <nav aria-label="Project and credits">
-          <a
-            href="https://github.com/pinebit/zxmusicfm"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Source code
-          </a>
           <a
             href="https://zxart.ee/eng/music/"
             target="_blank"
@@ -524,16 +516,22 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
   return (
     <main className="app-shell">
       <header className="brand-header">
-        <div>
+        <div className="brand-titles">
           <p className="eyebrow">
             CURATED CHIP MUSIC · THREE CHANNELS · ONE MACHINE
           </p>
           <h1>ZX-MUSIC.FM</h1>
         </div>
-        <div className="brand-chip" aria-hidden="true">
+        <a
+          className="brand-chip"
+          href="https://en.wikipedia.org/wiki/General_Instrument_AY-3-8910"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="AY-3-8910 sound generator on Wikipedia"
+        >
           <strong>AY-3-8910</strong>
           <span>PROGRAMMABLE SOUND GENERATOR</span>
-        </div>
+        </a>
         <div className="spectrum-stripe" aria-hidden="true" />
       </header>
 

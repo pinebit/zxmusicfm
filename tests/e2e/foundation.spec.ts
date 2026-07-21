@@ -11,6 +11,6 @@ test('loads the catalog shell', async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator('.track-row')).toHaveCount(7);
   await expect(
-    page.locator('data.app-version[value="0.1.0"]'),
-  ).toHaveAccessibleName('Application version 0.1.0');
+    page.getByRole('link', { name: 'ZX-MUSIC.FM V0.1' }),
+  ).toHaveAttribute('href', 'https://github.com/pinebit/zxmusicfm');
 });
