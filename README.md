@@ -6,7 +6,7 @@ The implementation follows [IDEA.md](docs/IDEA.md) and the gated sequence in
 deterministic content preparation, verified in-browser YM6 playback,
 three-channel waveforms and meters, sequencing, persistence, accessible controls,
 recoverable errors, credits, and deployment hardening. Release remains gated on
-the specified 20–30-track catalog and final production acceptance.
+the final production acceptance checks.
 
 ## Toolchain
 
@@ -76,8 +76,9 @@ update, and removal stage generation and validation before atomically replacing
 the repository content directories.
 
 Release validation is enabled by `--release`, `CONTENT_RELEASE=1`, or
-`VERCEL_ENV=production`. Development may contain fewer tracks; release validation
-continues to require 20–30 tracks.
+`VERCEL_ENV=production`. Catalog size is a curatorial choice rather than a
+validation constraint; every present track must still pass the complete content,
+provenance, ordering, waveform, and playback checks.
 
 ## Repository policy
 

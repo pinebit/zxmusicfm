@@ -208,18 +208,6 @@ export async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
   return inputs;
 }
 
-function validateReleaseCatalog(
-  inputs: readonly TrackInput[],
-  mode: ValidationMode,
-): void {
-  if (mode !== 'release') return;
-  if (inputs.length < 20 || inputs.length > 30) {
-    throw new Error(
-      `Release validation requires 20–30 tracks; found ${inputs.length}.`,
-    );
-  }
-}
-
 function requiredPlaybackField<
   K extends 'chipType' | 'chipClockHz' | 'frameRateHz' | 'channelLayout',
 >(input: TrackInput, field: K): NonNullable<TrackSidecar[K]> {
@@ -862,7 +850,6 @@ export async function validateContent(
   mode: ValidationMode,
 ): Promise<ValidationResult> {
   const inputs = await discoverTrackInputs(root);
-  validateReleaseCatalog(inputs, mode);
   const expected = await prepareContent(root);
   const catalogPath = path.join(root, 'public', 'generated', 'catalog.json');
   await assertExactFile(

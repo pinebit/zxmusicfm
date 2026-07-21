@@ -20,4 +20,4 @@ Build the polished responsive interface and all catalog, playback, sequencing, a
 
 ## 5. Verify and Release
 
-Run the full local verification suite, confirm the 20–30-track release catalog and source attribution, validate supported browsers, accessibility, performance, immutable assets, and production configuration, and satisfy the complete Definition of Done in `IDEA.md`. Prepare a deployment-ready Vercel build; create or change an external deployment only when separately and explicitly authorized by the user.
+Run the full local verification suite, confirm catalog source attribution, validate supported browsers, accessibility, performance, immutable assets, and production configuration, and satisfy the complete Definition of Done in `IDEA.md`. Prepare a deployment-ready Vercel build; create or change an external deployment only when separately and explicitly authorized by the user.

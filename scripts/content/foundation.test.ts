@@ -58,13 +58,14 @@ describe('foundation content generation', () => {
     });
   }, 30_000);
 
-  it('rejects an empty release catalog', async () => {
+  it('accepts an empty release catalog without weakening content validation', async () => {
     const root = await createTemporaryRoot();
     await generateFoundationContent(root);
 
-    await expect(validateContent(root, 'release')).rejects.toThrow(
-      'Release validation requires 20–30 tracks',
-    );
+    await expect(validateContent(root, 'release')).resolves.toMatchObject({
+      mode: 'release',
+      trackCount: 0,
+    });
   });
 });
 

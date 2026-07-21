@@ -23,7 +23,7 @@ The track list is a single scrollable collection. Search, filtering, and categor
 
 When the catalog contains only one valid track, Auto-Play Next stops at its end rather than implicitly repeating it. Shuffle is disabled whenever fewer than two valid tracks are present, with an accessible explanation that more tracks are required.
 
-A valid empty development catalog shows the normal application shell, a clear **No tracks available** empty state, and disabled playback, sequencing, seek, and volume controls. It does not show a catalog error or placeholder track. Public/release validation prevents deployment of that state by enforcing the 20–30-track rule.
+A valid empty catalog shows the normal application shell, a clear **No tracks available** empty state, and disabled playback, sequencing, seek, and volume controls. It does not show a catalog error or placeholder track. Catalog size is a curatorial and deployment choice rather than a validation constraint.
 
 The player also persists the selected track and its playback position locally. While playing, it checkpoints the position at most once every five seconds; it also saves immediately after pause, a committed seek, a track change, and the browser's `pagehide` event. Persistence is best-effort and never delays or blocks playback or navigation. After a page reload, it restores that track and position along with the volume, Auto-Play Next, and Shuffle settings. The restored track is visibly selected at the saved position but remains paused until the user presses Play.
 
@@ -276,7 +276,7 @@ The tooling also provides explicit update and removal workflows:
 - Updating a track may edit metadata and regenerate all affected derived data. Replacing the authoritative source file requires an explicit option. An update can never change the permanent track ID. Reordering a track shifts intervening tracks so order remains contiguous.
 - Removing a track first displays the exact track directory and catalog entry affected, then requires confirmation. Non-interactive removal requires an explicit confirmation option. Removal closes the ordering gap, regenerates the catalog, and verifies all remaining content. Implementation must still follow the repository's safety guidance for destructive actions.
 
-The curated set of music tracks will be manually prepared by myself and be part of this repository. The initial public collection will contain approximately 20–30 tracks in an explicitly curated order. Release validation enforces that range; ordinary development and test builds may use fixture tracks. The application still handles an empty generated catalog gracefully, but the implementation repository is seeded with the first real track below as soon as the import and PSG conversion tooling exists, rather than intentionally shipping an empty initial catalog.
+The curated set of music tracks will be manually prepared by myself and be part of this repository in an explicitly curated order. There is no minimum or maximum catalog size for development, preview, or release builds; deployment may proceed with any valid number of tracks, including an empty catalog. Every track that is present must still pass the complete schema, attribution, provenance, conversion-equivalence, runtime, waveform, ordering, and freshness checks. The implementation repository is seeded with the first real track below as soon as the import and PSG conversion tooling exists.
 
 #### Seed Track
 
@@ -434,7 +434,7 @@ Build the polished responsive interface, full player state machine, curated and 
 
 ### Phase 5: Verification and Release
 
-Complete unit, component, real-engine, browser-journey, responsive, reduced-motion, keyboard, and accessibility verification. Confirm the initial 20–30-track release rule, source attribution, immutable asset URLs, performance targets, supported browsers, production metadata, canonical URL, GitHub link, Vercel headers, and a clean production build. The implementation is complete only when the Definition of Done below is satisfied; passing the intentionally minimal CI jobs alone is not sufficient.
+Complete unit, component, real-engine, browser-journey, responsive, reduced-motion, keyboard, and accessibility verification. Confirm catalog source attribution, immutable asset URLs, performance targets, supported browsers, production metadata, canonical URL, GitHub link, Vercel headers, and a clean production build. The implementation is complete only when the Definition of Done below is satisfied; passing the intentionally minimal CI jobs alone is not sufficient.
 
 ## Definition of Done
 
@@ -444,7 +444,7 @@ The MVP is done only when all of the following are true:
 - The TypeScript sanity check and production build pass from documented commands. The documented local lint, formatting check, unit/component tests, real-engine tests, Playwright journeys, and generated-artifact validation also pass.
 - The selected playback engine has passed and documented every mandatory proof-of-concept criterion. Its pinned source revision, prepared browser artifacts, licenses, hashes, and rebuild procedure are present and reproducible.
 - The real `pator-solitude` PSG vertical slice and every public track pass source-format validation, canonical-runtime generation, applicable equivalence, seeking, channel, waveform, provenance, and freshness checks.
-- The release catalog contains 20–30 real curated tracks in contiguous order. Every track has valid source attribution, and its catalog row presents the corresponding source link.
+- The release catalog may contain any number of tracks, including zero. Any tracks present remain in contiguous curated order, have valid source attribution, and present the corresponding source link in their catalog row.
 - All specified player states, controls, sequencing rules, persistence behavior, waveform interactions, meters, error recovery, capability fallback, and Media Session behavior pass their automated or explicitly documented manual acceptance checks.
 - The finished interface works without horizontal overflow at supported mobile widths, preserves the desktop layout and sticky meter behavior, meets WCAG 2.2 AA requirements, supports keyboard-only use, and respects reduced motion.
 - The current and previous major desktop browsers and the current iOS Safari and Android Chrome pass the defined smoke journeys. Any browser-specific limitation allowed by this specification is documented and recovers cleanly.
