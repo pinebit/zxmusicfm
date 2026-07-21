@@ -9,6 +9,7 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
   const solitude = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { name: 'Solitude', exact: true }),
   });
+  await expect(page.locator('.waveform-canvas.has-position')).toHaveCount(0);
   await expect(
     solitude.getByRole('heading', { name: 'Solitude' }),
   ).toBeVisible();
@@ -17,6 +18,11 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     solitude.getByRole('link', { name: 'Original source' }),
   ).toHaveAttribute('href', 'https://zxart.ee/eng/authors/p/pator/solitude/');
   await expect(solitude.locator('.waveform-canvas')).toBeVisible();
+  await expect(solitude.locator('.waveform-lane-label')).toHaveText([
+    'A',
+    'B',
+    'C',
+  ]);
   const onAir = page.getByText('ON AIR', { exact: true });
   await expect(onAir).toBeVisible();
   await expect(onAir).not.toHaveClass(/is-live/u);
@@ -29,11 +35,25 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     ),
   );
   await page.getByRole('button', { name: 'Play Solitude' }).click();
+  await expect(solitude.locator('.waveform-canvas')).toHaveClass(
+    /has-position/u,
+  );
+  await expect(
+    page.locator('.track-row:not(.selected) .waveform-canvas.has-position'),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Pause Solitude' }),
   ).toBeVisible({
     timeout: 15_000,
   });
+  await expect(page.locator('.seven-segment-display')).toHaveAttribute(
+    'aria-label',
+    /elapsed of 2:53 total/u,
+  );
+  await expect(page.locator('.dot-matrix-display')).toHaveAttribute(
+    'aria-label',
+    'Solitude by Pator',
+  );
   await expect(onAir).toHaveClass(/is-live/u);
   await expect(page.locator('.on-air-lamp')).toHaveCSS(
     'background-color',
@@ -95,8 +115,8 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     name: 'Auto-Play Next',
   });
   await page
-    .locator('label.toggle-control')
-    .filter({ hasText: 'Auto-Play Next' })
+    .locator('label.deck-option')
+    .filter({ hasText: 'Auto Next' })
     .click();
   await expect(autoPlayNext).not.toBeChecked();
   await page.getByRole('slider', { name: 'Seek Solitude' }).fill('172.8');

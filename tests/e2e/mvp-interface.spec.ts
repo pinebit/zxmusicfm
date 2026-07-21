@@ -101,7 +101,7 @@ test('fits the acceptance widths and stacks only when space requires it', async 
     )
       continue;
     if (width <= 760)
-      expect(meters.y).toBeGreaterThan(track.y + track.height - 1);
+      expect(track.y).toBeGreaterThan(meters.y + meters.height - 1);
     else expect(Math.abs(meters.y - track.y)).toBeLessThan(2);
     expect(volume.x).toBeGreaterThan(transport.x + transport.width - 1);
     expect(

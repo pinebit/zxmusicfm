@@ -89,9 +89,6 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
       >
         <span aria-hidden="true" />
       </div>
-      <span className="volume-readout" aria-hidden="true">
-        {percent}%
-      </span>
     </div>
   );
 }

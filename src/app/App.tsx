@@ -21,6 +21,8 @@ import { PlayerController } from '../playback/PlayerController.ts';
 import type { PlayerError } from '../playback/PlayerController.ts';
 import { ChannelMeters } from './ChannelMeters.tsx';
 import { CreditsDialog } from './CreditsDialog.tsx';
+import { DotMatrixTrackDisplay } from './DotMatrixTrackDisplay.tsx';
+import { SevenSegmentTime } from './SevenSegmentTime.tsx';
 import { VolumeKnob } from './VolumeKnob.tsx';
 import { WaveformSeek } from './WaveformSeek.tsx';
 
@@ -205,44 +207,6 @@ function PlayerApplication({
         </section>
       ) : null}
 
-      <div
-        className="sequence-controls"
-        aria-label="Playback sequence settings"
-      >
-        <label className="toggle-control">
-          <input
-            type="checkbox"
-            checked={snapshot.preferences.autoPlayNext}
-            disabled={!hasTracks}
-            onChange={(event) =>
-              controller.setAutoPlayNext(event.currentTarget.checked)
-            }
-          />
-          <span aria-hidden="true" />
-          Auto-Play Next
-        </label>
-        <label className="toggle-control">
-          <input
-            type="checkbox"
-            checked={snapshot.preferences.shuffle}
-            disabled={catalog.tracks.length < 2}
-            aria-describedby={
-              catalog.tracks.length < 2 ? 'shuffle-help' : undefined
-            }
-            onChange={(event) =>
-              controller.setShuffle(event.currentTarget.checked)
-            }
-          />
-          <span aria-hidden="true" />
-          Shuffle
-        </label>
-        {catalog.tracks.length < 2 ? (
-          <span id="shuffle-help" className="sequence-help">
-            Shuffle needs at least two tracks.
-          </span>
-        ) : null}
-      </div>
-
       {waveforms.status === 'error' ? (
         <section className="waveform-notice" aria-live="polite">
           <span>
@@ -260,14 +224,9 @@ function PlayerApplication({
       <div className="player-layout">
         <section className="track-panel" aria-labelledby="track-list-heading">
           <div className="panel-heading">
-            <div>
-              <p className="section-kicker">ON THE TAPE</p>
-              <h2 id="track-list-heading">Track list</h2>
-            </div>
-            <span>
-              {catalog.tracks.length}{' '}
-              {catalog.tracks.length === 1 ? 'track' : 'tracks'}
-            </span>
+            <h2 id="track-list-heading" className="section-kicker">
+              CURATED TRACKS
+            </h2>
           </div>
 
           {!hasTracks ? (
@@ -302,9 +261,27 @@ function PlayerApplication({
                     </button>
                     <div className="track-main">
                       <div className="track-meta">
-                        <div>
+                        <div className="track-identity">
                           <h3>{track.title}</h3>
+                          <span aria-hidden="true">/</span>
                           <p>{track.author}</p>
+                          <a
+                            className="track-source-link"
+                            href={track.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Original source for ${track.title}`}
+                            title="Original source"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 24 24"
+                              focusable="false"
+                            >
+                              <path d="M14 3h7v7h-2V6.4l-9.3 9.3-1.4-1.4L17.6 5H14V3Z" />
+                              <path d="M19 19H5V5h6V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6h-2v6Z" />
+                            </svg>
+                          </a>
                         </div>
                         <time
                           dateTime={`PT${Math.round(track.durationSeconds)}S`}
@@ -321,21 +298,13 @@ function PlayerApplication({
                         }
                         duration={track.durationSeconds}
                         position={position}
+                        showPosition={selected}
                         disabled={controlsDisabled || loading}
                         label={`Seek ${track.title}`}
                         onCommit={(seconds) =>
                           controller.seek(track.id, seconds)
                         }
                       />
-                      <p className="track-links">
-                        <a
-                          href={track.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Original source <span aria-hidden="true">↗</span>
-                        </a>
-                      </p>
                       {loading ? (
                         <p className="track-status" role="status">
                           Loading and checking track…
@@ -384,15 +353,57 @@ function PlayerApplication({
             <p className="choose-track">Choose a track to start listening.</p>
           ) : (
             <div className="now-playing">
-              <strong>{selectedTrack.title}</strong>
-              <span>{selectedTrack.author}</span>
-              <time>
-                {formatTime(snapshot.positionSeconds)} /{' '}
-                {formatTime(selectedTrack.durationSeconds)}
-              </time>
+              <DotMatrixTrackDisplay
+                title={selectedTrack.title}
+                author={selectedTrack.author}
+              />
+              <SevenSegmentTime
+                elapsed={formatTime(snapshot.positionSeconds)}
+                total={formatTime(selectedTrack.durationSeconds)}
+              />
             </div>
           )}
           <ChannelMeters adapter={controller.getAdapter()} />
+
+          <fieldset
+            className="deck-options"
+            aria-label="Playback sequence settings"
+          >
+            <legend className="visually-hidden">Playback sequence</legend>
+            <label className="deck-option">
+              <input
+                type="checkbox"
+                aria-label="Auto-Play Next"
+                checked={snapshot.preferences.autoPlayNext}
+                disabled={!hasTracks}
+                onChange={(event) =>
+                  controller.setAutoPlayNext(event.currentTarget.checked)
+                }
+              />
+              <span className="deck-option-face" aria-hidden="true" />
+              <span className="deck-option-name">Auto Next</span>
+            </label>
+            <label className="deck-option">
+              <input
+                type="checkbox"
+                checked={snapshot.preferences.shuffle}
+                disabled={catalog.tracks.length < 2}
+                aria-describedby={
+                  catalog.tracks.length < 2 ? 'shuffle-help' : undefined
+                }
+                onChange={(event) =>
+                  controller.setShuffle(event.currentTarget.checked)
+                }
+              />
+              <span className="deck-option-face" aria-hidden="true" />
+              <span className="deck-option-name">Shuffle</span>
+            </label>
+            {catalog.tracks.length < 2 ? (
+              <span id="shuffle-help" className="visually-hidden">
+                Shuffle needs at least two tracks.
+              </span>
+            ) : null}
+          </fieldset>
 
           <div className="deck-controls">
             <div className="transport" aria-label="Playback controls">
@@ -438,7 +449,6 @@ function PlayerApplication({
             </div>
 
             <div className="volume-control">
-              <p className="control-label">MASTER</p>
               <VolumeKnob
                 value={snapshot.preferences.volume * 100}
                 disabled={!hasTracks}
@@ -507,14 +517,10 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
             CURATED CHIP MUSIC · THREE CHANNELS · ONE MACHINE
           </p>
           <h1>ZX-MUSIC.FM</h1>
-          <p className="brand-intro">
-            Original AY/YM music, preserved and played in the browser.
-          </p>
         </div>
-        <div className="brand-emblem" aria-hidden="true">
-          <span>A</span>
-          <span>B</span>
-          <span>C</span>
+        <div className="brand-chip" aria-hidden="true">
+          <strong>AY-3-8910</strong>
+          <span>PROGRAMMABLE SOUND GENERATOR</span>
         </div>
         <div className="spectrum-stripe" aria-hidden="true" />
       </header>

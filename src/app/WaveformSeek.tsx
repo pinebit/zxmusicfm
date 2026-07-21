@@ -7,15 +7,20 @@ type WaveformSeekProps = {
   readonly waveform: DecodedWaveform | undefined;
   readonly duration: number;
   readonly position: number;
+  readonly showPosition: boolean;
   readonly disabled: boolean;
   readonly label: string;
   readonly onCommit: (seconds: number) => void;
 };
 
-const colors = {
-  A: '#ef4458',
-  B: '#f2c14e',
-  C: '#58d8e3',
+const waveformPalette = {
+  A: '#dca6ad',
+  B: '#dfcda2',
+  C: '#9fcbd0',
+  baseline: '#777d84',
+  divider: '#34383d',
+  playhead: '#f4e7c3',
+  unplayed: '#111315',
 } as const;
 
 function formatTime(seconds: number): string {
@@ -32,6 +37,7 @@ export function WaveformSeek({
   waveform,
   duration,
   position,
+  showPosition,
   disabled,
   label,
   onCommit,
@@ -60,30 +66,53 @@ export function WaveformSeek({
       canvas.height = height;
     }
     context.clearRect(0, 0, width, height);
-    const center = height / 2;
     const progress = duration === 0 ? 0 : displayedPosition / duration;
-    for (const channel of ['A', 'B', 'C'] as const) {
+    const channels = ['A', 'B', 'C'] as const;
+    const laneHeight = height / channels.length;
+    context.lineCap = 'round';
+    for (const [index, channel] of channels.entries()) {
+      const center = laneHeight * (index + 0.5);
+      const amplitude = laneHeight * 0.38;
+      if (index > 0) {
+        context.globalAlpha = 1;
+        context.strokeStyle = waveformPalette.divider;
+        context.lineWidth = Math.max(1, ratio * 0.75);
+        context.beginPath();
+        context.moveTo(0, laneHeight * index);
+        context.lineTo(width, laneHeight * index);
+        context.stroke();
+      }
+      context.globalAlpha = 0.4;
+      context.strokeStyle = waveformPalette.baseline;
+      context.lineWidth = Math.max(1, ratio * 0.5);
+      context.beginPath();
+      context.moveTo(0, center);
+      context.lineTo(width, center);
+      context.stroke();
+
       const peaks = visualWaveform[channel];
-      context.strokeStyle = colors[channel];
-      context.globalAlpha = 0.78;
+      context.strokeStyle = waveformPalette[channel];
+      context.globalAlpha = 0.9;
       context.lineWidth = Math.max(1, ratio);
       context.beginPath();
       for (let bucket = 0; bucket < WAVEFORM_BUCKET_COUNT; bucket += 1) {
         const x = (bucket / (WAVEFORM_BUCKET_COUNT - 1)) * width;
         const minimum = (peaks[bucket * 2] ?? 0) / 127;
         const maximum = (peaks[bucket * 2 + 1] ?? 0) / 127;
-        context.moveTo(x, center - maximum * center * 0.9);
-        context.lineTo(x, center - minimum * center * 0.9);
+        context.moveTo(x, center - maximum * amplitude);
+        context.lineTo(x, center - minimum * amplitude);
       }
       context.stroke();
     }
     context.globalAlpha = 0.67;
-    context.fillStyle = '#111318';
+    context.fillStyle = waveformPalette.unplayed;
     context.fillRect(progress * width, 0, width, height);
-    context.globalAlpha = 1;
-    context.fillStyle = '#f6e7bd';
-    context.fillRect(progress * width - ratio, 0, ratio * 2, height);
-  }, [displayedPosition, duration, visualWaveform]);
+    if (showPosition) {
+      context.globalAlpha = 1;
+      context.fillStyle = waveformPalette.playhead;
+      context.fillRect(progress * width - ratio, 0, ratio * 2, height);
+    }
+  }, [displayedPosition, duration, showPosition, visualWaveform]);
 
   return (
     <div className="waveform-control">
@@ -92,11 +121,23 @@ export function WaveformSeek({
           Waveform unavailable; using seek slider.
         </p>
       ) : (
-        <canvas
-          ref={canvasRef}
-          className="waveform-canvas"
-          aria-hidden="true"
-        />
+        <>
+          <canvas
+            ref={canvasRef}
+            className={`waveform-canvas${showPosition ? ' has-position' : ''}`}
+            aria-hidden="true"
+          />
+          <div className="waveform-lane-labels" aria-hidden="true">
+            {(['A', 'B', 'C'] as const).map((channel) => (
+              <span
+                className={`waveform-lane-label waveform-lane-${channel.toLowerCase()}`}
+                key={channel}
+              >
+                {channel}
+              </span>
+            ))}
+          </div>
+        </>
       )}
       <input
         className={

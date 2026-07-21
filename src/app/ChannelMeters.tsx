@@ -65,7 +65,10 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
           key={channel}
         >
           <span className="meter-scale" aria-hidden="true">
-            −48 · −24 · 0
+            −48&nbsp;&nbsp; −36&nbsp;&nbsp; −24&nbsp;&nbsp; −12&nbsp;&nbsp; 0
+          </span>
+          <span className="meter-unit" aria-hidden="true">
+            dBFS
           </span>
           <meter
             ref={(element) => {
@@ -76,7 +79,7 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
             aria-label={`Channel ${channel} level`}
           />
           <span className="meter-needle" aria-hidden="true" />
-          <strong>CHANNEL {channel}</strong>
+          <strong>CH {channel}</strong>
         </div>
       ))}
     </div>
