@@ -35,6 +35,9 @@ const channelLayoutSchema = z.enum(['ABC', 'ACB']);
 const sourceFormatSchema = z.enum([
   'PSG',
   'AY',
+  'PT3',
+  'STC',
+  'ASC',
   'YM2',
   'YM3',
   'YM3b',
@@ -44,38 +47,75 @@ const sourceFormatSchema = z.enum([
 ]);
 const runtimeFormatSchema = z.enum(['YM2', 'YM3', 'YM3b', 'YM4', 'YM5', 'YM6']);
 
-export const trackSidecarSchema = z
-  .strictObject({
-    schemaVersion: z.literal(1),
-    id: slugSchema,
-    order: z.number().int().positive(),
-    title: plainTextSchema.max(200),
-    author: plainTextSchema.max(200),
-    sourceUrl: httpsUrlSchema,
-    subsong: z.number().int().positive(),
-    chipType: chipTypeSchema.optional(),
-    chipClockHz: z.number().int().min(1).max(4_294_967_295).optional(),
-    frameRateHz: z.number().int().min(1).max(65_535).optional(),
-    channelLayout: channelLayoutSchema.optional(),
-    year: z.number().int().min(1970).max(9999).optional(),
-    licenseName: plainTextSchema.max(300).optional(),
-    licenseUrl: httpsUrlSchema.optional(),
-    notes: plainTextSchema.max(2_000).optional(),
-    durationOverrideSeconds: z.number().positive().max(1_800).optional(),
-  })
-  .superRefine((sidecar, context) => {
-    const hasLicenseName = sidecar.licenseName !== undefined;
-    const hasLicenseUrl = sidecar.licenseUrl !== undefined;
-    if (hasLicenseName !== hasLicenseUrl) {
-      context.addIssue({
-        code: 'custom',
-        message: 'licenseName and licenseUrl must be provided together.',
-        path: hasLicenseName ? ['licenseUrl'] : ['licenseName'],
-      });
-    }
-  });
+export const trackSidecarSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  id: slugSchema,
+  order: z.number().int().positive(),
+  title: plainTextSchema.max(200),
+  author: plainTextSchema.max(200),
+  sourceUrl: httpsUrlSchema,
+  subsong: z.number().int().positive(),
+  chipType: chipTypeSchema.optional(),
+  chipClockHz: z.number().int().min(1).max(4_294_967_295).optional(),
+  frameRateHz: z.number().int().min(1).max(65_535).optional(),
+  channelLayout: channelLayoutSchema.optional(),
+  year: z.number().int().min(1970).max(9999).optional(),
+  notes: plainTextSchema.max(2_000).optional(),
+  durationOverrideSeconds: z.number().positive().max(1_800).optional(),
+});
 
 export type TrackSidecar = z.infer<typeof trackSidecarSchema>;
+
+export const trackerConversionSchema = z.strictObject({
+  tool: z.literal('zxtune123'),
+  commit: z.literal('8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a'),
+  mode: z.literal('psg'),
+  sourceFormat: z.enum(['PT3', 'STC', 'ASC']),
+  sourceSha256: sha256Schema,
+  psgSha256: sha256Schema,
+  psgByteLength: z.number().int().positive(),
+});
+export type TrackerConversionProvenance = z.infer<
+  typeof trackerConversionSchema
+>;
+
+export const generatedProvenanceSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  originalFileName: plainTextSchema.max(500),
+  sourceFormat: sourceFormatSchema,
+  sourceSha256: sha256Schema,
+  sourceByteLength: z.number().int().positive(),
+  subsong: z.number().int().positive(),
+  chipType: chipTypeSchema,
+  chipClockHz: z.number().int().min(1).max(4_294_967_295),
+  frameRateHz: z.number().int().min(1).max(65_535),
+  channelLayout: channelLayoutSchema,
+  runtimeMode: z.enum(['copy', 'convert', 'normalize']),
+  runtimeFormat: runtimeFormatSchema,
+  runtimeSha256: sha256Schema,
+  runtimeByteLength: z.number().int().positive(),
+  frameCount: z.number().int().positive(),
+  durationSeconds: z.number().positive(),
+  durationSource: z.enum(['source', 'override']),
+  durationOverride: z
+    .strictObject({
+      reason: z.literal('source-loop-or-unreliable-end'),
+      requestedSeconds: z.number().positive().max(1_800),
+      actualFrameCount: z.number().int().positive(),
+      frameRateHz: z.number().int().positive(),
+      actualDurationSeconds: z.number().positive(),
+    })
+    .nullable(),
+  waveformSha256: sha256Schema,
+  trackerConversion: trackerConversionSchema.nullable(),
+  preparationTool: z.literal('zx-spectrum-fm-content-v1'),
+  engine: z.strictObject({
+    name: z.literal('ym2149-rs'),
+    commit: z.literal('b3096aac0dcab6dd1d82c0209f579761943aadc6'),
+  }),
+});
+
+export type GeneratedProvenance = z.infer<typeof generatedProvenanceSchema>;
 
 const waveformManifestSchema = z.strictObject({
   url: z.string().regex(/^\/generated\/waveforms\.[a-f0-9]{64}\.bin$/u),
@@ -94,8 +134,6 @@ const generatedTrackSchema = z
     author: plainTextSchema.max(200),
     sourceUrl: httpsUrlSchema,
     subsong: z.number().int().positive(),
-    licenseName: plainTextSchema.max(300).nullable(),
-    licenseUrl: httpsUrlSchema.nullable(),
     sourceFormat: sourceFormatSchema,
     runtimeFormat: runtimeFormatSchema,
     runtimeUrl: z
@@ -117,14 +155,6 @@ const generatedTrackSchema = z
     notes: plainTextSchema.max(2_000).optional(),
   })
   .superRefine((track, context) => {
-    if ((track.licenseName === null) !== (track.licenseUrl === null)) {
-      context.addIssue({
-        code: 'custom',
-        message:
-          'Generated license fields must both be strings or both be null.',
-      });
-    }
-
     const expectedRuntimePrefix = `/generated/tracks/${track.id}.`;
     if (!track.runtimeUrl.startsWith(expectedRuntimePrefix)) {
       context.addIssue({

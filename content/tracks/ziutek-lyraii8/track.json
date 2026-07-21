@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ziutek-lyraii8",
+  "order": 4,
+  "title": "LyraII8",
+  "author": "Ziutek",
+  "sourceUrl": "https://zxart.ee/eng/authors/z/ziutek/lyraii8/",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1991
+}

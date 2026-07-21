@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "lyraii8.stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "22f324c7df68df3152bd38321ab94e0e55518ecc001858ad7ae2ecdaf347037b",
+  "sourceByteLength": 2367,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "75dcd9f4c8867b304f9f2a572d495925250e1c269d7828473df1a96ab7433ee7",
+  "runtimeByteLength": 135261,
+  "frameCount": 8447,
+  "durationSeconds": 168.94,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "45bc32b29bec7eaccfed2387d29a7fbd305bb4812348616b95d15b33cbc9d3a8",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "22f324c7df68df3152bd38321ab94e0e55518ecc001858ad7ae2ecdaf347037b",
+    "psgSha256": "de17fee9226efb83276c8272555b78ee0378ebb654851ab218ebf32561bffb2a",
+    "psgByteLength": 71240
+  },
+  "preparationTool": "zx-spectrum-fm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

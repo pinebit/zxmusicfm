@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "hibernation.pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "f700874a59588c88a68b9ebfa1b0c79b87790c57b7060282c3c4a7e4a9167021",
+  "sourceByteLength": 5870,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "a6cbad36cc99ea72e76014db268525b200f49fbc582563a4528f1876e733438c",
+  "runtimeByteLength": 75663,
+  "frameCount": 4722,
+  "durationSeconds": 94.44,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "1ec751c762297031c0962681caabda17e7564a5f790efb278dea5ab3c3d52f44",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "PT3",
+    "sourceSha256": "f700874a59588c88a68b9ebfa1b0c79b87790c57b7060282c3c4a7e4a9167021",
+    "psgSha256": "38248571521e47247eec32c867aa73de99e6ca6009c32d4819ff30933398992c",
+    "psgByteLength": 33700
+  },
+  "preparationTool": "zx-spectrum-fm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mast-insomnia",
+  "order": 2,
+  "title": "Insomnia",
+  "author": "Mast",
+  "sourceUrl": "https://zxart.ee/eng/authors/m/mast/insomnia/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 1999
+}

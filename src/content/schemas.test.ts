@@ -22,15 +22,6 @@ describe('trackSidecarSchema', () => {
       trackSidecarSchema.parse({ ...validSidecar, typoField: true }),
     ).toThrow();
   });
-
-  it('requires license fields as a pair', () => {
-    expect(() =>
-      trackSidecarSchema.parse({
-        ...validSidecar,
-        licenseName: 'Permission granted',
-      }),
-    ).toThrow();
-  });
 });
 
 describe('generatedCatalogSchema', () => {

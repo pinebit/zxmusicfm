@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "remixe-lyra-megadamo.asc",
+  "sourceFormat": "ASC",
+  "sourceSha256": "b4eb985f4746e9c70f70d7930440404ed7c7deccf42916bbb9b0c115d8f9e5dc",
+  "sourceByteLength": 2232,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "27bfa90e6a14e9506d38c8b6c9233b426b6cc1642b6500d293b8dcf0a11dd40c",
+  "runtimeByteLength": 135273,
+  "frameCount": 8447,
+  "durationSeconds": 168.94,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "beb9ac454229b4b455a75be7c90c872f270d8655485e97326769c95ecdd57bac",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "ASC",
+    "sourceSha256": "b4eb985f4746e9c70f70d7930440404ed7c7deccf42916bbb9b0c115d8f9e5dc",
+    "psgSha256": "ae75966594a1d09c0639c257036f4deac897d1a5e482a2c755d979db153b3ecf",
+    "psgByteLength": 72290
+  },
+  "preparationTool": "zx-spectrum-fm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ZX-SPECTRUM.FM app icon">
+  <defs>
+    <radialGradient id="meter" cx="50%" cy="75%" r="75%">
+      <stop offset="0" stop-color="#fff5d4"/>
+      <stop offset="1" stop-color="#d6b66e"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="92" fill="#17191c"/>
+  <rect x="72" y="70" width="368" height="285" rx="22" fill="url(#meter)" stroke="#08090a" stroke-width="32"/>
+  <path d="M122 283a145 145 0 0 1 268 0" fill="none" stroke="#725f36" stroke-width="14"/>
+  <g stroke="#725f36" stroke-width="8">
+    <path d="M139 244l-13-9M181 203l-8-14M233 184l-3-16M285 184l3-16M337 203l8-14M379 244l13-9"/>
+  </g>
+  <path d="M256 300l90-135" stroke="#b92938" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="256" cy="300" r="22" fill="#2e281d"/>
+  <path d="M54 397h104l39 61H93z" fill="#f15b68"/>
+  <path d="M148 397h104l39 61H187z" fill="#f2c14e"/>
+  <path d="M242 397h104l39 61H281z" fill="#6bc77d"/>
+  <path d="M336 397h104l39 61H375z" fill="#67dbe5"/>
+</svg>

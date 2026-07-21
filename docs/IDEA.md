@@ -59,7 +59,7 @@ An Equalizer panel may be considered after the MVP but is explicitly outside the
 
 Each track has a play/pause button that allows the user to listen to the track. Only one track can play at a time. Starting another track stops the current track rather than preserving its playback position.
 
-Each row renders its title, author, total duration, waveform, play/pause control, and a compact original-source link. Year and notes are optional and are not shown inline. Required public-track rights metadata is also kept out of the row; all three are available through Credits/License when present.
+Each row renders its title, author, total duration, waveform, play/pause control, and a compact original-source link. Year and notes are optional and are not shown inline; both are available through Credits/License when present.
 
 For each track, it renders a real waveform of the track. The waveform also acts as the seek control, allowing the user to move playback to a specific position without a separate playback slider.
 
@@ -96,7 +96,7 @@ Playback uses conventional equal-power stereo placement derived from `channelLay
 
 The footer links to the planned source repository at https://github.com/pinebit/zxspectrumfm and to [ZX-Art's ZX Spectrum music collection](https://zxart.ee/eng/music/). It also contains a Credits/License control similar in purpose to https://aym-js.emaxilde.net/license/.
 
-Activating Credits/License opens an accessible modal dialog without changing routes. The dialog groups notices into application, playback engine, dependencies, and music credits; traps focus while open; closes by its close control or Escape; and restores focus to the trigger. Its content is derived from maintained project data rather than duplicated across UI components. The music section lists every public track with its title, author, original source link, and required rights/license details.
+Activating Credits/License opens an accessible modal dialog without changing routes. The dialog groups notices into application, playback engine, dependencies, and music credits; traps focus while open; closes by its close control or Escape; and restores focus to the trigger. Its content is derived from maintained project data rather than duplicated across UI components. The music section lists every public track with its title, author, and original source link, plus its year and notes when present.
 
 The source repository, ZX-Art, and individual track-source links open in a new tab using safe `noopener noreferrer` behavior. The planned repository URL is allowed to remain unavailable during initial specification work but must resolve before the public launch.
 
@@ -134,7 +134,7 @@ Every asynchronous selection/load operation has an `AbortController` where the u
 
 The controller is an external state source with subscribed immutable snapshots integrated into React through `useSyncExternalStore`. High-frequency playback position, waveform progress, and meter samples use animation-oriented mutable data paths and must not publish React snapshots on every audio or animation frame. The controller still publishes semantic transitions, user-committed seeks, checkpoint times, and coarse display-time updates needed by accessible text. Subscription and animation callbacks are removed on unmount or controller disposal.
 
-The provisional playback engine is [`ym2149-rs`](https://github.com/slippyex/ym2149-rs), using its Rust/WebAssembly browser integration behind an application-owned TypeScript adapter. It is preferred because it is MIT-licensed, loads relevant music files directly, exposes metadata and playback controls, can produce exact per-channel samples for the A/B/C meters, and can render audio for waveform generation.
+The selected playback engine is [`ym2149-rs`](https://github.com/slippyex/ym2149-rs), using its Rust/WebAssembly browser integration behind an application-owned TypeScript adapter. It is MIT-licensed, loads the canonical runtime files directly, exposes metadata and playback controls, produces exact per-channel samples for the A/B/C meters, and renders audio for waveform generation. The mandatory proof of concept passed at pinned commit `b3096aac0dcab6dd1d82c0209f579761943aadc6`; objective results are recorded in `docs/playback-engine-proof.md`.
 
 This selection is subject to a mandatory proof of concept that is completed and documented before the main interface is implemented. PSG is expected to be the predominant authoritative source format in the catalog, so PSG import and conversion are a primary proof-of-concept path rather than an edge case. Test multiple representative `.psg` tracks, including the seed track below, plus representative `.ay` and `.ym` tracks and every canonical-runtime conversion path described below, and verify all of the following:
 
@@ -154,9 +154,11 @@ If the proof of concept exposes unacceptable compatibility, audio accuracy, seek
 
 The browser has one runtime music contract: every catalog entry points to `generated/playback.ym`, which must be a validated, finite, seekable YM-family asset. Content preparation always converts authoritative PSG and AY sources to YM6 while retaining the original bytes unchanged. An authoritative YM source that already passes all runtime requirements is copied byte-for-byte to `generated/playback.ym`; if it is supported but not compliant with the runtime contract, content preparation normalizes it to YM6. The generated copy or conversion is never presented as the authoritative original.
 
-PSG is a first-class authoritative catalog source format and is expected to account for most tracks. AY and YM remain supported curator inputs, but no source-format parser or seeking difference escapes into the browser-facing player controller. The generated catalog records the authoritative source format separately from the generated runtime format and points only to the generated asset.
+PSG is a first-class authoritative catalog source format and is expected to account for many tracks. AY and YM remain supported curator inputs. PT3, STC, and ASC tracker modules are also accepted curator sources because the selected ZX-Art candidates use those formats. No source-format parser or seeking difference escapes into the browser-facing player controller. The generated catalog records the authoritative source format separately from the derived PSG and generated runtime formats and points only to the generated runtime asset.
 
 PSG conversion must preserve the declared chip type, chip clock, frame rate, channel layout, register-event sequence, duration, A/B/C channel behavior, and audible result. The converter must not silently assume machine timing: these properties are conditionally required PSG sidecar metadata and are included in generated provenance. Conversion and validation operate deterministically from the authoritative PSG bytes and sidecar. PSG streams are finite: playback ends after the final encoded frame, no loop is inferred, and leading or trailing silence is not trimmed. A format is considered supported only after playback, seeking, duration, end detection, persisted-position restoration, exact channel output, and waveform generation all pass validation. Other formats exposed by the engine, including `.aks` and `.sndh`, are outside the MVP until they are explicitly added and pass the same validation.
+
+PT3, STC, and ASC preparation uses the official ZXTune `zxtune123` CLI pinned to commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a` and its `mode=psg` conversion. It runs only in a project-defined Linux Docker image on the curator's macOS machine; no Android application or Android build is involved. The container has no network while processing music, runs read-only without capabilities, and receives only an isolated working directory. ZXTune's index output must identify the same format as the supplied `.pt3`, `.stc`, or `.asc` extension before conversion. The original tracker bytes remain authoritative. `generated/source.psg` is a derived finite register stream, and `generated/tracker-conversion.json` records the ZXTune commit, detected format, original hash, PSG hash, and byte length. Content generation rebuilds those two files; read-only production validation verifies their hashes and then applies the complete PSG-to-YM6, seek, channel, waveform, and freshness gates. The deployed application has no ZXTune or Docker runtime dependency.
 
 Pin the playback engine to an exact upstream release or commit and provide a reproducible build for it. Prepare the generated WebAssembly module and its JavaScript/TypeScript bindings as repository-tracked release artifacts so ordinary application development, production builds, and Vercel deployment require only the Node.js toolchain. Document how to rebuild the engine artifacts and provide a build-time check that detects stale generated artifacts.
 
@@ -231,14 +233,14 @@ The production version will be deployed with Vercel.
 
 ### Content Import and Preparation Tooling
 
-The repository includes a project-owned Node.js command-line tool for adding tracks. Ordinary track import and content preparation must not require Rust, `wasm-pack`, a separately installed native converter, or an external service; they use the prepared Node-compatible playback-engine artifacts. The PSG parser and PSG-to-YM6 converter are project-owned TypeScript modules shared by the import, regeneration, and validation commands.
+The repository includes a project-owned Node.js command-line tool for adding tracks. AY, YM, and PSG import and preparation require only the prepared Node-compatible playback-engine artifacts; they do not require Rust, `wasm-pack`, a native converter, or an external service. PT3, STC, and ASC import additionally requires Docker on macOS to build or run the pinned Linux ZXTune conversion image. The curator never installs or builds an Android application. The PSG parser and PSG-to-YM6 converter are project-owned TypeScript modules shared by the import, regeneration, and validation commands.
 
 The importer accepts exactly one of:
 
-- A local `.ay`, `.ym`, or `.psg` file path.
-- A direct HTTPS URL whose response is a supported `.ay`, `.ym`, or `.psg` file.
+- A local `.ay`, `.ym`, `.psg`, `.pt3`, `.stc`, or `.asc` file path.
+- A direct HTTPS URL whose response is one of those supported files.
 
-The importer does not scrape archive webpages or guess download links. A remote download URL and the required `sourceUrl` attribution value are separate inputs: the former retrieves the file, while the latter identifies the human-facing original source page. Local imports also require a `sourceUrl`. The importer detects and validates the actual format from the file signature and structure rather than trusting a filename extension or HTTP content type. A mismatch is reported explicitly and blocks import until the curator supplies the correct file; the tool does not rename one format into another to bypass validation.
+The importer does not scrape archive webpages or guess download links. A remote download URL and the required `sourceUrl` attribution value are separate inputs: the former retrieves the file, while the latter identifies the human-facing original source page. Local imports also require a `sourceUrl`. AY, YM, and PSG are detected from their signatures and structure. For PT3, STC, and ASC, the extension selects the candidate decoder and the pinned ZXTune index result independently confirms the actual module type before any write. A mismatch is reported explicitly and blocks import; the tool does not rename one format into another to bypass validation.
 
 Remote retrieval follows these rules:
 
@@ -259,10 +261,10 @@ Before writing, the importer validates the ID, order, URL, file type, selected s
 
 A successful import performs the complete workflow:
 
-1. Copy or download the original file.
+1. Copy or download the original file. For PT3, STC, or ASC, validate its ZXTune module type and deterministically generate the provenance-bound intermediate PSG in the sandboxed container.
 2. Create the authoritative `track.json` sidecar.
 3. Generate normalized per-track waveform peak data and rebuild the catalog-wide binary waveform pack.
-4. Generate `generated/playback.ym`: convert every PSG and AY source to YM6, copy a compliant seekable YM source byte-for-byte, or normalize another supported YM source to YM6.
+4. Generate `generated/playback.ym`: convert every PSG, tracker-derived PSG, and AY source to YM6, copy a compliant seekable YM source byte-for-byte, or normalize another supported YM source to YM6.
 5. Regenerate the collection catalog.
 6. Run full content and generated-artifact validation.
 
@@ -277,7 +279,7 @@ The curated set of music tracks will be manually prepared by myself and be part 
 
 #### Seed Track
 
-The first real catalog entry is [**Solitude** by Pator](https://zxart.ee/eng/authors/p/pator/solitude/), released in 2024 and listed by ZX-Art with a duration of 2:53.02. ZX-Art supplies a 63,474-byte PSG register dump and records the author's permission to use the tune freely with appropriate credit. Treat that page as both the attribution source and the evidence for the non-standard permission statement; do not describe it as a standard open-source license.
+The first real catalog entry is [**Solitude** by Pator](https://zxart.ee/eng/authors/p/pator/solitude/), released in 2024 and listed by ZX-Art with a duration of 2:53.02. ZX-Art supplies a 63,474-byte PSG register dump. The ZX-Art page is the track's required original-source attribution.
 
 No authoritative AY-format release was identified during specification research. ZX-Art consistently identifies this work as PSG, offers a separate modified-Vortex-Tracker source and an MP3 render, and records the author's warning that this particular tune needs PSG playback. Do not relabel an unofficial conversion as the original or replace the source with the MP3. PSG is a first-class authoritative curator input even though the browser consumes the generated YM6 representation.
 
@@ -294,14 +296,27 @@ Import it with these intended values:
 - `frameRateHz`: `50`
 - `channelLayout`: `ABC`
 - `year`: `2024`
-- `licenseName`: `Free use with attribution — author statement on ZX-Art`
-- `licenseUrl`: `https://zxart.ee/eng/authors/p/pator/solitude/`
 - Expected source duration: `173.02` seconds; use this for validation, not automatically as a duration override.
 - Direct import URL: `https://zxart.ee/file/id%3A522870/filename%3APator_-_Solitude_%282024%29_%28Lost_Party_2024%2C_1%29.psg`
 
 The importer retains this file as `source.psg`, converts it to a validated seekable YM6 playback asset using the declared AY chip, 1,773,400 Hz clock, 50 Hz frame rate, and ABC channel layout, and generates its waveform from the converted playback output. A conversion failure blocks the seed import and the engine proof of concept; it must not fall back to the available MP3 because that would lose genuine A/B/C channel data.
 
-Each track has a directory named with its permanent track ID. The directory contains exactly one authoritative original music file, normalized to `source.ay`, `source.ym`, or `source.psg`, and one `track.json` sidecar. Generated waveform peaks, provenance, and runtime music live under a clearly separated generated subdirectory within that track directory and must not be mistaken for curator-authored input. Every track has `generated/playback.ym`; it is YM6 when derived from PSG or AY, and is either a byte-identical validated YM source or normalized YM6 when derived from YM. Generated provenance records the original local filename or final remote download filename, detected authoritative format, authoritative content hash, PSG playback-environment fields when applicable, selected AY subsong when applicable, whether the YM output was copied or converted, runtime format and hash, frame count, calculated duration, and preparation-tool/engine versions needed to diagnose stale output.
+#### Initial Tracker Catalog
+
+The next requested tunes are imported with their authoritative ZX-Art tracker formats:
+
+- **Insomnia** by Mast (1999), PT3, AY, ABC: `https://zxart.ee/eng/authors/m/mast/insomnia/`
+- **Hibernation** by MmcM (2016), PT3, YM, ABC: `https://zxart.ee/eng/authors/m/mmcm1/hibernation/`
+- **LyraII8** by Ziutek (1991), STC, YM, ACB: `https://zxart.ee/eng/authors/z/ziutek/lyraii8/`
+- **Insult3m** by Klav (1994), STC, AY, ACB: `https://zxart.ee/eng/authors/k/klav/insult3m/`
+- **Batman** by Titus / Andrey Titov (1995), ASC, AY, ACB: `https://zxart.ee/eng/authors/t/andrey-titov/batman4/`
+- **Megamix Laser Dance** by Titus / Andrey Titov (1995), ASC, AY, ACB: `https://zxart.ee/eng/authors/t/andrey-titov/megamix-laser-dance/`
+- **Assorty2** by IMP (1994), STC, AY, ACB: `https://zxart.ee/eng/authors/i/imp1/assorty2/`
+- **Remixe Lyra Megadamo** by Titus / Andrey Titov (1994), ASC, AY, ACB: `https://zxart.ee/eng/authors/t/andrey-titov/remixe-lyra-megadamo/`
+
+The pinned ZXTune converter has been proven locally to produce valid finite PSG streams for these tracker formats, with durations consistent with the ZX-Art listings. Each imported track retains its ZX-Art page as the required original-source attribution. Per-track license fields are deliberately absent from the content and catalog contracts.
+
+Each track has a directory named with its permanent track ID. The directory contains exactly one authoritative original music file, normalized to `source.ay`, `source.ym`, `source.psg`, `source.pt3`, `source.stc`, or `source.asc`, and one `track.json` sidecar. Generated waveform peaks, provenance, intermediate tracker PSG, and runtime music live under a clearly separated generated subdirectory within that track directory and must not be mistaken for curator-authored input. Every track has `generated/playback.ym`; it is YM6 when derived from PSG, a tracker-derived PSG, or AY, and is either a byte-identical validated YM source or normalized YM6 when derived from YM. Generated provenance records the original local filename or final remote download filename, detected authoritative format and hash, tracker conversion tool and intermediate hash when applicable, playback-environment fields, selected AY subsong when applicable, whether the YM output was copied or converted, runtime format and hash, frame count, calculated duration, and preparation-tool/engine versions needed to diagnose stale output.
 
 Every `track.json` has the following required fields:
 
@@ -313,7 +328,7 @@ Every `track.json` has the following required fields:
 - `sourceUrl`: a valid HTTPS URL for the original source.
 - `subsong`: a one-based integer identifying the single subsong to expose; ordinary single-song files use `1`.
 
-For a PSG source, `track.json` additionally requires all of the following because raw PSG data does not reliably carry a complete portable playback environment:
+For a PSG, PT3, STC, or ASC source, `track.json` additionally requires all of the following because its prepared PSG data does not reliably carry a complete portable playback environment:
 
 - `chipType`: the supported sound chip identifier; the MVP accepts `AY` or `YM`.
 - `chipClockHz`: an integer clock frequency from `1` through `4294967295` hertz.
@@ -322,7 +337,7 @@ For a PSG source, `track.json` additionally requires all of the following becaus
 
 For AY and YM sources, content preparation first extracts `chipType`, `chipClockHz`, `frameRateHz`, and `channelLayout`. Any value that is absent or ambiguous becomes required in `track.json` and is confirmed interactively or supplied explicitly in non-interactive mode; the tool never assumes it. A sidecar value that conflicts with unambiguous embedded data requires explicit confirmation in interactive mode and an explicit override option in non-interactive mode.
 
-The schema permits `year`, `licenseName`, `licenseUrl`, `notes`, and `durationOverrideSeconds` as additional fields. The duration override is allowed only under the exceptional duration rule below. Development-only synthetic fixtures may omit rights metadata. Every real track included in a public or release catalog must provide both `licenseName` and `licenseUrl`; these fields document either a license or a specific permission statement and link to its evidence. Release validation rejects a real track when either field is absent, invalid, or merely contains placeholder text.
+The schema permits `year`, `notes`, and `durationOverrideSeconds` as additional fields. The duration override is allowed only under the exceptional duration rule below. `sourceUrl` is the sole per-track source and attribution field; per-track license fields are not part of the schema. Every real track included in a public or release catalog must provide a valid human-facing HTTPS source URL.
 
 Sidecar validation is strict. `id` matches `^[a-z0-9]+(?:-[a-z0-9]+)*$` and is at most 80 characters. Required strings are trimmed and nonempty; metadata is plain text rather than HTML. URLs are HTTPS, contain no credentials, and meet their field-specific purpose. Numeric values must be finite and within the ranges stated here. Unknown sidecar properties fail validation so misspelled metadata cannot be silently ignored.
 
@@ -334,7 +349,7 @@ The sidecar JSON is authoritative. Embedded music-file metadata may fill missing
 
 Content preparation calculates track duration using the selected playback engine. A naturally finite source retains its complete duration without leading/trailing trimming or a fade and must not specify `durationOverrideSeconds`. The browser never loops a track.
 
-If an AY or YM source loops indefinitely or the engine cannot identify a reliable finite end, `durationOverrideSeconds` is required. It must be a finite value greater than zero and no greater than 1,800 seconds. Capture begins at the source start and ends after the first complete source frame whose end time is at or after the requested duration; no fade is added. The resulting whole-frame duration is authoritative for playback and display. Provenance records the reason for the override, requested seconds, actual frame count, frame rate, and actual duration. PSG input is already finite and cannot use a duration override. A missing required override or an override on a reliably finite source fails validation.
+If an AY or YM source loops indefinitely or the engine cannot identify a reliable finite end, `durationOverrideSeconds` is required. It must be a finite value greater than zero and no greater than 1,800 seconds. Capture begins at the source start and ends after the first complete source frame whose end time is at or after the requested duration; no fade is added. The resulting whole-frame duration is authoritative for playback and display. Provenance records the reason for the override, requested seconds, actual frame count, frame rate, and actual duration. PSG and supported tracker inputs are already finite and cannot use a duration override. A missing required override or an override on a reliably finite source fails validation.
 
 The generated catalog records `durationSeconds` using the generated runtime asset and `durationSource` as either `source` or `override`. All end detection, seeking bounds, persistence clamping, waveform bucketing, time display, and Auto-Play Next behavior use this generated duration.
 
@@ -349,8 +364,7 @@ Content generation writes one deterministic UTF-8 JSON catalog with `schemaVersi
 Every generated track record contains:
 
 - `id`, `order`, `title`, `author`, `sourceUrl`, and `subsong` copied from validated authoritative metadata.
-- `licenseName` and `licenseUrl`: validated strings for every public/release track and `null` only in development-only synthetic fixture catalogs.
-- `sourceFormat`: `PSG`, `AY`, or the detected authoritative YM variant.
+- `sourceFormat`: `PSG`, `AY`, `PT3`, `STC`, `ASC`, or the detected authoritative YM variant.
 - `runtimeFormat`: the detected format of `generated/playback.ym`, including the YM version rather than only the generic extension.
 - `runtimeUrl`: a root-relative public URL of the form `tracks/<id>.<sha256>.ym`.
 - `runtimeSha256`: the full lowercase hexadecimal SHA-256 of the served runtime bytes.
@@ -362,11 +376,11 @@ Every generated track record contains:
 
 The public catalog deliberately excludes the remote download URL, local filenames, absolute paths, build-machine information, and internal provenance details. Full provenance remains in generated repository data rather than being sent to every listener. Catalog and runtime validation reject missing required or unknown properties, wrong scalar types, non-finite numbers, unsafe or non-root-relative asset URLs, duplicate IDs/orders, noncontiguous ordering, hashes with the wrong shape, asset length/hash mismatches, waveform slices outside the pack, and catalog metadata inconsistent with the sidecar or provenance.
 
-The production build is network-independent after `npm ci`: it never redownloads authoritative music, scrapes attribution pages, tests external-link availability, or contacts a conversion service. It reads repository content and prepared engine artifacts only. Importing a new remote source is a separate explicit content command; checking public links before release is a documented manual verification.
+The production build is network-independent after `npm ci`: it never redownloads authoritative music, scrapes attribution pages, tests external-link availability, builds the ZXTune image, or contacts a conversion service. It reads repository content, committed tracker-conversion artifacts, and prepared engine artifacts only. Importing a new remote source or regenerating a tracker conversion is a separate explicit curator command; the first tracker generation may use the network only to build the pinned Docker image. Checking public links before release is a documented manual verification.
 
 Content preparation and production builds fail on missing required metadata, duplicate track IDs, duplicate order values, invalid source URLs, missing music files, extension/signature mismatches, unsupported formats, invalid subsong selections, unsupported PSG playback-environment values, or otherwise invalid sidecar data. These errors must identify the affected file and field; invalid tracks are not silently omitted or rendered as unavailable.
 
-Every conversion or normalization to YM6 passes an automated equivalence gate before its output may enter the catalog. For PSG, validation compares the parsed source stream with generated YM6. For AY, it compares uninterrupted playback of the selected source subsong with the captured frames and generated YM6. For normalized YM, it compares the authoritative YM interpretation with generated YM6. In every case, normalized register values must match at every frame, frame count must be identical, calculated durations may differ by no more than one source frame, and A/B/C channel identity and order must be unchanged. Validation renders both representations through the same pinned synthesis path at 48,000 Hz and requires each channel and the final mix to have a maximum absolute normalized-sample difference no greater than `0.000001`. A compliant YM byte-copy verifies byte identity plus the same runtime behavioral checks but does not need a conversion comparison.
+Every conversion or normalization to YM6 passes an automated equivalence gate before its output may enter the catalog. For PSG, validation compares the parsed source stream with generated YM6. For PT3, STC, and ASC, content generation first requires the pinned ZXTune conversion and records a byte-level provenance binding from the authoritative tracker to its derived PSG; validation then compares that PSG register stream with generated YM6. For AY, it compares uninterrupted playback of the selected source subsong with the captured frames and generated YM6. For normalized YM, it compares the authoritative YM interpretation with generated YM6. In every case, normalized register values must match at every frame, frame count must be identical, calculated durations may differ by no more than one source frame, and A/B/C channel identity and order must be unchanged. Validation renders both register representations through the same pinned synthesis path at 48,000 Hz and requires each channel and the final mix to have a maximum absolute normalized-sample difference no greater than `0.000001`. A compliant YM byte-copy verifies byte identity plus the same runtime behavioral checks but does not need a conversion comparison.
 
 The seek check opens `generated/playback.ym` independently at zero, 25%, 50%, 75%, and at the later of zero or one second before the end, seeks to that position, and compares the following one second or remaining duration against uninterrupted playback using the same audio tolerance. Very short tracks use every distinct applicable position. These thresholds, positions, and sample rate are fixed in project code and covered by fixtures; they must not be relaxed per track merely to make a failing conversion pass. Any mismatch fails import and reports the track, frame or seek position, channel or mix, expected value, actual value, and permitted tolerance.
 
@@ -411,7 +425,7 @@ If `ym2149-rs` fails a mandatory criterion, reproduce the failure with the small
 
 ### Phase 3: Real PSG Vertical Slice
 
-Complete the production PSG parser, PSG-to-YM6 converter, common canonical-runtime generator contract, waveform packer, catalog generator, import/update/remove commands, provenance, atomic writes, and stale-output checks. Use the specified direct URL and metadata to import `pator-solitude` as the first real catalog entry. Then implement the smallest end-to-end application slice that loads the real catalog and waveform pack, starts `Solitude` after a user gesture, plays the generated YM6, pauses and resumes, seeks, restores a saved position paused, displays true A/B/C waveform layers and live meters, changes volume and mute, reaches the correct end, and links to its source and rights evidence.
+Complete the production PSG parser, PSG-to-YM6 converter, common canonical-runtime generator contract, waveform packer, catalog generator, import/update/remove commands, provenance, atomic writes, and stale-output checks. Use the specified direct URL and metadata to import `pator-solitude` as the first real catalog entry. Then implement the smallest end-to-end application slice that loads the real catalog and waveform pack, starts `Solitude` after a user gesture, plays the generated YM6, pauses and resumes, seeks, restores a saved position paused, displays true A/B/C waveform layers and live meters, changes volume and mute, reaches the correct end, and links to its original source.
 
 This phase passes only when the authoritative PSG, derived YM6, waveform data, provenance, and catalog all pass the automated equivalence and freshness checks; the track is audibly reviewed in at least one supported desktop browser; and the vertical slice works without mocked audio or metadata. A problem with the real seed track reopens the engine or converter gate rather than being hidden in UI code.
 
@@ -421,21 +435,21 @@ Build the polished responsive interface, full player state machine, curated and 
 
 ### Phase 5: Verification and Release
 
-Complete unit, component, real-engine, browser-journey, responsive, reduced-motion, keyboard, and accessibility verification. Confirm the initial 20–30-track release rule, public rights metadata, immutable asset URLs, performance targets, supported browsers, production metadata, canonical URL, GitHub link, Vercel headers, and a clean production build. The implementation is complete only when the Definition of Done below is satisfied; passing the intentionally minimal CI jobs alone is not sufficient.
+Complete unit, component, real-engine, browser-journey, responsive, reduced-motion, keyboard, and accessibility verification. Confirm the initial 20–30-track release rule, source attribution, immutable asset URLs, performance targets, supported browsers, production metadata, canonical URL, GitHub link, Vercel headers, and a clean production build. The implementation is complete only when the Definition of Done below is satisfied; passing the intentionally minimal CI jobs alone is not sufficient.
 
 ## Definition of Done
 
 The MVP is done only when all of the following are true:
 
-- A clean checkout installs reproducibly with the documented Node.js and npm versions and needs no undeclared native tools for ordinary development, content import, validation, or production builds.
+- A clean checkout installs reproducibly with the documented Node.js and npm versions. Ordinary application development, AY/YM/PSG content work, validation, and production builds need no undeclared native tools; PT3/STC/ASC curator imports use the explicitly documented Docker requirement.
 - The TypeScript sanity check and production build pass from documented commands. The documented local lint, formatting check, unit/component tests, real-engine tests, Playwright journeys, and generated-artifact validation also pass.
 - The selected playback engine has passed and documented every mandatory proof-of-concept criterion. Its pinned source revision, prepared browser artifacts, licenses, hashes, and rebuild procedure are present and reproducible.
 - The real `pator-solitude` PSG vertical slice and every public track pass source-format validation, canonical-runtime generation, applicable equivalence, seeking, channel, waveform, provenance, and freshness checks.
-- The release catalog contains 20–30 real curated tracks in contiguous order. Every track has valid source attribution and rights evidence, and Credits/License presents the corresponding notices.
+- The release catalog contains 20–30 real curated tracks in contiguous order. Every track has valid source attribution, and Credits/License presents the corresponding source link.
 - All specified player states, controls, sequencing rules, persistence behavior, waveform interactions, meters, error recovery, capability fallback, and Media Session behavior pass their automated or explicitly documented manual acceptance checks.
 - The finished interface works without horizontal overflow at supported mobile widths, preserves the desktop layout and sticky meter behavior, meets WCAG 2.2 AA requirements, supports keyboard-only use, and respects reduced motion.
 - The current and previous major desktop browsers and the current iOS Safari and Android Chrome pass the defined smoke journeys. Any browser-specific limitation allowed by this specification is documented and recovers cleanly.
 - A representative production build meets the initial-transfer, Largest Contentful Paint, Cumulative Layout Shift, and smooth-meter targets defined above, with the measurement profile and result recorded.
 - The deployed Vercel site uses the verified canonical URL, resolving GitHub link, production social metadata and original artwork, required security headers, self-hosted assets, content-hashed immutable track assets, and a revalidated catalog manifest.
 - The deployed application contains no analytics, tracking, advertising, cookies, remote telemetry, service worker, PWA behavior, unintended remote asset dependency, or direct bundled-music download control.
-- There are no known severity-one playback/data-loss defects, no silently omitted invalid tracks, no placeholder metadata or rights text, and no unresolved requirement in this specification marked as deferred unless it is explicitly outside the MVP.
+- There are no known severity-one playback/data-loss defects, no silently omitted invalid tracks, no placeholder metadata, and no unresolved requirement in this specification marked as deferred unless it is explicitly outside the MVP.

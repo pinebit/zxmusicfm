@@ -6,3 +6,5 @@ PLAN.md
 playwright-report/
 test-results/
 public/generated/
+tests/fixtures/
+vendor/

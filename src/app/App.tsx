@@ -1,25 +1,46 @@
-import { useEffect, useReducer, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
+import {
+  decodeWaveformPack,
+  fetchVerifiedBytes,
+  type DecodedWaveform,
+} from '../content/runtime.ts';
 import {
   generatedCatalogSchema,
   type GeneratedCatalog,
 } from '../content/schemas.ts';
+import { PlayerController } from '../playback/PlayerController.ts';
+import type { PlayerError } from '../playback/PlayerController.ts';
+import { ChannelMeters } from './ChannelMeters.tsx';
+import { CreditsDialog } from './CreditsDialog.tsx';
+import { VolumeKnob } from './VolumeKnob.tsx';
+import { WaveformSeek } from './WaveformSeek.tsx';
 
 type CatalogState =
   | { status: 'loading' }
   | { status: 'ready'; catalog: GeneratedCatalog }
-  | { status: 'error'; message: string };
-
+  | { status: 'error' };
 type CatalogAction =
   | { type: 'load' }
   | { type: 'success'; catalog: GeneratedCatalog }
-  | { type: 'failure'; message: string };
-
+  | { type: 'failure' };
 type CatalogLoader = (signal: AbortSignal) => Promise<GeneratedCatalog>;
-
-type AppProps = {
-  readonly catalogLoader?: CatalogLoader;
-};
+type AppProps = { readonly catalogLoader?: CatalogLoader };
+type WaveformState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'error' }
+  | {
+      readonly status: 'ready';
+      readonly tracks: ReadonlyMap<string, DecodedWaveform>;
+    };
 
 const initialState: CatalogState = { status: 'loading' };
 
@@ -33,7 +54,7 @@ function catalogReducer(
     case 'success':
       return { status: 'ready', catalog: action.catalog };
     case 'failure':
-      return { status: 'error', message: action.message };
+      return { status: 'error' };
   }
 }
 
@@ -42,11 +63,7 @@ async function loadCatalog(signal: AbortSignal): Promise<GeneratedCatalog> {
     cache: 'no-cache',
     signal,
   });
-
-  if (!response.ok) {
-    throw new Error(`Catalog request failed with status ${response.status}.`);
-  }
-
+  if (!response.ok) throw new Error('Catalog request failed.');
   return generatedCatalogSchema.parse(await response.json());
 }
 
@@ -54,7 +71,6 @@ function hasRequiredCapabilities(): boolean {
   const capabilities = globalThis as Partial<
     Pick<typeof globalThis, 'AudioContext' | 'WebAssembly' | 'crypto'>
   >;
-
   return (
     typeof capabilities.WebAssembly === 'object' &&
     typeof capabilities.AudioContext === 'function' &&
@@ -62,74 +78,490 @@ function hasRequiredCapabilities(): boolean {
   );
 }
 
-export function App({ catalogLoader = loadCatalog }: AppProps) {
-  const [state, dispatch] = useReducer(catalogReducer, initialState);
-  const [loadAttempt, setLoadAttempt] = useState(0);
+function formatTime(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const tail = String(whole % 60).padStart(2, '0');
+  return hours === 0
+    ? `${minutes}:${tail}`
+    : `${hours}:${String(minutes).padStart(2, '0')}:${tail}`;
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(
+      'button, a, input, textarea, select, [role="slider"], dialog',
+    ) !== null
+  );
+}
+
+function playerErrorMessage(error: PlayerError): string {
+  if (error.category === 'audio-permission') {
+    return 'Your browser paused audio before it could start.';
+  }
+  if (error.operation === 'seek') {
+    return 'This position could not be opened. Try again.';
+  }
+  return 'This track could not be loaded. Check your connection and try again.';
+}
+
+function PlayerApplication({
+  catalog,
+}: {
+  readonly catalog: GeneratedCatalog;
+}) {
+  const controller = useMemo(() => new PlayerController(catalog), [catalog]);
+  const snapshot = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+  const [waveforms, setWaveforms] = useState<WaveformState>({
+    status: 'loading',
+  });
+  const [waveformAttempt, setWaveformAttempt] = useState(0);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const creditsTrigger = useRef<HTMLButtonElement>(null);
+  const capable = hasRequiredCapabilities();
+  const hasTracks = catalog.tracks.length > 0;
+  const controlsDisabled = !capable || !hasTracks;
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    void catalogLoader(controller.signal).then(
-      (catalog) => {
-        dispatch({ type: 'success', catalog });
-      },
-      (error: unknown) => {
-        if (!controller.signal.aborted) {
-          dispatch({
-            type: 'failure',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'The catalog could not be loaded.',
+    const abort = new AbortController();
+    setWaveforms({ status: 'loading' });
+    const manifest = catalog.waveforms;
+    void fetchVerifiedBytes(
+      manifest.url,
+      manifest.byteLength,
+      manifest.sha256,
+      abort.signal,
+      'Waveform pack',
+    ).then(
+      (bytes) => {
+        try {
+          setWaveforms({
+            status: 'ready',
+            tracks: decodeWaveformPack(bytes, catalog),
           });
+        } catch {
+          setWaveforms({ status: 'error' });
         }
       },
+      () => {
+        if (!abort.signal.aborted) setWaveforms({ status: 'error' });
+      },
     );
+    return () => abort.abort();
+  }, [catalog, waveformAttempt]);
 
-    return () => {
-      controller.abort();
+  useEffect(() => {
+    const pageHide = () => controller.persistNow();
+    const keyboard = (event: KeyboardEvent) => {
+      if (
+        event.code !== 'Space' ||
+        event.repeat ||
+        isInteractiveTarget(event.target) ||
+        snapshot.selectedTrackId === null ||
+        !capable
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (snapshot.status === 'playing') controller.pause();
+      else controller.playSelected();
     };
-  }, [catalogLoader, loadAttempt]);
+    window.addEventListener('pagehide', pageHide);
+    window.addEventListener('keydown', keyboard);
+    return () => {
+      window.removeEventListener('pagehide', pageHide);
+      window.removeEventListener('keydown', keyboard);
+    };
+  }, [capable, controller, snapshot.selectedTrackId, snapshot.status]);
 
-  const retry = () => {
-    dispatch({ type: 'load' });
-    setLoadAttempt((attempt) => attempt + 1);
-  };
+  useEffect(() => () => controller.dispose(), [controller]);
+
+  const selectedTrack = catalog.tracks.find(
+    ({ id }) => id === snapshot.selectedTrackId,
+  );
+  const closeCredits = useCallback(() => {
+    setCreditsOpen(false);
+    window.setTimeout(() => creditsTrigger.current?.focus(), 0);
+  }, []);
 
   return (
-    <main className="diagnostic-shell">
-      <p className="eyebrow">Phase 1 diagnostic shell</p>
-      <h1>ZX-SPECTRUM.FM</h1>
-      <p>
-        Foundation only. Playback-engine integration begins after this phase
-        gate passes.
+    <>
+      <p className="visually-hidden">
+        Valid schema; {catalog.tracks.length} tracks
       </p>
+      {!capable ? (
+        <section className="notice-panel" role="alert">
+          <strong>Playback is not supported in this browser.</strong>
+          <span>
+            You can still browse the catalog and credits. Try a current Chrome,
+            Firefox, Safari, or Edge release to listen.
+          </span>
+        </section>
+      ) : null}
 
-      <section aria-labelledby="foundation-status">
-        <h2 id="foundation-status">Foundation status</h2>
-        <dl>
-          <div>
-            <dt>Browser capabilities</dt>
-            <dd>{hasRequiredCapabilities() ? 'Available' : 'Unavailable'}</dd>
-          </div>
-          <div>
-            <dt>Catalog</dt>
-            <dd aria-live="polite">
-              {state.status === 'loading' ? 'Loading…' : null}
-              {state.status === 'ready'
-                ? `Valid schema; ${state.catalog.tracks.length} tracks`
-                : null}
-              {state.status === 'error' ? state.message : null}
-            </dd>
-          </div>
-        </dl>
-
-        {state.status === 'error' ? (
-          <button type="button" onClick={retry}>
-            Retry
-          </button>
+      <div
+        className="sequence-controls"
+        aria-label="Playback sequence settings"
+      >
+        <label className="toggle-control">
+          <input
+            type="checkbox"
+            checked={snapshot.preferences.autoPlayNext}
+            disabled={!hasTracks}
+            onChange={(event) =>
+              controller.setAutoPlayNext(event.currentTarget.checked)
+            }
+          />
+          <span aria-hidden="true" />
+          Auto-Play Next
+        </label>
+        <label className="toggle-control">
+          <input
+            type="checkbox"
+            checked={snapshot.preferences.shuffle}
+            disabled={catalog.tracks.length < 2}
+            aria-describedby={
+              catalog.tracks.length < 2 ? 'shuffle-help' : undefined
+            }
+            onChange={(event) =>
+              controller.setShuffle(event.currentTarget.checked)
+            }
+          />
+          <span aria-hidden="true" />
+          Shuffle
+        </label>
+        {catalog.tracks.length < 2 ? (
+          <span id="shuffle-help" className="sequence-help">
+            Shuffle needs at least two tracks.
+          </span>
         ) : null}
-      </section>
+      </div>
+
+      {waveforms.status === 'error' ? (
+        <section className="waveform-notice" aria-live="polite">
+          <span>
+            Visual waveforms are unavailable. Seek sliders remain available.
+          </span>
+          <button
+            type="button"
+            onClick={() => setWaveformAttempt((value) => value + 1)}
+          >
+            Retry waveforms
+          </button>
+        </section>
+      ) : null}
+
+      <div className="player-layout">
+        <section className="track-panel" aria-labelledby="track-list-heading">
+          <div className="panel-heading">
+            <div>
+              <p className="section-kicker">ON THE TAPE</p>
+              <h2 id="track-list-heading">Track list</h2>
+            </div>
+            <span>
+              {catalog.tracks.length}{' '}
+              {catalog.tracks.length === 1 ? 'track' : 'tracks'}
+            </span>
+          </div>
+
+          {!hasTracks ? (
+            <div className="empty-state">
+              <strong>No tracks available</strong>
+              <span>The development catalog is valid but currently empty.</span>
+            </div>
+          ) : (
+            <ol className="track-list">
+              {catalog.tracks.map((track) => {
+                const selected = snapshot.selectedTrackId === track.id;
+                const position = selected ? snapshot.positionSeconds : 0;
+                const playing = selected && snapshot.status === 'playing';
+                const loading = selected && snapshot.status === 'loading';
+                const failed = selected && snapshot.status === 'error';
+                return (
+                  <li
+                    className={`track-row${selected ? ' selected' : ''}`}
+                    aria-current={selected ? 'true' : undefined}
+                    key={track.id}
+                  >
+                    <button
+                      className="play-button"
+                      type="button"
+                      disabled={controlsDisabled || loading}
+                      aria-label={`${playing ? 'Pause' : 'Play'} ${track.title}`}
+                      onClick={() => controller.toggle(track.id)}
+                    >
+                      <span aria-hidden="true">
+                        {loading ? '•••' : playing ? 'Ⅱ' : '▶'}
+                      </span>
+                    </button>
+                    <div className="track-main">
+                      <div className="track-meta">
+                        <div>
+                          <h3>{track.title}</h3>
+                          <p>{track.author}</p>
+                        </div>
+                        <time
+                          dateTime={`PT${Math.round(track.durationSeconds)}S`}
+                        >
+                          {selected ? `${formatTime(position)} / ` : ''}
+                          {formatTime(track.durationSeconds)}
+                        </time>
+                      </div>
+                      <WaveformSeek
+                        waveform={
+                          waveforms.status === 'ready'
+                            ? waveforms.tracks.get(track.id)
+                            : undefined
+                        }
+                        duration={track.durationSeconds}
+                        position={position}
+                        disabled={controlsDisabled || loading}
+                        label={`Seek ${track.title}`}
+                        onCommit={(seconds) =>
+                          controller.seek(track.id, seconds)
+                        }
+                      />
+                      <p className="track-links">
+                        <a
+                          href={track.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Original source <span aria-hidden="true">↗</span>
+                        </a>
+                      </p>
+                      {loading ? (
+                        <p className="track-status" role="status">
+                          Loading and checking track…
+                        </p>
+                      ) : null}
+                      {failed && snapshot.error !== null ? (
+                        <div className="inline-error" role="alert">
+                          <span>{playerErrorMessage(snapshot.error)}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              snapshot.error?.category === 'audio-permission'
+                                ? controller.enableAudio()
+                                : controller.retry()
+                            }
+                          >
+                            {snapshot.error.category === 'audio-permission'
+                              ? 'Tap/click to enable audio'
+                              : 'Retry track'}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+
+        <aside className="meter-panel" aria-labelledby="meters-heading">
+          <div className="meter-heading">
+            <div>
+              <p className="section-kicker">LIVE OUTPUT</p>
+              <h2 id="meters-heading">Channel meters</h2>
+            </div>
+            <span
+              className={`status-lamp ${snapshot.status}`}
+              aria-live="polite"
+            >
+              {snapshot.status}
+            </span>
+          </div>
+          {selectedTrack === undefined ? (
+            <p className="choose-track">Choose a track to start listening.</p>
+          ) : (
+            <div className="now-playing">
+              <strong>{selectedTrack.title}</strong>
+              <span>{selectedTrack.author}</span>
+              <time>
+                {formatTime(snapshot.positionSeconds)} /{' '}
+                {formatTime(selectedTrack.durationSeconds)}
+              </time>
+            </div>
+          )}
+          <ChannelMeters adapter={controller.getAdapter()} />
+
+          <div className="transport" aria-label="Playback controls">
+            <button
+              type="button"
+              disabled={controlsDisabled || selectedTrack === undefined}
+              aria-label="Previous track"
+              onClick={() => controller.previous()}
+            >
+              <span aria-hidden="true">|◀</span>
+            </button>
+            <button
+              className="transport-primary"
+              type="button"
+              disabled={
+                controlsDisabled ||
+                selectedTrack === undefined ||
+                snapshot.status === 'loading'
+              }
+              aria-label={
+                snapshot.status === 'playing'
+                  ? 'Pause selected track'
+                  : 'Play selected track'
+              }
+              onClick={() =>
+                snapshot.status === 'playing'
+                  ? controller.pause()
+                  : controller.playSelected()
+              }
+            >
+              <span aria-hidden="true">
+                {snapshot.status === 'playing' ? 'Ⅱ' : '▶'}
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={controlsDisabled || catalog.tracks.length < 2}
+              aria-label="Next track"
+              onClick={() => controller.next()}
+            >
+              <span aria-hidden="true">▶|</span>
+            </button>
+          </div>
+
+          <div className="volume-control">
+            <div>
+              <p className="control-label">MASTER</p>
+              <VolumeKnob
+                value={snapshot.preferences.volume * 100}
+                disabled={!hasTracks}
+                onChange={(value) => controller.setVolume(value / 100)}
+              />
+            </div>
+            <button
+              type="button"
+              className="mute-button"
+              disabled={!hasTracks}
+              aria-label={
+                snapshot.preferences.muted || snapshot.preferences.volume === 0
+                  ? 'Unmute'
+                  : 'Mute'
+              }
+              aria-pressed={
+                snapshot.preferences.muted || snapshot.preferences.volume === 0
+              }
+              onClick={() => controller.toggleMute()}
+            >
+              {snapshot.preferences.muted || snapshot.preferences.volume === 0
+                ? 'UNMUTE'
+                : 'MUTE'}
+            </button>
+          </div>
+        </aside>
+      </div>
+
+      <footer className="site-footer">
+        <p>Independent, curated ZX Spectrum music radio.</p>
+        <nav aria-label="Project and credits">
+          <a
+            href="https://github.com/pinebit/zxspectrumfm"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Source code
+          </a>
+          <a
+            href="https://zxart.ee/eng/music/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ZX-Art music collection
+          </a>
+          <button
+            ref={creditsTrigger}
+            type="button"
+            onClick={() => setCreditsOpen(true)}
+          >
+            Credits / License
+          </button>
+        </nav>
+      </footer>
+      <CreditsDialog
+        open={creditsOpen}
+        tracks={catalog.tracks}
+        onClose={closeCredits}
+      />
+    </>
+  );
+}
+
+export function App({ catalogLoader = loadCatalog }: AppProps) {
+  const [state, dispatch] = useReducer(catalogReducer, initialState);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    void catalogLoader(abort.signal).then(
+      (catalog) => dispatch({ type: 'success', catalog }),
+      () => {
+        if (!abort.signal.aborted) dispatch({ type: 'failure' });
+      },
+    );
+    return () => abort.abort();
+  }, [attempt, catalogLoader]);
+
+  return (
+    <main className="app-shell">
+      <header className="brand-header">
+        <div>
+          <p className="eyebrow">
+            CURATED CHIP MUSIC · THREE CHANNELS · ONE MACHINE
+          </p>
+          <h1>ZX-SPECTRUM.FM</h1>
+          <p className="brand-intro">
+            Original AY/YM music, preserved and played in the browser.
+          </p>
+        </div>
+        <div className="brand-emblem" aria-hidden="true">
+          <span>A</span>
+          <span>B</span>
+          <span>C</span>
+        </div>
+        <div className="spectrum-stripe" aria-hidden="true" />
+      </header>
+
+      {state.status === 'loading' ? (
+        <section className="loading-shell" aria-live="polite">
+          <span className="loading-reel" aria-hidden="true" />
+          Loading catalog…
+        </section>
+      ) : null}
+      {state.status === 'error' ? (
+        <section className="page-error" role="alert">
+          <div>
+            <strong>The station list could not be loaded.</strong>
+            <span>Check your connection and try again.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({ type: 'load' });
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Retry catalog
+          </button>
+        </section>
+      ) : null}
+      {state.status === 'ready' ? (
+        <PlayerApplication catalog={state.catalog} />
+      ) : null}
     </main>
   );
 }

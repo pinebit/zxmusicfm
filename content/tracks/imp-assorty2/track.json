@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "imp-assorty2",
+  "order": 8,
+  "title": "Assorty2",
+  "author": "IMP",
+  "sourceUrl": "https://zxart.ee/eng/authors/i/imp1/assorty2/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1994
+}

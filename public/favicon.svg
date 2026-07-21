@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ZX-SPECTRUM.FM">
+  <rect width="64" height="64" rx="12" fill="#17191c"/>
+  <path d="M11 15h42v27H11z" fill="#f2dfad" stroke="#090a0b" stroke-width="4"/>
+  <path d="M17 34a16 16 0 0 1 30 0" fill="none" stroke="#745f32" stroke-width="2"/>
+  <path d="M32 37l10-14" stroke="#bb303b" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="32" cy="38" r="3" fill="#2b2419"/>
+  <path d="M10 49h11l5 7H15z" fill="#f15b68"/>
+  <path d="M21 49h11l5 7H26z" fill="#f2c14e"/>
+  <path d="M32 49h11l5 7H37z" fill="#6bc77d"/>
+  <path d="M43 49h11l5 7H48z" fill="#67dbe5"/>
+</svg>

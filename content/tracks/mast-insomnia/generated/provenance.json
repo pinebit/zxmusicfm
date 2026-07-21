@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "insomnia.pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "61b05096f151590d7f9a7aa099a68db32b39a07965a3d6f231a281548e515f97",
+  "sourceByteLength": 7064,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "0130f787d657231365050fd1a6013c8eeff614f8f24b3a0f5b3e6eafae03b550",
+  "runtimeByteLength": 130972,
+  "frameCount": 8179,
+  "durationSeconds": 163.58,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "762988315df99fc4da76c18b24b2b7c2a51552f2578a3cdfcc8c07e98f2cba38",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "PT3",
+    "sourceSha256": "61b05096f151590d7f9a7aa099a68db32b39a07965a3d6f231a281548e515f97",
+    "psgSha256": "d173060d976ec3e751545b4173c5e5851461bdb014a5c0446a5343e80455c595",
+    "psgByteLength": 72747
+  },
+  "preparationTool": "zx-spectrum-fm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

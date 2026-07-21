@@ -44,6 +44,7 @@ export type PlaybackAdapter = {
   load(track: RuntimeTrack, signal: AbortSignal): Promise<void>;
   play(): Promise<void>;
   pause(): void;
+  stop(): void;
   seek(positionSeconds: number): Promise<void>;
   setVolume(volume: number): void;
   setMuted(muted: boolean): void;

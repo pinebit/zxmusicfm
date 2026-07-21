@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "klav-insult3m",
+  "order": 5,
+  "title": "Insult3m",
+  "author": "Klav",
+  "sourceUrl": "https://zxart.ee/eng/authors/k/klav/insult3m/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1994
+}

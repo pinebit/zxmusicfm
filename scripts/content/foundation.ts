@@ -12,16 +12,49 @@ import path from 'node:path';
 
 import {
   generatedCatalogSchema,
+  generatedProvenanceSchema,
+  trackerConversionSchema,
   trackSidecarSchema,
   type GeneratedCatalog,
+  type GeneratedProvenance,
+  type TrackerConversionProvenance,
   type TrackSidecar,
 } from '../../src/content/schemas.ts';
+import type { RuntimeTrack } from '../../src/playback/contracts.ts';
+import {
+  createEnginePlayer,
+  createEnginePlayerAtSample,
+  ENGINE_SAMPLE_RATE,
+  fastForwardEngine,
+  generateEngineChannels,
+  initializeYm2149,
+} from '../../src/playback/engine.ts';
+import {
+  createYm6,
+  parsePsg,
+  parseYm3,
+  parseYm6,
+  prepareYmRuntime,
+  type RegisterFrame,
+} from '../../src/playback/formats.ts';
+import {
+  encodeWaveformPayload,
+  WAVEFORM_BUCKET_COUNT,
+  WAVEFORM_BYTES_PER_TRACK,
+  WAVEFORM_CHANNEL_COUNT,
+} from '../../src/playback/waveform.ts';
+import { Ym2149PlaybackAdapter } from '../../src/playback/Ym2149PlaybackAdapter.ts';
+import {
+  convertTrackerToPsg,
+  ZXTUNE_COMMIT,
+  type TrackerExtension,
+} from './tracker.ts';
 
 const waveformMagic = Buffer.from('ZXWF', 'ascii');
 const waveformHeaderLength = 16;
-const waveformBuckets = 2_048;
-const waveformChannels = 3;
 const waveformEncoding = 1;
+const engineCommit = 'b3096aac0dcab6dd1d82c0209f579761943aadc6';
+const comparisonTolerance = 0.000_001;
 
 export type ValidationMode = 'development' | 'release';
 
@@ -32,13 +65,26 @@ export type ValidationResult = {
   readonly waveformPath: string;
 };
 
-type TrackInput = {
+export type TrackInput = {
   readonly directory: string;
-  readonly sourceExtension: '.ay' | '.psg' | '.ym';
+  readonly sourcePath: string;
+  readonly sourceExtension: '.ay' | '.psg' | '.ym' | '.pt3' | '.stc' | '.asc';
   readonly sidecar: TrackSidecar;
 };
 
-type EmptyArtifacts = {
+type PreparedTrack = {
+  readonly input: TrackInput;
+  readonly runtime: Uint8Array;
+  readonly waveform: Uint8Array;
+  readonly provenance: GeneratedProvenance;
+  readonly catalog: Omit<
+    GeneratedCatalog['tracks'][number],
+    'runtimeUrl' | 'waveformByteOffset'
+  >;
+};
+
+type PreparedContent = {
+  readonly tracks: readonly PreparedTrack[];
   readonly catalog: GeneratedCatalog;
   readonly catalogBytes: Buffer;
   readonly waveformBytes: Buffer;
@@ -49,45 +95,10 @@ function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-function createEmptyWaveformPack(): Buffer {
-  const header = Buffer.alloc(waveformHeaderLength);
-  waveformMagic.copy(header, 0);
-  header.writeUInt16LE(1, 4);
-  header.writeUInt16LE(waveformBuckets, 6);
-  header.writeUInt8(waveformChannels, 8);
-  header.writeUInt8(waveformEncoding, 9);
-  header.writeUInt16LE(0, 10);
-  header.writeUInt32LE(0, 12);
-  return header;
-}
-
-function createEmptyArtifacts(): EmptyArtifacts {
-  const waveformBytes = createEmptyWaveformPack();
-  const waveformHash = sha256(waveformBytes);
-  const waveformFileName = `waveforms.${waveformHash}.bin`;
-  const catalog: GeneratedCatalog = {
-    schemaVersion: 1,
-    waveforms: {
-      url: `/generated/${waveformFileName}`,
-      sha256: waveformHash,
-      byteLength: waveformBytes.byteLength,
-      formatVersion: 1,
-      bucketCount: waveformBuckets,
-      channelCount: waveformChannels,
-    },
-    tracks: [],
-  };
-  const catalogBytes = Buffer.from(`${JSON.stringify(catalog, null, 2)}\n`);
-
-  return { catalog, catalogBytes, waveformBytes, waveformFileName };
-}
-
-async function isDirectory(target: string): Promise<boolean> {
-  try {
-    return (await stat(target)).isDirectory();
-  } catch {
-    return false;
-  }
+function hasMagic(bytes: Uint8Array, magic: string): boolean {
+  return Array.from(magic).every(
+    (character, index) => bytes[index] === character.charCodeAt(0),
+  );
 }
 
 function formatSchemaError(error: unknown): string {
@@ -99,59 +110,51 @@ function formatSchemaError(error: unknown): string {
   ) {
     return error.issues
       .map((issue: unknown) => {
-        if (typeof issue !== 'object' || issue === null) {
-          return String(issue);
-        }
-        const pathValue =
+        if (typeof issue !== 'object' || issue === null) return String(issue);
+        const issuePath =
           'path' in issue && Array.isArray(issue.path)
             ? issue.path.join('.')
             : '<root>';
         const message =
           'message' in issue ? String(issue.message) : 'Invalid value.';
-        return `${pathValue}: ${message}`;
+        return `${issuePath}: ${message}`;
       })
       .join('; ');
   }
   return error instanceof Error ? error.message : String(error);
 }
 
-async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
-  const tracksDirectory = path.join(root, 'content', 'tracks');
-  if (!(await isDirectory(tracksDirectory))) {
-    return [];
+async function isDirectory(target: string): Promise<boolean> {
+  try {
+    return (await stat(target)).isDirectory();
+  } catch {
+    return false;
   }
+}
 
-  const directoryEntries = await readdir(tracksDirectory, {
-    withFileTypes: true,
-  });
-  const trackDirectories = directoryEntries
+export async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
+  const tracksDirectory = path.join(root, 'content', 'tracks');
+  if (!(await isDirectory(tracksDirectory))) return [];
+  const entries = await readdir(tracksDirectory, { withFileTypes: true });
+  const directories = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-
   const inputs: TrackInput[] = [];
-  for (const directoryName of trackDirectories) {
+
+  for (const directoryName of directories) {
     const directory = path.join(tracksDirectory, directoryName);
     const sidecarPath = path.join(directory, 'track.json');
-    let sidecarInput: unknown;
-    try {
-      sidecarInput = JSON.parse(await readFile(sidecarPath, 'utf8'));
-    } catch (error) {
-      throw new Error(
-        `${sidecarPath}: unable to read valid JSON: ${formatSchemaError(error)}`,
-        { cause: error },
-      );
-    }
-
     let sidecar: TrackSidecar;
     try {
-      sidecar = trackSidecarSchema.parse(sidecarInput);
+      sidecar = trackSidecarSchema.parse(
+        JSON.parse(await readFile(sidecarPath, 'utf8')) as unknown,
+      );
     } catch (error) {
       throw new Error(`${sidecarPath}: ${formatSchemaError(error)}`, {
         cause: error,
       });
     }
-
     if (sidecar.id !== directoryName) {
       throw new Error(
         `${sidecarPath}: id must match containing directory ${directoryName}.`,
@@ -159,14 +162,13 @@ async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
     }
 
     const sourceFiles = (await readdir(directory)).filter((fileName) =>
-      /^source\.(?:ay|psg|ym)$/u.test(fileName),
+      /^source\.(?:ay|psg|ym|pt3|stc|asc)$/u.test(fileName),
     );
     if (sourceFiles.length !== 1) {
       throw new Error(
-        `${directory}: expected exactly one source.ay, source.psg, or source.ym; found ${sourceFiles.length}.`,
+        `${directory}: expected exactly one supported source file; found ${sourceFiles.length}.`,
       );
     }
-
     const sourceFile = sourceFiles[0];
     if (sourceFile === undefined) {
       throw new Error(`${directory}: authoritative source file is missing.`);
@@ -174,36 +176,25 @@ async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
     const sourceExtension = path.extname(
       sourceFile,
     ) as TrackInput['sourceExtension'];
-
-    if (sourceExtension === '.psg') {
-      const requiredPsgFields = [
-        'chipType',
-        'chipClockHz',
-        'frameRateHz',
-        'channelLayout',
-      ] as const;
-      for (const field of requiredPsgFields) {
-        if (sidecar[field] === undefined) {
-          throw new Error(
-            `${sidecarPath}: ${field} is required for PSG input.`,
-          );
-        }
-      }
-      if (sidecar.subsong !== 1) {
-        throw new Error(`${sidecarPath}: PSG input requires subsong 1.`);
-      }
-      if (sidecar.durationOverrideSeconds !== undefined) {
-        throw new Error(
-          `${sidecarPath}: PSG input cannot use durationOverrideSeconds.`,
-        );
-      }
+    if (sourceExtension !== '.ay' && sidecar.subsong !== 1) {
+      throw new Error(
+        `${sidecarPath}: ${sourceExtension} input requires subsong 1.`,
+      );
     }
-
-    if (sourceExtension === '.ym' && sidecar.subsong !== 1) {
-      throw new Error(`${sidecarPath}: YM input requires subsong 1.`);
+    if (
+      ['.psg', '.pt3', '.stc', '.asc'].includes(sourceExtension) &&
+      sidecar.durationOverrideSeconds !== undefined
+    ) {
+      throw new Error(
+        `${sidecarPath}: finite PSG and tracker inputs cannot use durationOverrideSeconds.`,
+      );
     }
-
-    inputs.push({ directory, sourceExtension, sidecar });
+    inputs.push({
+      directory,
+      sourcePath: path.join(directory, sourceFile),
+      sourceExtension,
+      sidecar,
+    });
   }
 
   inputs.sort((left, right) => left.sidecar.order - right.sidecar.order);
@@ -214,92 +205,519 @@ async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
       );
     }
   }
-
   return inputs;
 }
 
-function validateRights(
+function validateReleaseCatalog(
   inputs: readonly TrackInput[],
   mode: ValidationMode,
 ): void {
-  if (mode !== 'release') {
-    return;
-  }
-
+  if (mode !== 'release') return;
   if (inputs.length < 20 || inputs.length > 30) {
     throw new Error(
       `Release validation requires 20–30 tracks; found ${inputs.length}.`,
     );
   }
+}
 
+function requiredPlaybackField<
+  K extends 'chipType' | 'chipClockHz' | 'frameRateHz' | 'channelLayout',
+>(input: TrackInput, field: K): NonNullable<TrackSidecar[K]> {
+  const value = input.sidecar[field];
+  if (value === undefined) {
+    throw new Error(
+      `${path.join(input.directory, 'track.json')}: ${field} is required because the source does not unambiguously provide it.`,
+    );
+  }
+  return value;
+}
+
+function asTrackerExtension(
+  extension: TrackInput['sourceExtension'],
+): TrackerExtension | undefined {
+  return extension === '.pt3' || extension === '.stc' || extension === '.asc'
+    ? extension
+    : undefined;
+}
+
+async function generateTrackerConversions(
+  inputs: readonly TrackInput[],
+): Promise<void> {
   for (const input of inputs) {
-    if (
-      input.sidecar.licenseName === undefined ||
-      input.sidecar.licenseUrl === undefined
-    ) {
-      throw new Error(
-        `${path.join(input.directory, 'track.json')}: release tracks require licenseName and licenseUrl.`,
-      );
+    const extension = asTrackerExtension(input.sourceExtension);
+    if (extension === undefined) continue;
+    const source = await readFile(input.sourcePath);
+    try {
+      await readTrackerConversion(input, source);
+      continue;
+    } catch {
+      // Missing or stale conversions are rebuilt below with the pinned tool.
+    }
+    const conversion = await convertTrackerToPsg(source, extension);
+    const metadata: TrackerConversionProvenance = {
+      tool: 'zxtune123',
+      commit: ZXTUNE_COMMIT,
+      mode: 'psg',
+      sourceFormat: conversion.sourceFormat,
+      sourceSha256: conversion.sourceSha256,
+      psgSha256: conversion.psgSha256,
+      psgByteLength: conversion.psg.length,
+    };
+    const generated = path.join(input.directory, 'generated');
+    await atomicWrite(path.join(generated, 'source.psg'), conversion.psg);
+    await atomicWrite(
+      path.join(generated, 'tracker-conversion.json'),
+      Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`),
+    );
+  }
+}
+
+async function readTrackerConversion(
+  input: TrackInput,
+  source: Uint8Array,
+): Promise<{
+  readonly psg: Buffer;
+  readonly metadata: TrackerConversionProvenance;
+}> {
+  const generated = path.join(input.directory, 'generated');
+  let psg: Buffer;
+  let metadata: TrackerConversionProvenance;
+  try {
+    psg = await readFile(path.join(generated, 'source.psg'));
+    metadata = trackerConversionSchema.parse(
+      JSON.parse(
+        await readFile(path.join(generated, 'tracker-conversion.json'), 'utf8'),
+      ) as unknown,
+    );
+  } catch (error) {
+    throw new Error(
+      `${input.sourcePath}: missing or invalid tracker conversion; run npm run content:generate with Docker available.`,
+      { cause: error },
+    );
+  }
+  const expectedFormat = input.sourceExtension.slice(1).toUpperCase();
+  if (
+    metadata.sourceFormat !== expectedFormat ||
+    metadata.sourceSha256 !== sha256(source) ||
+    metadata.psgSha256 !== sha256(psg) ||
+    metadata.psgByteLength !== psg.length
+  ) {
+    throw new Error(
+      `${input.sourcePath}: tracker conversion is stale or inconsistent; run npm run content:generate with Docker available.`,
+    );
+  }
+  return { psg, metadata };
+}
+
+async function initializeContentEngine(root: string): Promise<void> {
+  const wasm = await readFile(
+    path.join(root, 'vendor', 'ym2149', 'ym2149_wasm_bg.wasm'),
+  );
+  await initializeYm2149(wasm);
+}
+
+function compareFrames(
+  expected: readonly RegisterFrame[],
+  actual: readonly RegisterFrame[],
+  trackId: string,
+): void {
+  if (expected.length !== actual.length) {
+    throw new Error(
+      `${trackId}: conversion frame count differs (${expected.length} source, ${actual.length} runtime).`,
+    );
+  }
+  for (let frame = 0; frame < expected.length; frame += 1) {
+    for (let register = 0; register < 16; register += 1) {
+      const sourceValue = expected[frame]?.[register];
+      const runtimeValue = actual[frame]?.[register];
+      if (sourceValue !== runtimeValue) {
+        throw new Error(
+          `${trackId}: conversion mismatch at frame ${frame}, register ${register}: expected ${sourceValue}, actual ${runtimeValue}.`,
+        );
+      }
     }
   }
 }
 
-function validateWaveformPack(
-  bytes: Buffer,
-  expectedTrackCount: number,
-  filePath: string,
+function validateRuntimeSeeks(
+  runtime: Uint8Array,
+  durationSeconds: number,
+  trackId: string,
 ): void {
-  if (bytes.byteLength < waveformHeaderLength) {
-    throw new Error(`${filePath}: waveform pack is shorter than its header.`);
+  const positions = [
+    0,
+    durationSeconds * 0.25,
+    durationSeconds * 0.5,
+    durationSeconds * 0.75,
+    Math.max(0, durationSeconds - 1),
+  ];
+  for (const position of new Set(
+    positions.map((value) => Math.min(value, durationSeconds)),
+  )) {
+    const sample = Math.round(position * ENGINE_SAMPLE_RATE);
+    const remaining = Math.max(
+      0,
+      Math.round(durationSeconds * ENGINE_SAMPLE_RATE) - sample,
+    );
+    const count = Math.min(ENGINE_SAMPLE_RATE, remaining);
+    if (count === 0) continue;
+    const uninterrupted = createEnginePlayer(runtime);
+    const restored = createEnginePlayerAtSample(runtime, sample);
+    try {
+      uninterrupted.play();
+      fastForwardEngine(uninterrupted, sample);
+      const expected = generateEngineChannels(uninterrupted, count);
+      const actual = generateEngineChannels(restored, count);
+      for (let index = 0; index < actual.mono.length; index += 1) {
+        const difference = Math.abs(
+          (expected.mono[index] ?? 0) - (actual.mono[index] ?? 0),
+        );
+        if (difference > comparisonTolerance) {
+          throw new Error(
+            `${trackId}: seek mix mismatch at ${position.toFixed(6)}s, sample ${index}; difference ${difference} exceeds ${comparisonTolerance}.`,
+          );
+        }
+      }
+      for (let index = 0; index < actual.channels.length; index += 1) {
+        const difference = Math.abs(
+          (expected.channels[index] ?? 0) - (actual.channels[index] ?? 0),
+        );
+        if (difference > comparisonTolerance) {
+          throw new Error(
+            `${trackId}: seek mismatch at ${position.toFixed(6)}s, channel ${index % 3}, sample ${Math.floor(index / 3)}; difference ${difference} exceeds ${comparisonTolerance}.`,
+          );
+        }
+      }
+    } finally {
+      uninterrupted.free();
+      restored.free();
+    }
   }
-  if (!bytes.subarray(0, 4).equals(waveformMagic)) {
-    throw new Error(`${filePath}: invalid ZXWF magic.`);
-  }
-  if (bytes.readUInt16LE(4) !== 1) {
-    throw new Error(`${filePath}: unsupported waveform format version.`);
-  }
-  if (bytes.readUInt16LE(6) !== waveformBuckets) {
-    throw new Error(`${filePath}: unexpected waveform bucket count.`);
-  }
-  if (bytes.readUInt8(8) !== waveformChannels) {
-    throw new Error(`${filePath}: unexpected waveform channel count.`);
-  }
-  if (bytes.readUInt8(9) !== waveformEncoding) {
-    throw new Error(`${filePath}: unsupported waveform value encoding.`);
-  }
-  if (bytes.readUInt16LE(10) !== 0) {
-    throw new Error(`${filePath}: waveform reserved header value is nonzero.`);
-  }
-  if (bytes.readUInt32LE(12) !== expectedTrackCount) {
+}
+
+function detectSourceFormat(
+  bytes: Uint8Array,
+): GeneratedProvenance['sourceFormat'] {
+  if (hasMagic(bytes, 'PSG') && bytes[3] === 0x1a) return 'PSG';
+  if (hasMagic(bytes, 'ZXAYEMUL')) return 'AY';
+  if (hasMagic(bytes, 'YM6!')) return 'YM6';
+  if (hasMagic(bytes, 'YM3!')) return 'YM3';
+  throw new Error(
+    'unsupported source signature; expected PSG, ZXAY/EMUL, YM3, or YM6',
+  );
+}
+
+function assertExtensionMatches(
+  input: TrackInput,
+  sourceFormat: GeneratedProvenance['sourceFormat'],
+): void {
+  const expected =
+    sourceFormat === 'PSG' ? '.psg' : sourceFormat === 'AY' ? '.ay' : '.ym';
+  if (input.sourceExtension !== expected) {
     throw new Error(
-      `${filePath}: waveform track count does not match catalog.`,
+      `${input.sourcePath}: extension ${input.sourceExtension} does not match detected ${sourceFormat} format.`,
     );
   }
+}
 
-  const expectedLength = waveformHeaderLength + expectedTrackCount * 12_288;
-  if (bytes.byteLength !== expectedLength) {
-    throw new Error(
-      `${filePath}: expected ${expectedLength} bytes; found ${bytes.byteLength}.`,
+function captureAy(
+  source: Uint8Array,
+  input: TrackInput,
+  frameRateHz: number,
+): {
+  readonly frames: readonly RegisterFrame[];
+  readonly durationSource: 'source' | 'override';
+} {
+  const player = createEnginePlayer(source);
+  try {
+    if (
+      input.sidecar.subsong > player.subsongCount() ||
+      !player.setSubsong(input.sidecar.subsong)
+    ) {
+      throw new Error(
+        `${input.sidecar.id}: AY subsong ${input.sidecar.subsong} is unavailable.`,
+      );
+    }
+    const reliable = player.hasDurationInfo() && player.duration_seconds() > 0;
+    const override = input.sidecar.durationOverrideSeconds;
+    if (reliable && override !== undefined) {
+      throw new Error(
+        `${input.sidecar.id}: durationOverrideSeconds is not allowed on a reliably finite AY source.`,
+      );
+    }
+    if (!reliable && override === undefined) {
+      throw new Error(
+        `${input.sidecar.id}: looping or unreliable AY source requires durationOverrideSeconds.`,
+      );
+    }
+    const requestedDuration = reliable
+      ? player.duration_seconds()
+      : (override ?? 0);
+    const frameCount = Math.ceil(requestedDuration * frameRateHz);
+    const samplesPerFrame = ENGINE_SAMPLE_RATE / frameRateHz;
+    if (!Number.isInteger(samplesPerFrame)) {
+      throw new Error(
+        `${input.sidecar.id}: frame rate ${frameRateHz} does not divide the engine sample rate.`,
+      );
+    }
+    const frames: RegisterFrame[] = [];
+    player.play();
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      player.generateSamples(samplesPerFrame);
+      const registers = player.get_registers();
+      registers[13] = 0xff;
+      frames.push(registers);
+    }
+    return { frames, durationSource: reliable ? 'source' : 'override' };
+  } finally {
+    player.free();
+  }
+}
+
+async function originalFileName(input: TrackInput): Promise<string> {
+  try {
+    const stagedName = (
+      await readFile(
+        path.join(input.directory, 'generated', 'original-name.txt'),
+        'utf8',
+      )
+    ).trim();
+    if (stagedName !== '') return stagedName;
+  } catch {
+    // Only a newly staged import uses this transient handoff.
+  }
+  const provenancePath = path.join(
+    input.directory,
+    'generated',
+    'provenance.json',
+  );
+  try {
+    const parsed = generatedProvenanceSchema.parse(
+      JSON.parse(await readFile(provenancePath, 'utf8')) as unknown,
     );
+    return parsed.originalFileName;
+  } catch {
+    return path.basename(input.sourcePath);
+  }
+}
+
+async function prepareTrack(
+  root: string,
+  input: TrackInput,
+): Promise<PreparedTrack> {
+  const source = await readFile(input.sourcePath);
+  if (source.length === 0)
+    throw new Error(`${input.sourcePath}: source is empty.`);
+  const trackerExtension = asTrackerExtension(input.sourceExtension);
+  let sourceFormat: GeneratedProvenance['sourceFormat'];
+  let playableSource: Uint8Array = source;
+  let trackerConversion: TrackerConversionProvenance | null = null;
+  if (trackerExtension === undefined) {
+    sourceFormat = detectSourceFormat(source);
+    assertExtensionMatches(input, sourceFormat);
+  } else {
+    const converted = await readTrackerConversion(input, source);
+    sourceFormat = converted.metadata.sourceFormat;
+    playableSource = converted.psg;
+    trackerConversion = converted.metadata;
   }
 
-  for (
-    let offset = waveformHeaderLength;
-    offset < bytes.byteLength;
-    offset += 2
-  ) {
-    const minimum = bytes.readInt8(offset);
-    const maximum = bytes.readInt8(offset + 1);
-    if (minimum === -128 || maximum === -128) {
-      throw new Error(`${filePath}: reserved -128 waveform value is present.`);
+  const chipType = requiredPlaybackField(input, 'chipType');
+  let chipClockHz = requiredPlaybackField(input, 'chipClockHz');
+  let frameRateHz = requiredPlaybackField(input, 'frameRateHz');
+  const channelLayout = requiredPlaybackField(input, 'channelLayout');
+  let frames: readonly RegisterFrame[];
+  let runtime: Uint8Array;
+  let runtimeMode: GeneratedProvenance['runtimeMode'];
+  let durationSource: GeneratedProvenance['durationSource'] = 'source';
+
+  if (sourceFormat === 'PSG' || trackerConversion !== null) {
+    frames = parsePsg(playableSource).frames;
+    runtime = createYm6(frames, {
+      chipClockHz,
+      frameRateHz,
+      title: input.sidecar.title,
+      author: input.sidecar.author,
+      comment:
+        trackerConversion === null
+          ? `Converted from ${path.basename(input.sourcePath)} by ZX-SPECTRUM.FM`
+          : `Converted from ${sourceFormat} through ZXTune PSG by ZX-SPECTRUM.FM`,
+    });
+    runtimeMode = 'convert';
+  } else if (sourceFormat === 'AY') {
+    const captured = captureAy(source, input, frameRateHz);
+    frames = captured.frames;
+    durationSource = captured.durationSource;
+    runtime = createYm6(frames, {
+      chipClockHz,
+      frameRateHz,
+      title: input.sidecar.title,
+      author: input.sidecar.author,
+      comment: `Captured from AY subsong ${input.sidecar.subsong} by ZX-SPECTRUM.FM`,
+    });
+    runtimeMode = 'convert';
+  } else {
+    if (sourceFormat === 'YM6') {
+      const embedded = parseYm6(source);
+      if (
+        embedded.chipClockHz !== chipClockHz ||
+        embedded.frameRateHz !== frameRateHz
+      ) {
+        throw new Error(
+          `${input.sidecar.id}: sidecar clock or frame rate conflicts with unambiguous YM6 metadata.`,
+        );
+      }
     }
-    if (minimum > maximum) {
-      throw new Error(`${filePath}: waveform minimum exceeds maximum.`);
-    }
+    const prepared = prepareYmRuntime(source, {
+      chipClockHz,
+      frameRateHz,
+      title: input.sidecar.title,
+      author: input.sidecar.author,
+      comment: 'Normalized by ZX-SPECTRUM.FM',
+    });
+    frames = prepared.frames;
+    runtime = prepared.bytes;
+    runtimeMode = prepared.mode === 'copy' ? 'copy' : 'normalize';
   }
+
+  const parsedRuntime = parseYm6(runtime);
+  chipClockHz = parsedRuntime.chipClockHz;
+  frameRateHz = parsedRuntime.frameRateHz;
+  compareFrames(frames, parsedRuntime.frames, input.sidecar.id);
+  const durationSeconds = parsedRuntime.frames.length / frameRateHz;
+  const runtimeTrack: RuntimeTrack = {
+    id: input.sidecar.id,
+    bytes: runtime,
+    durationSeconds,
+    chipType,
+    chipClockHz,
+    frameRateHz,
+    channelLayout,
+  };
+  validateRuntimeSeeks(runtime, durationSeconds, input.sidecar.id);
+  const adapter = new Ym2149PlaybackAdapter();
+  const render = await adapter.renderOffline(
+    runtimeTrack,
+    new AbortController().signal,
+  );
+  adapter.dispose();
+  const waveform = encodeWaveformPayload(render);
+  const runtimeHash = sha256(runtime);
+  const durationOverride =
+    durationSource === 'override' &&
+    input.sidecar.durationOverrideSeconds !== undefined
+      ? {
+          reason: 'source-loop-or-unreliable-end' as const,
+          requestedSeconds: input.sidecar.durationOverrideSeconds,
+          actualFrameCount: frames.length,
+          frameRateHz,
+          actualDurationSeconds: durationSeconds,
+        }
+      : null;
+  const provenance: GeneratedProvenance = {
+    schemaVersion: 1,
+    originalFileName: await originalFileName(input),
+    sourceFormat,
+    sourceSha256: sha256(source),
+    sourceByteLength: source.length,
+    subsong: input.sidecar.subsong,
+    chipType,
+    chipClockHz,
+    frameRateHz,
+    channelLayout,
+    runtimeMode,
+    runtimeFormat: 'YM6',
+    runtimeSha256: runtimeHash,
+    runtimeByteLength: runtime.length,
+    frameCount: frames.length,
+    durationSeconds,
+    durationSource,
+    durationOverride,
+    waveformSha256: sha256(waveform),
+    trackerConversion,
+    preparationTool: 'zx-spectrum-fm-content-v1',
+    engine: { name: 'ym2149-rs', commit: engineCommit },
+  };
+  const catalog: PreparedTrack['catalog'] = {
+    id: input.sidecar.id,
+    order: input.sidecar.order,
+    title: input.sidecar.title,
+    author: input.sidecar.author,
+    sourceUrl: input.sidecar.sourceUrl,
+    subsong: input.sidecar.subsong,
+    sourceFormat,
+    runtimeFormat: 'YM6',
+    runtimeSha256: runtimeHash,
+    runtimeByteLength: runtime.length,
+    durationSeconds,
+    durationSource,
+    chipType,
+    chipClockHz,
+    frameRateHz,
+    channelLayout,
+    waveformByteLength: 12_288,
+    ...(input.sidecar.year === undefined ? {} : { year: input.sidecar.year }),
+    ...(input.sidecar.notes === undefined
+      ? {}
+      : { notes: input.sidecar.notes }),
+  };
+  return { input, runtime, waveform, provenance, catalog };
+}
+
+function createWaveformPack(payloads: readonly Uint8Array[]): Buffer {
+  const header = Buffer.alloc(waveformHeaderLength);
+  waveformMagic.copy(header, 0);
+  header.writeUInt16LE(1, 4);
+  header.writeUInt16LE(WAVEFORM_BUCKET_COUNT, 6);
+  header.writeUInt8(WAVEFORM_CHANNEL_COUNT, 8);
+  header.writeUInt8(waveformEncoding, 9);
+  header.writeUInt16LE(0, 10);
+  header.writeUInt32LE(payloads.length, 12);
+  return Buffer.concat([
+    header,
+    ...payloads.map((payload) => Buffer.from(payload)),
+  ]);
+}
+
+async function prepareContent(root: string): Promise<PreparedContent> {
+  const inputs = await discoverTrackInputs(root);
+  if (inputs.length > 0) await initializeContentEngine(root);
+  const tracks: PreparedTrack[] = [];
+  for (const input of inputs) tracks.push(await prepareTrack(root, input));
+  const waveformBytes = createWaveformPack(
+    tracks.map(({ waveform }) => waveform),
+  );
+  const waveformHash = sha256(waveformBytes);
+  const waveformFileName = `waveforms.${waveformHash}.bin`;
+  const catalog: GeneratedCatalog = {
+    schemaVersion: 1,
+    waveforms: {
+      url: `/generated/${waveformFileName}`,
+      sha256: waveformHash,
+      byteLength: waveformBytes.length,
+      formatVersion: 1,
+      bucketCount: WAVEFORM_BUCKET_COUNT,
+      channelCount: WAVEFORM_CHANNEL_COUNT,
+    },
+    tracks: tracks.map((track, index) => ({
+      ...track.catalog,
+      runtimeUrl: `/generated/tracks/${track.catalog.id}.${track.catalog.runtimeSha256}.ym`,
+      waveformByteOffset:
+        waveformHeaderLength + index * WAVEFORM_BYTES_PER_TRACK,
+    })),
+  };
+  generatedCatalogSchema.parse(catalog);
+  return {
+    tracks,
+    catalog,
+    catalogBytes: Buffer.from(`${JSON.stringify(catalog, null, 2)}\n`),
+    waveformBytes,
+    waveformFileName,
+  };
 }
 
 async function atomicWrite(filePath: string, bytes: Uint8Array): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
   const temporaryPath = `${filePath}.tmp-${process.pid}`;
   try {
     await writeFile(temporaryPath, bytes, { flag: 'wx' });
@@ -310,36 +728,133 @@ async function atomicWrite(filePath: string, bytes: Uint8Array): Promise<void> {
   }
 }
 
-export async function generateFoundationContent(root: string): Promise<void> {
-  const inputs = await discoverTrackInputs(root);
-  if (inputs.length !== 0) {
-    throw new Error(
-      'Phase 1 generation supports only the valid empty development catalog; real-track generation begins in Phase 3.',
-    );
-  }
-
-  const generatedDirectory = path.join(root, 'public', 'generated');
-  await mkdir(generatedDirectory, { recursive: true });
-
-  const expected = createEmptyArtifacts();
-  const waveformPath = path.join(generatedDirectory, expected.waveformFileName);
-  const catalogPath = path.join(generatedDirectory, 'catalog.json');
-
-  const existingEntries = await readdir(generatedDirectory, {
-    withFileTypes: true,
-  });
-  for (const entry of existingEntries) {
+async function cleanHashedAssets(
+  directory: string,
+  pattern: RegExp,
+  expected: ReadonlySet<string>,
+): Promise<void> {
+  if (!(await isDirectory(directory))) return;
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (
       entry.isFile() &&
-      /^waveforms\.[a-f0-9]{64}\.bin$/u.test(entry.name) &&
-      entry.name !== expected.waveformFileName
+      pattern.test(entry.name) &&
+      !expected.has(entry.name)
     ) {
-      await unlink(path.join(generatedDirectory, entry.name));
+      await unlink(path.join(directory, entry.name));
     }
   }
+}
 
-  await atomicWrite(waveformPath, expected.waveformBytes);
-  await atomicWrite(catalogPath, expected.catalogBytes);
+export async function generateFoundationContent(root: string): Promise<void> {
+  await generateTrackerConversions(await discoverTrackInputs(root));
+  const prepared = await prepareContent(root);
+  const publicDirectory = path.join(root, 'public', 'generated');
+  const publicTracks = path.join(publicDirectory, 'tracks');
+  await mkdir(publicTracks, { recursive: true });
+
+  for (const track of prepared.tracks) {
+    const generated = path.join(track.input.directory, 'generated');
+    await atomicWrite(path.join(generated, 'playback.ym'), track.runtime);
+    await atomicWrite(path.join(generated, 'waveform.bin'), track.waveform);
+    await atomicWrite(
+      path.join(generated, 'provenance.json'),
+      Buffer.from(`${JSON.stringify(track.provenance, null, 2)}\n`),
+    );
+    await unlink(path.join(generated, 'original-name.txt')).catch(
+      () => undefined,
+    );
+    await atomicWrite(
+      path.join(
+        publicTracks,
+        `${track.catalog.id}.${track.catalog.runtimeSha256}.ym`,
+      ),
+      track.runtime,
+    );
+  }
+  await atomicWrite(
+    path.join(publicDirectory, prepared.waveformFileName),
+    prepared.waveformBytes,
+  );
+  await atomicWrite(
+    path.join(publicDirectory, 'catalog.json'),
+    prepared.catalogBytes,
+  );
+
+  await cleanHashedAssets(
+    publicDirectory,
+    /^waveforms\.[a-f0-9]{64}\.bin$/u,
+    new Set([prepared.waveformFileName]),
+  );
+  await cleanHashedAssets(
+    publicTracks,
+    /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-f0-9]{64}\.ym$/u,
+    new Set(
+      prepared.tracks.map(
+        (track) => `${track.catalog.id}.${track.catalog.runtimeSha256}.ym`,
+      ),
+    ),
+  );
+}
+
+function validateWaveformPack(
+  bytes: Buffer,
+  trackCount: number,
+  filePath: string,
+): void {
+  if (
+    bytes.length < waveformHeaderLength ||
+    !bytes.subarray(0, 4).equals(waveformMagic)
+  ) {
+    throw new Error(`${filePath}: invalid ZXWF header.`);
+  }
+  if (
+    bytes.readUInt16LE(4) !== 1 ||
+    bytes.readUInt16LE(6) !== WAVEFORM_BUCKET_COUNT ||
+    bytes.readUInt8(8) !== WAVEFORM_CHANNEL_COUNT ||
+    bytes.readUInt8(9) !== waveformEncoding ||
+    bytes.readUInt16LE(10) !== 0 ||
+    bytes.readUInt32LE(12) !== trackCount
+  ) {
+    throw new Error(
+      `${filePath}: unsupported or inconsistent waveform header.`,
+    );
+  }
+  if (
+    bytes.length !==
+    waveformHeaderLength + trackCount * WAVEFORM_BYTES_PER_TRACK
+  ) {
+    throw new Error(`${filePath}: waveform pack length is inconsistent.`);
+  }
+  for (let offset = waveformHeaderLength; offset < bytes.length; offset += 2) {
+    const minimum = bytes.readInt8(offset);
+    const maximum = bytes.readInt8(offset + 1);
+    if (minimum === -128 || maximum === -128 || minimum > maximum) {
+      throw new Error(
+        `${filePath}: invalid waveform values at byte ${offset}.`,
+      );
+    }
+  }
+}
+
+async function assertExactFile(
+  filePath: string,
+  expected: Uint8Array,
+  label: string,
+): Promise<void> {
+  let actual: Buffer;
+  try {
+    actual = await readFile(filePath);
+  } catch (error) {
+    throw new Error(
+      `${filePath}: missing ${label}: ${formatSchemaError(error)}`,
+      {
+        cause: error,
+      },
+    );
+  }
+  if (!actual.equals(Buffer.from(expected))) {
+    throw new Error(`${filePath}: ${label} is stale or has unexpected bytes.`);
+  }
 }
 
 export async function validateContent(
@@ -347,65 +862,58 @@ export async function validateContent(
   mode: ValidationMode,
 ): Promise<ValidationResult> {
   const inputs = await discoverTrackInputs(root);
-  validateRights(inputs, mode);
-
+  validateReleaseCatalog(inputs, mode);
+  const expected = await prepareContent(root);
   const catalogPath = path.join(root, 'public', 'generated', 'catalog.json');
-  let catalogBytes: Buffer;
-  let catalogInput: unknown;
-  try {
-    catalogBytes = await readFile(catalogPath);
-    catalogInput = JSON.parse(catalogBytes.toString('utf8'));
-  } catch (error) {
-    throw new Error(
-      `${catalogPath}: unable to read valid generated catalog: ${formatSchemaError(error)}`,
-      { cause: error },
+  await assertExactFile(
+    catalogPath,
+    expected.catalogBytes,
+    'generated catalog',
+  );
+  const waveformPath = path.join(
+    root,
+    'public',
+    'generated',
+    expected.waveformFileName,
+  );
+  await assertExactFile(waveformPath, expected.waveformBytes, 'waveform pack');
+  validateWaveformPack(
+    expected.waveformBytes,
+    expected.tracks.length,
+    waveformPath,
+  );
+
+  for (const track of expected.tracks) {
+    const generated = path.join(track.input.directory, 'generated');
+    const provenanceBytes = Buffer.from(
+      `${JSON.stringify(track.provenance, null, 2)}\n`,
     );
-  }
-
-  let catalog: GeneratedCatalog;
-  try {
-    catalog = generatedCatalogSchema.parse(catalogInput);
-  } catch (error) {
-    throw new Error(`${catalogPath}: ${formatSchemaError(error)}`, {
-      cause: error,
-    });
-  }
-
-  if (catalog.tracks.length !== inputs.length) {
-    throw new Error(
-      `${catalogPath}: catalog has ${catalog.tracks.length} tracks but authoritative content has ${inputs.length}.`,
+    generatedProvenanceSchema.parse(track.provenance);
+    await assertExactFile(
+      path.join(generated, 'playback.ym'),
+      track.runtime,
+      'canonical runtime',
     );
-  }
-
-  const waveformFileName = path.basename(catalog.waveforms.url);
-  const waveformPath = path.join(root, 'public', 'generated', waveformFileName);
-  const waveformBytes = await readFile(waveformPath).catch((error: unknown) => {
-    throw new Error(
-      `${waveformPath}: unable to read waveform pack: ${formatSchemaError(error)}`,
+    await assertExactFile(
+      path.join(generated, 'waveform.bin'),
+      track.waveform,
+      'track waveform',
     );
-  });
-
-  if (waveformBytes.byteLength !== catalog.waveforms.byteLength) {
-    throw new Error(`${waveformPath}: byte length does not match catalog.`);
-  }
-  if (sha256(waveformBytes) !== catalog.waveforms.sha256) {
-    throw new Error(`${waveformPath}: SHA-256 does not match catalog.`);
-  }
-  validateWaveformPack(waveformBytes, catalog.tracks.length, waveformPath);
-
-  if (inputs.length === 0) {
-    const expected = createEmptyArtifacts();
-    if (!catalogBytes.equals(expected.catalogBytes)) {
-      throw new Error(
-        `${catalogPath}: generated catalog is stale or nondeterministically formatted.`,
-      );
-    }
-    if (!waveformBytes.equals(expected.waveformBytes)) {
-      throw new Error(`${waveformPath}: generated waveform pack is stale.`);
-    }
-  } else {
-    throw new Error(
-      'Phase 1 validation recognizes authoritative tracks but canonical runtime validation begins in Phase 3.',
+    await assertExactFile(
+      path.join(generated, 'provenance.json'),
+      provenanceBytes,
+      'provenance',
+    );
+    await assertExactFile(
+      path.join(
+        root,
+        'public',
+        'generated',
+        'tracks',
+        `${track.catalog.id}.${track.catalog.runtimeSha256}.ym`,
+      ),
+      track.runtime,
+      'public runtime asset',
     );
   }
 
@@ -426,4 +934,45 @@ export function resolveValidationMode(
     environment.VERCEL_ENV === 'production'
     ? 'release'
     : 'development';
+}
+
+export function detectSupportedSource(
+  bytes: Uint8Array,
+  originalFileName?: string,
+): {
+  readonly format: GeneratedProvenance['sourceFormat'];
+  readonly extension: TrackInput['sourceExtension'];
+} {
+  const suppliedExtension = originalFileName
+    ? path.extname(originalFileName.toLowerCase())
+    : '';
+  try {
+    const format = detectSourceFormat(bytes);
+    const extension =
+      format === 'AY' ? '.ay' : format === 'PSG' ? '.psg' : '.ym';
+    if (suppliedExtension !== '' && suppliedExtension !== extension) {
+      throw new Error(
+        `${originalFileName}: extension ${suppliedExtension} does not match detected ${format} format.`,
+      );
+    }
+    return {
+      format,
+      extension,
+    };
+  } catch (error) {
+    const extension = /^\.(pt3|stc|asc)$/u.exec(suppliedExtension)
+      ? (suppliedExtension as TrackerExtension)
+      : undefined;
+    if (extension === undefined) throw error;
+    return {
+      format: extension.slice(1).toUpperCase() as 'PT3' | 'STC' | 'ASC',
+      extension,
+    };
+  }
+}
+
+export function extractYmFrameCount(bytes: Uint8Array): number {
+  if (hasMagic(bytes, 'YM6!')) return parseYm6(bytes).frames.length;
+  if (hasMagic(bytes, 'YM3!')) return parseYm3(bytes).length;
+  throw new Error('not a supported YM source');
 }

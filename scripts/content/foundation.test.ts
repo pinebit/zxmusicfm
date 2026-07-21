@@ -5,6 +5,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  detectSupportedSource,
   generateFoundationContent,
   resolveValidationMode,
   validateContent,
@@ -46,9 +47,18 @@ describe('foundation content generation', () => {
     await writeFile(catalogPath, catalog.replace(/\n$/u, ''));
 
     await expect(validateContent(root, 'development')).rejects.toThrow(
-      'stale or nondeterministically formatted',
+      'generated catalog is stale or has unexpected bytes',
     );
   });
+
+  it('validates the generated real catalog and provenance', async () => {
+    await expect(
+      validateContent(process.cwd(), 'development'),
+    ).resolves.toMatchObject({
+      mode: 'development',
+      trackCount: 9,
+    });
+  }, 30_000);
 
   it('rejects an empty release catalog', async () => {
     const root = await createTemporaryRoot();
@@ -70,5 +80,30 @@ describe('resolveValidationMode', () => {
     expect(resolveValidationMode([], { VERCEL_ENV: 'production' })).toBe(
       'release',
     );
+  });
+});
+
+describe('tracker source routing', () => {
+  it('routes supported tracker extensions to pinned ZXTune validation', () => {
+    const opaqueTrackerBytes = new Uint8Array([1, 2, 3]);
+
+    expect(detectSupportedSource(opaqueTrackerBytes, 'song.pt3')).toEqual({
+      format: 'PT3',
+      extension: '.pt3',
+    });
+    expect(detectSupportedSource(opaqueTrackerBytes, 'song.stc')).toEqual({
+      format: 'STC',
+      extension: '.stc',
+    });
+    expect(detectSupportedSource(opaqueTrackerBytes, 'song.asc')).toEqual({
+      format: 'ASC',
+      extension: '.asc',
+    });
+  });
+
+  it('does not route an unsupported extension as a tracker', () => {
+    expect(() =>
+      detectSupportedSource(new Uint8Array([1, 2, 3]), 'song.mod'),
+    ).toThrow('unsupported source signature');
   });
 });

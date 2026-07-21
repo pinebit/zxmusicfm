@@ -16,8 +16,8 @@ Build the deterministic PSG-to-YM6 and content-import pipeline, import **Solitud
 
 ## 4. Complete the MVP
 
-Build the polished responsive interface and all catalog, playback, sequencing, accessibility, error-handling, credits, security, and deployment behavior specified in `IDEA.md`. Populate the remaining curated catalog through the import tooling.
+Build the polished responsive interface and all catalog, playback, sequencing, accessibility, error-handling, credits, security, and deployment behavior specified in `IDEA.md`.
 
 ## 5. Verify and Release
 
-Run the full local verification suite, confirm the 20–30-track release catalog and rights metadata, validate supported browsers, accessibility, performance, immutable assets, and production configuration, and satisfy the complete Definition of Done in `IDEA.md`. Prepare a deployment-ready Vercel build; create or change an external deployment only when separately and explicitly authorized by the user.
+Run the full local verification suite, confirm the 20–30-track release catalog and source attribution, validate supported browsers, accessibility, performance, immutable assets, and production configuration, and satisfy the complete Definition of Done in `IDEA.md`. Prepare a deployment-ready Vercel build; create or change an external deployment only when separately and explicitly authorized by the user.

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "pator-solitude",
+  "order": 1,
+  "title": "Solitude",
+  "author": "Pator",
+  "sourceUrl": "https://zxart.ee/eng/authors/p/pator/solitude/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2024
+}

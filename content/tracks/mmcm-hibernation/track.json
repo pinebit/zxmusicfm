@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mmcm-hibernation",
+  "order": 3,
+  "title": "Hibernation",
+  "author": "MmcM",
+  "sourceUrl": "https://zxart.ee/eng/authors/m/mmcm1/hibernation/",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2016
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "insult3m.stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "5ba8e3c6da17c63d8adc283913c76c1fc3210dac2da858f7bfa6ceb4a1e5c09d",
+  "sourceByteLength": 1981,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "b1a496405e9ff063ef70cd69eb0fab66b7706932b646f89cfa247e415b3eebd8",
+  "runtimeByteLength": 55388,
+  "frameCount": 3455,
+  "durationSeconds": 69.1,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "013365a80aa69ef0539a00dd582bdb15581227885fb7c7cd35cb98afbc63dbfa",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "5ba8e3c6da17c63d8adc283913c76c1fc3210dac2da858f7bfa6ceb4a1e5c09d",
+    "psgSha256": "e896e2a1a28b1b8bec07c1530a33bea9336f94d70ba1c798106a2fac0f9224bd",
+    "psgByteLength": 32436
+  },
+  "preparationTool": "zx-spectrum-fm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

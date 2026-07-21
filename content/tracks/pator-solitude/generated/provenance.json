@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "source.psg",
+  "sourceFormat": "PSG",
+  "sourceSha256": "6264516620313219de9a7e8b2d21d07e47f83b0b833d893646653abf64b14857",
+  "sourceByteLength": 63474,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "0f8e1a3d4c5a0ca3454d957bca324f2eca265cfa25e9b28ceed066a099d66be6",
+  "runtimeByteLength": 138513,
+  "frameCount": 8651,
+  "durationSeconds": 173.02,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "3b5e87b99641b79cba1bcbf8d5c9da99ef9240e85fdbfad89d749338f5c065fe",
+  "trackerConversion": null,
+  "preparationTool": "zx-spectrum-fm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

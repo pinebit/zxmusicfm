@@ -39,8 +39,10 @@ describe('App', () => {
 
     render(<App catalogLoader={catalogLoader} />);
 
-    expect(await screen.findByText('Catalog unavailable.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(
+      await screen.findByText('The station list could not be loaded.'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Retry catalog' }));
 
     expect(
       await screen.findByText('Valid schema; 0 tracks'),
