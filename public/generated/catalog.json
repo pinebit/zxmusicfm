@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "waveforms": {
+    "url": "/generated/waveforms.d4253252d4a256ba86cab2f8d831a8932c80a256cc14655afde3afa370fea31e.bin",
+    "sha256": "d4253252d4a256ba86cab2f8d831a8932c80a256cc14655afde3afa370fea31e",
+    "byteLength": 16,
+    "formatVersion": 1,
+    "bucketCount": 2048,
+    "channelCount": 3
+  },
+  "tracks": []
+}

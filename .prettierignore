@@ -1,0 +1,8 @@
+dist/
+coverage/
+IDEA.md
+node_modules/
+PLAN.md
+playwright-report/
+test-results/
+public/generated/
