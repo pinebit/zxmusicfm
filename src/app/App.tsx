@@ -19,10 +19,14 @@ import {
   type GeneratedCatalog,
 } from '../content/schemas.ts';
 import { PlayerController } from '../playback/PlayerController.ts';
-import type { PlayerError } from '../playback/PlayerController.ts';
+import type {
+  PlayerControllerSnapshot,
+  PlayerError,
+} from '../playback/PlayerController.ts';
 import { ChannelMeters } from './ChannelMeters.tsx';
 import { CreditsDialog } from './CreditsDialog.tsx';
 import { DotMatrixTrackDisplay } from './DotMatrixTrackDisplay.tsx';
+import { formatTime } from './formatTime.ts';
 import { SevenSegmentTime } from './SevenSegmentTime.tsx';
 import { VolumeKnob } from './VolumeKnob.tsx';
 import { WaveformSeek } from './WaveformSeek.tsx';
@@ -81,15 +85,17 @@ function hasRequiredCapabilities(): boolean {
   );
 }
 
-function formatTime(seconds: number): string {
-  const whole = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(whole / 3600);
-  const minutes = Math.floor((whole % 3600) / 60);
-  const tail = String(whole % 60).padStart(2, '0');
-  return hours === 0
-    ? `${minutes}:${tail}`
-    : `${hours}:${String(minutes).padStart(2, '0')}:${tail}`;
-}
+const playbackStatusLabels: Readonly<
+  Record<PlayerControllerSnapshot['status'], string>
+> = {
+  idle: 'Stopped',
+  loading: 'Loading',
+  ready: 'Ready',
+  playing: 'Playing',
+  paused: 'Paused',
+  ended: 'Finished',
+  error: 'Playback error',
+};
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
@@ -183,7 +189,7 @@ function PlayerApplication({
     };
   }, [capable, controller, snapshot.selectedTrackId, snapshot.status]);
 
-  useEffect(() => () => controller.dispose(), [controller]);
+  useEffect(() => controller.activate(), [controller]);
 
   const selectedTrack = catalog.tracks.find(
     ({ id }) => id === snapshot.selectedTrackId,
@@ -195,9 +201,6 @@ function PlayerApplication({
 
   return (
     <>
-      <p className="visually-hidden">
-        Valid schema; {catalog.tracks.length} tracks
-      </p>
       {!capable ? (
         <section className="notice-panel" role="alert">
           <strong>Playback is not supported in this browser.</strong>
@@ -257,7 +260,7 @@ function PlayerApplication({
                       onClick={() => controller.toggle(track.id)}
                     >
                       <span aria-hidden="true">
-                        {loading ? '•••' : playing ? 'Ⅱ' : '▶'}
+                        {loading ? '•••' : playing ? '⏸' : '▶'}
                       </span>
                     </button>
                     <div className="track-main">
@@ -347,7 +350,7 @@ function PlayerApplication({
               ON AIR
             </p>
             <span className="visually-hidden" aria-live="polite">
-              Playback status: {snapshot.status}
+              {playbackStatusLabels[snapshot.status]}
             </span>
           </div>
           {selectedTrack === undefined ? (
@@ -364,7 +367,10 @@ function PlayerApplication({
               />
             </div>
           )}
-          <ChannelMeters adapter={controller.getAdapter()} />
+          <ChannelMeters
+            adapter={controller.getAdapter()}
+            playing={snapshot.status === 'playing'}
+          />
 
           <fieldset
             className="deck-options"
@@ -414,7 +420,7 @@ function PlayerApplication({
                 aria-label="Previous track"
                 onClick={() => controller.previous()}
               >
-                <span aria-hidden="true">|◀</span>
+                <span aria-hidden="true">⏮</span>
               </button>
               <button
                 className="transport-primary"
@@ -436,7 +442,7 @@ function PlayerApplication({
                 }
               >
                 <span aria-hidden="true">
-                  {snapshot.status === 'playing' ? 'Ⅱ' : '▶'}
+                  {snapshot.status === 'playing' ? '⏸' : '▶'}
                 </span>
               </button>
               <button
@@ -445,7 +451,7 @@ function PlayerApplication({
                 aria-label="Next track"
                 onClick={() => controller.next()}
               >
-                <span aria-hidden="true">▶|</span>
+                <span aria-hidden="true">⏭</span>
               </button>
             </div>
 

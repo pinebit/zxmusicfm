@@ -94,7 +94,11 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private scheduledNativeSample = 0;
   private anchorContextTime = 0;
   private anchorPositionSeconds = 0;
-  private levels: ChannelLevels = EMPTY_LEVELS;
+  // Levels stamped with the AudioContext time at which each scheduled chunk
+  // becomes audible, so meters can read the currently-heard chunk rather than
+  // the furthest one queued ahead.
+  private levelTimeline: { readonly time: number; readonly levels: ChannelLevels }[] =
+    [];
   private volume = 1;
   private loadGeneration = 0;
   private disposed = false;
@@ -113,7 +117,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.durationSeconds = track.durationSeconds;
     this.positionSeconds = 0;
     this.status = 'loading';
-    this.levels = EMPTY_LEVELS;
+    this.levelTimeline = [];
     this.publish();
 
     try {
@@ -191,7 +195,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.replacePlayerAt(position, false);
     this.positionSeconds = position;
     this.status = 'paused';
-    this.levels = EMPTY_LEVELS;
+    this.levelTimeline = [];
     this.publish();
   }
 
@@ -203,7 +207,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.replacePlayerAt(0, false);
     this.positionSeconds = 0;
     this.status = 'ready';
-    this.levels = EMPTY_LEVELS;
+    this.levelTimeline = [];
     this.publish();
   }
 
@@ -217,7 +221,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.stopScheduling();
     this.replacePlayerAt(position, false);
     this.positionSeconds = position;
-    this.levels = EMPTY_LEVELS;
+    this.levelTimeline = [];
 
     if (position >= this.durationSeconds) {
       this.status = 'ended';
@@ -239,13 +243,21 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   }
 
   getChannelLevels(): ChannelLevels {
-    if (!isPlayingStatus(this.status)) {
+    if (!isPlayingStatus(this.status) || this.audioContext === undefined) {
       return EMPTY_LEVELS;
     }
+    const now = this.audioContext.currentTime;
+    // Drop chunks that a later one has already superseded at the playhead.
+    while (this.levelTimeline.length > 1) {
+      const next = this.levelTimeline[1];
+      if (next === undefined || next.time > now) break;
+      this.levelTimeline.shift();
+    }
+    const current = this.levelTimeline[0]?.levels ?? EMPTY_LEVELS;
     return {
-      A: this.levels.A * this.volume,
-      B: this.levels.B * this.volume,
-      C: this.levels.C * this.volume,
+      A: current.A * this.volume,
+      B: current.B * this.volume,
+      C: current.C * this.volume,
     };
   }
 
@@ -429,6 +441,14 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       return;
     }
 
+    // Bound the timeline when getChannelLevels is not polling (e.g. hidden tab).
+    const audibleCutoff = context.currentTime - 1;
+    while (this.levelTimeline.length > 1) {
+      const next = this.levelTimeline[1];
+      if (next === undefined || next.time > audibleCutoff) break;
+      this.levelTimeline.shift();
+    }
+
     const nativeTotal = Math.round(this.durationSeconds * ENGINE_SAMPLE_RATE);
     while (
       this.nextScheduleTime < context.currentTime + SCHEDULE_AHEAD_SECONDS &&
@@ -458,11 +478,14 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
         right[sample] = stereo[1];
       }
 
-      this.levels = {
-        A: rms(generated, 0, track.chipType),
-        B: rms(generated, 1, track.chipType),
-        C: rms(generated, 2, track.chipType),
-      };
+      this.levelTimeline.push({
+        time: this.nextScheduleTime,
+        levels: {
+          A: rms(generated, 0, track.chipType),
+          B: rms(generated, 1, track.chipType),
+          C: rms(generated, 2, track.chipType),
+        },
+      });
       const source = context.createBufferSource();
       source.buffer = buffer;
       source.connect(gain);
@@ -485,7 +508,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.player?.pause();
     this.positionSeconds = this.durationSeconds;
     this.status = 'ended';
-    this.levels = EMPTY_LEVELS;
+    this.levelTimeline = [];
     this.publish();
   }
 

@@ -15,7 +15,6 @@ import {
   detectSupportedSource,
   discoverTrackInputs,
   generateFoundationContent,
-  resolveValidationMode,
   validateContent,
 } from './foundation.ts';
 import { downloadRemoteFile } from './remote.ts';
@@ -187,7 +186,7 @@ async function mutateAtomically(
   try {
     await mutation(stage);
     await generateFoundationContent(stage);
-    await validateContent(stage, 'development');
+    await validateContent(stage);
     await commitStage(root, stage);
   } finally {
     await rm(stage, { recursive: true, force: true });
@@ -570,12 +569,10 @@ async function main(): Promise<void> {
       process.stdout.write('Generated deterministic content artifacts.\n');
       return;
     case 'validate': {
-      const result = await validateContent(
-        root,
-        resolveValidationMode(argumentsList, process.env),
-      );
+      assertKnown(parseArguments(argumentsList), []);
+      const result = await validateContent(root);
       process.stdout.write(
-        `Content valid (${result.mode}, ${result.trackCount} tracks).\n`,
+        `Content valid (${result.trackCount} tracks).\n`,
       );
       return;
     }

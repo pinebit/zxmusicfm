@@ -4,9 +4,13 @@ import type { PlaybackAdapter } from '../playback/contracts.ts';
 
 type ChannelMetersProps = {
   readonly adapter: PlaybackAdapter | undefined;
+  readonly playing: boolean;
 };
 
-export function ChannelMeters({ adapter }: ChannelMetersProps) {
+// Below this smoothed level a needle is visually at rest, so the loop can stop.
+const SETTLED_LEVEL = 0.0005;
+
+export function ChannelMeters({ adapter, playing }: ChannelMetersProps) {
   const gaugeRefs = useRef<Record<'A' | 'B' | 'C', HTMLDivElement | null>>({
     A: null,
     B: null,
@@ -17,18 +21,25 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
     B: null,
     C: null,
   });
+  // Persist smoothing across play/pause so needles release rather than snap.
+  const smoothedRef = useRef<Record<'A' | 'B' | 'C', number>>({
+    A: 0,
+    B: 0,
+    C: 0,
+  });
 
   useEffect(() => {
     let frame = 0;
     let previousTime = performance.now();
-    const smoothed = { A: 0, B: 0, C: 0 };
+    const smoothed = smoothedRef.current;
     const update = (now: number) => {
       const elapsed = Math.max(0, now - previousTime);
       previousTime = now;
       const levels =
-        document.visibilityState === 'hidden'
+        !playing || document.visibilityState === 'hidden'
           ? { A: 0, B: 0, C: 0 }
           : (adapter?.getChannelLevels() ?? { A: 0, B: 0, C: 0 });
+      let settling = false;
       for (const channel of ['A', 'B', 'C'] as const) {
         const amplitude = levels[channel];
         const decibels = amplitude <= 0 ? -48 : 20 * Math.log10(amplitude);
@@ -36,6 +47,7 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
         const timeConstant = target > smoothed[channel] ? 60 : 300;
         const alpha = 1 - Math.exp(-elapsed / timeConstant);
         smoothed[channel] += (target - smoothed[channel]) * alpha;
+        if (smoothed[channel] > SETTLED_LEVEL) settling = true;
         const meter = meterRefs.current[channel];
         if (meter !== null) {
           meter.value = smoothed[channel];
@@ -48,11 +60,15 @@ export function ChannelMeters({ adapter }: ChannelMetersProps) {
           );
         }
       }
-      frame = requestAnimationFrame(update);
+      // Keep animating while sound is playing or needles are still releasing;
+      // otherwise stop until playback resumes (this effect re-runs on `playing`).
+      if (playing || settling) {
+        frame = requestAnimationFrame(update);
+      }
     };
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
-  }, [adapter]);
+  }, [adapter, playing]);
 
   return (
     <div className="meter-bank" aria-label="Live AY channel levels">

@@ -1,12 +1,10 @@
 # ZX-MUSIC.FM
 
-The implementation follows [IDEA.md](docs/IDEA.md) and the gated sequence in
-[PLAN.md](docs/PLAN.md). The application now includes the real Pator
-**Solitude** PSG vertical slice and the Phase 4 responsive player interface:
-deterministic content preparation, verified in-browser YM6 playback,
-three-channel waveforms and meters, sequencing, persistence, accessible controls,
-recoverable errors, credits, and deployment hardening. Release remains gated on
-the final production acceptance checks.
+A small, polished web player for a curated collection of ZX Spectrum AY/YM chip
+music. It performs deterministic content preparation, verified in-browser YM6
+playback, real three-channel waveforms and meters, sequencing, persistence,
+accessible controls, recoverable errors, and credits. Project conventions and
+constraints live in [AGENTS.md](AGENTS.md).
 
 ## Toolchain
 
@@ -40,13 +38,6 @@ the pinned browser engine artifacts. It requires Rust 1.88.0, the
 installation, testing, AY/YM/PSG preparation, and production builds remain
 Node-only.
 
-The selected engine revision, fixture matrix, objective results, limitations,
-and reproduction procedure are recorded in
-[`docs/playback-engine-proof.md`](docs/playback-engine-proof.md).
-The real seed import, deterministic preparation gates, browser acceptance, and
-completed manual listening check are recorded in
-[`docs/psg-vertical-slice.md`](docs/psg-vertical-slice.md).
-
 The content commands accept a local `--file` or direct HTTPS `--url`. Remote
 retrieval validates every redirect and destination, limits downloads to 16 MiB,
 and keeps the retrieval URL separate from the required human-facing
@@ -75,10 +66,9 @@ non-interactive removal requires both `--non-interactive` and `--yes`. Import,
 update, and removal stage generation and validation before atomically replacing
 the repository content directories.
 
-Release validation is enabled by `--release`, `CONTENT_RELEASE=1`, or
-`VERCEL_ENV=production`. Catalog size is a curatorial choice rather than a
-validation constraint; every present track must still pass the complete content,
-provenance, ordering, waveform, and playback checks.
+Catalog size is a curatorial choice rather than a validation constraint; every
+present track must still pass the complete content, provenance, ordering,
+waveform, and playback checks.
 
 ## Repository policy
 

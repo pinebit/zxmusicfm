@@ -121,9 +121,18 @@ export class PlayerController {
       preferences,
       error: null,
     };
+  }
+
+  /**
+   * Start the position ticker and Media Session handlers, returning a disposer.
+   * Kept out of the constructor so a controller built during render (e.g. in a
+   * discarded `useMemo` result) never leaks a timer or global handlers.
+   */
+  activate = (): (() => void) => {
     this.installMediaSession();
     this.startTicker();
-  }
+    return () => this.dispose();
+  };
 
   getSnapshot = (): PlayerControllerSnapshot => this.snapshot;
 

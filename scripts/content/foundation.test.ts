@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 import {
   detectSupportedSource,
   generateFoundationContent,
-  resolveValidationMode,
   validateContent,
 } from './foundation.ts';
 
@@ -31,8 +30,7 @@ describe('foundation content generation', () => {
     );
 
     expect(secondCatalog).toEqual(firstCatalog);
-    await expect(validateContent(root, 'development')).resolves.toMatchObject({
-      mode: 'development',
+    await expect(validateContent(root)).resolves.toMatchObject({
       trackCount: 0,
     });
   });
@@ -44,42 +42,16 @@ describe('foundation content generation', () => {
     const catalog = await readFile(catalogPath, 'utf8');
     await writeFile(catalogPath, catalog.replace(/\n$/u, ''));
 
-    await expect(validateContent(root, 'development')).rejects.toThrow(
+    await expect(validateContent(root)).rejects.toThrow(
       'generated catalog is stale or has unexpected bytes',
     );
   });
 
   it('validates the generated real catalog and provenance', async () => {
-    await expect(
-      validateContent(process.cwd(), 'development'),
-    ).resolves.toMatchObject({
-      mode: 'development',
+    await expect(validateContent(process.cwd())).resolves.toMatchObject({
       trackCount: 7,
     });
   }, 30_000);
-
-  it('accepts an empty release catalog without weakening content validation', async () => {
-    const root = await createTemporaryRoot();
-    await generateFoundationContent(root);
-
-    await expect(validateContent(root, 'release')).resolves.toMatchObject({
-      mode: 'release',
-      trackCount: 0,
-    });
-  });
-});
-
-describe('resolveValidationMode', () => {
-  it('defaults to development', () => {
-    expect(resolveValidationMode([], {})).toBe('development');
-  });
-
-  it('uses release mode for explicit or Vercel production validation', () => {
-    expect(resolveValidationMode(['--release'], {})).toBe('release');
-    expect(resolveValidationMode([], { VERCEL_ENV: 'production' })).toBe(
-      'release',
-    );
-  });
 });
 
 describe('tracker source routing', () => {

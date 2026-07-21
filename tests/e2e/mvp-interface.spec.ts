@@ -62,7 +62,7 @@ test('shows a recoverable inline track error without silently skipping', async (
   await page.getByRole('button', { name: 'Play Solitude' }).click();
   await expect(page.getByText('This track could not be loaded.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry track' })).toBeVisible();
-  await expect(page.getByText('Playback status: error')).toBeAttached();
+  await expect(page.getByText('Playback error', { exact: true })).toBeAttached();
 });
 
 test('fits the acceptance widths and stacks only when space requires it', async ({

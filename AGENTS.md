@@ -4,9 +4,8 @@
 
 These instructions apply to the entire repository.
 
-- Treat [`docs/IDEA.md`](docs/IDEA.md) as the authoritative product and technical specification.
-- Follow the phase order in [`docs/PLAN.md`](docs/PLAN.md). Do not turn the plan into a progress log.
-- When implementation and documentation disagree, preserve user data, stop broadening the change, and resolve the implementation against `docs/IDEA.md`.
+- This file and the working implementation are the authoritative product and technical specification; there is no separate `docs/` specification.
+- When implementation and this guidance disagree, preserve user data, stop broadening the change, and reconcile deliberately rather than expanding scope.
 - Keep changes focused. Preserve unrelated user edits in this intentionally dirty worktree.
 
 ## Repository workflow
@@ -48,7 +47,8 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 - Preserve generation/cancellation checks for every async selection. Late loads, failures, seeks, or decoder results must not mutate newer state.
 - Keep high-frequency meter and waveform work out of React render cycles. Publish only semantic transitions and coarse position updates.
 - The browser runtime contract is finite, seekable generated YM. Do not add prerecorded audio fallback, overlapping playback, crossfades, or browser-side tracker parsing.
-- Maintain the exact A/B/C channel identity, waveform colors, mix behavior, volume semantics, sequencing, persistence, Media Session, and error recovery specified in `docs/IDEA.md`.
+- Maintain the exact A/B/C channel identity, waveform colors, mix behavior, volume semantics, sequencing, persistence, Media Session, and error recovery as currently implemented.
+- Cold-load transfer (HTML, CSS, initial JS, catalog, waveform pack, initially used fonts, above-the-fold images) stays under 500 KB, excluding the lazy engine and music. Target LCP under 2.5 s and CLS under 0.1, and keep meter and waveform animation near 55 fps or better during playback.
 
 ## Accessibility and interface
 
@@ -62,7 +62,7 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 
 - Curator inputs live under `content/tracks/<permanent-id>/`. IDs are stable and ordering is contiguous and one-based.
 - Every public track requires a valid human-facing `sourceUrl`; it is the catalog's sole per-track attribution field. Do not add or invent per-track license metadata.
-- The release catalog must contain 20–30 real curated tracks. Development may contain fewer tracks, but invalid tracks must never be silently omitted.
+- Catalog size is a curatorial and deployment choice: development, preview, and release builds may ship any valid number of tracks, including an empty catalog. Invalid tracks must never be silently omitted.
 - AY, YM, and PSG preparation is Node-only. PSG-to-YM6 and waveform generation remain project-owned deterministic paths.
 - PT3, STC, and ASC are accepted only through the pinned ZXTune Docker workflow at commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`.
 - Tracker conversion runs as a Linux container on the curator's macOS machine. Do not build or introduce an Android application.
@@ -73,7 +73,8 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 
 ## Playback engine and generated artifacts
 
-- Keep `ym2149-rs` pinned to commit `b3096aac0dcab6dd1d82c0209f579761943aadc6` unless a new explicit engine decision is recorded in `docs/IDEA.md`.
+- Keep `ym2149-rs` pinned to commit `b3096aac0dcab6dd1d82c0209f579761943aadc6` unless a new explicit engine decision is recorded in this file.
+- The adapter seeks by creating a fresh engine and rendering deterministically from zero to the target sample, because the upstream native seek does not reconstruct tone/noise/envelope phase. Preserve this reconstruction rather than substituting native seek; if it is moved off the main thread, keep the same sample-exact result.
 - Do not rebuild the engine during ordinary development. `npm run engine:rebuild` is an exceptional maintainer command; verify tracked artifacts with `npm run engine:verify`.
 - Keep public runtime and waveform URLs content-hashed and immutable. Keep HTML and `generated/catalog.json` revalidated.
 - Authoritative sources, sidecars, internal provenance, and build-machine information must not enter public output.
@@ -88,4 +89,4 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 
 ## Handoff
 
-Report what changed, the exact checks run and their results, and any remaining release gate. Never describe the MVP or release as complete while the 20–30-track catalog, canonical production URL, deployment, performance measurements, or required manual platform checks remain unresolved.
+Report what changed, the exact checks run and their results, and any remaining release gate. Never describe the MVP or release as complete while the canonical production URL, deployment, performance measurements, or required manual platform checks remain unresolved.

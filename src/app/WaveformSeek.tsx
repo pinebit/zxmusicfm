@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { DecodedWaveform } from '../content/runtime.ts';
 import { WAVEFORM_BUCKET_COUNT } from '../playback/waveform.ts';
+import { formatTime } from './formatTime.ts';
 
 type WaveformSeekProps = {
   readonly waveform: DecodedWaveform | undefined;
@@ -22,16 +23,6 @@ const waveformPalette = {
   playhead: '#f4e7c3',
   unplayed: '#111315',
 } as const;
-
-function formatTime(seconds: number): string {
-  const whole = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(whole / 3600);
-  const minutes = Math.floor((whole % 3600) / 60);
-  const tail = String(whole % 60).padStart(2, '0');
-  return hours === 0
-    ? `${minutes}:${tail}`
-    : `${hours}:${String(minutes).padStart(2, '0')}:${tail}`;
-}
 
 export function WaveformSeek({
   waveform,

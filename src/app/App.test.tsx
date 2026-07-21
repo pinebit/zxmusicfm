@@ -19,11 +19,11 @@ const emptyCatalog: GeneratedCatalog = {
 };
 
 describe('App', () => {
-  it('reports a schema-valid empty development catalog', async () => {
+  it('shows the empty-state for a valid empty catalog', async () => {
     render(<App catalogLoader={() => Promise.resolve(emptyCatalog)} />);
 
     expect(
-      await screen.findByText('Valid schema; 0 tracks'),
+      await screen.findByText('No tracks available'),
     ).toBeInTheDocument();
   });
 
@@ -45,7 +45,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Retry catalog' }));
 
     expect(
-      await screen.findByText('Valid schema; 0 tracks'),
+      await screen.findByText('No tracks available'),
     ).toBeInTheDocument();
     expect(attempt).toBe(2);
   });

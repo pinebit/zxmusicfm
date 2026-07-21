@@ -56,10 +56,7 @@ const waveformEncoding = 1;
 const engineCommit = 'b3096aac0dcab6dd1d82c0209f579761943aadc6';
 const comparisonTolerance = 0.000_001;
 
-export type ValidationMode = 'development' | 'release';
-
 export type ValidationResult = {
-  readonly mode: ValidationMode;
   readonly trackCount: number;
   readonly catalogPath: string;
   readonly waveformPath: string;
@@ -847,7 +844,6 @@ async function assertExactFile(
 
 export async function validateContent(
   root: string,
-  mode: ValidationMode,
 ): Promise<ValidationResult> {
   const inputs = await discoverTrackInputs(root);
   const expected = await prepareContent(root);
@@ -905,22 +901,10 @@ export async function validateContent(
   }
 
   return {
-    mode,
     trackCount: inputs.length,
     catalogPath,
     waveformPath,
   };
-}
-
-export function resolveValidationMode(
-  argumentsList: readonly string[],
-  environment: NodeJS.ProcessEnv,
-): ValidationMode {
-  return argumentsList.includes('--release') ||
-    environment.CONTENT_RELEASE === '1' ||
-    environment.VERCEL_ENV === 'production'
-    ? 'release'
-    : 'development';
 }
 
 export function detectSupportedSource(
