@@ -16,9 +16,6 @@
   --cyan: #67dbe5;
   --red: #f15b68;
   --green: #6bc77d;
-  --waveform-a: #dca6ad;
-  --waveform-b: #dfcda2;
-  --waveform-c: #9fcbd0;
   --shadow: 0 1.35rem 3.5rem rgb(0 0 0 / 32%);
   --hardware-surface: radial-gradient(
     circle at 36% 30%,
@@ -99,7 +96,7 @@ h3 {
 .app-shell {
   width: min(92rem, calc(100% - clamp(1rem, 4vw, 4.5rem)));
   margin: 0 auto;
-  padding: clamp(1.25rem, 4vw, 3.5rem) 0 2rem;
+  padding: 1rem 0 2rem;
 }
 
 .brand-header {
@@ -125,7 +122,7 @@ h3 {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(2rem, 5.4vw, 4.5rem);
+  font-size: clamp(2rem, 5.4vw, 3.5rem);
   line-height: 0.92;
   letter-spacing: -0.065em;
 }
@@ -205,7 +202,7 @@ h3 {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: min(34rem, 75%);
+  width: 14rem;
   height: 0.52rem;
   background: linear-gradient(
     90deg,
@@ -565,48 +562,6 @@ h3 {
     #15171a;
   border: 1px solid #363a40;
   border-radius: 0.4rem;
-}
-
-.waveform-lane-labels {
-  position: absolute;
-  inset: 1px auto 1px 1px;
-  z-index: 2;
-  display: grid;
-  grid-template-rows: repeat(3, 1fr);
-  width: 1.55rem;
-  pointer-events: none;
-}
-
-.waveform-lane-label {
-  display: grid;
-  align-self: center;
-  justify-self: center;
-  place-items: center;
-  width: 1.15rem;
-  height: 1.15rem;
-  background: rgb(8 10 12 / 88%);
-  border: 1px solid currentcolor;
-  border-radius: 0.18rem;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 8%),
-    0 1px 0.25rem rgb(0 0 0 / 80%);
-  font:
-    900 0.68rem 'Space Grotesk Variable',
-    sans-serif;
-  line-height: 1;
-  text-shadow: 0 1px 0 #000;
-}
-
-.waveform-lane-a {
-  color: var(--waveform-a);
-}
-
-.waveform-lane-b {
-  color: var(--waveform-b);
-}
-
-.waveform-lane-c {
-  color: var(--waveform-c);
 }
 
 .waveform-range {

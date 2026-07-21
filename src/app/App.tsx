@@ -260,7 +260,7 @@ function PlayerApplication({
                       onClick={() => controller.toggle(track.id)}
                     >
                       <span aria-hidden="true">
-                        {loading ? '•••' : playing ? '⏸' : '▶'}
+                        {loading ? '•••' : playing ? '⏸︎' : '▶︎'}
                       </span>
                     </button>
                     <div className="track-main">
@@ -420,7 +420,7 @@ function PlayerApplication({
                 aria-label="Previous track"
                 onClick={() => controller.previous()}
               >
-                <span aria-hidden="true">⏮</span>
+                <span aria-hidden="true">⏮︎</span>
               </button>
               <button
                 className="transport-primary"
@@ -442,7 +442,7 @@ function PlayerApplication({
                 }
               >
                 <span aria-hidden="true">
-                  {snapshot.status === 'playing' ? '⏸' : '▶'}
+                  {snapshot.status === 'playing' ? '⏸︎' : '▶︎'}
                 </span>
               </button>
               <button
@@ -451,7 +451,7 @@ function PlayerApplication({
                 aria-label="Next track"
                 onClick={() => controller.next()}
               >
-                <span aria-hidden="true">⏭</span>
+                <span aria-hidden="true">⏭︎</span>
               </button>
             </div>
 

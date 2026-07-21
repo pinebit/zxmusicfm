@@ -22,9 +22,7 @@ describe('App', () => {
   it('shows the empty-state for a valid empty catalog', async () => {
     render(<App catalogLoader={() => Promise.resolve(emptyCatalog)} />);
 
-    expect(
-      await screen.findByText('No tracks available'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('No tracks available')).toBeInTheDocument();
   });
 
   it('retries catalog loading without reloading the page', async () => {
@@ -44,9 +42,7 @@ describe('App', () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Retry catalog' }));
 
-    expect(
-      await screen.findByText('No tracks available'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('No tracks available')).toBeInTheDocument();
     expect(attempt).toBe(2);
   });
 });

@@ -571,9 +571,7 @@ async function main(): Promise<void> {
     case 'validate': {
       assertKnown(parseArguments(argumentsList), []);
       const result = await validateContent(root);
-      process.stdout.write(
-        `Content valid (${result.trackCount} tracks).\n`,
-      );
+      process.stdout.write(`Content valid (${result.trackCount} tracks).\n`);
       return;
     }
     case 'import':

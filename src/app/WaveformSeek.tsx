@@ -112,23 +112,11 @@ export function WaveformSeek({
           Waveform unavailable; using seek slider.
         </p>
       ) : (
-        <>
-          <canvas
-            ref={canvasRef}
-            className={`waveform-canvas${showPosition ? ' has-position' : ''}`}
-            aria-hidden="true"
-          />
-          <div className="waveform-lane-labels" aria-hidden="true">
-            {(['A', 'B', 'C'] as const).map((channel) => (
-              <span
-                className={`waveform-lane-label waveform-lane-${channel.toLowerCase()}`}
-                key={channel}
-              >
-                {channel}
-              </span>
-            ))}
-          </div>
-        </>
+        <canvas
+          ref={canvasRef}
+          className={`waveform-canvas${showPosition ? ' has-position' : ''}`}
+          aria-hidden="true"
+        />
       )}
       <input
         className={

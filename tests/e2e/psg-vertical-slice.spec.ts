@@ -18,11 +18,6 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     solitude.getByRole('link', { name: 'Original source' }),
   ).toHaveAttribute('href', 'https://zxart.ee/eng/authors/p/pator/solitude/');
   await expect(solitude.locator('.waveform-canvas')).toBeVisible();
-  await expect(solitude.locator('.waveform-lane-label')).toHaveText([
-    'A',
-    'B',
-    'C',
-  ]);
   const onAir = page.getByText('ON AIR', { exact: true });
   await expect(onAir).toBeVisible();
   await expect(onAir).not.toHaveClass(/is-live/u);

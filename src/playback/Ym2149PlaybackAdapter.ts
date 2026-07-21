@@ -97,8 +97,10 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   // Levels stamped with the AudioContext time at which each scheduled chunk
   // becomes audible, so meters can read the currently-heard chunk rather than
   // the furthest one queued ahead.
-  private levelTimeline: { readonly time: number; readonly levels: ChannelLevels }[] =
-    [];
+  private levelTimeline: {
+    readonly time: number;
+    readonly levels: ChannelLevels;
+  }[] = [];
   private volume = 1;
   private loadGeneration = 0;
   private disposed = false;

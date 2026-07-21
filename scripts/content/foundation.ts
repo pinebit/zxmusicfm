@@ -842,9 +842,7 @@ async function assertExactFile(
   }
 }
 
-export async function validateContent(
-  root: string,
-): Promise<ValidationResult> {
+export async function validateContent(root: string): Promise<ValidationResult> {
   const inputs = await discoverTrackInputs(root);
   const expected = await prepareContent(root);
   const catalogPath = path.join(root, 'public', 'generated', 'catalog.json');
