@@ -59,7 +59,7 @@ An Equalizer panel may be considered after the MVP but is explicitly outside the
 
 Each track has a play/pause button that allows the user to listen to the track. Only one track can play at a time. Starting another track stops the current track rather than preserving its playback position.
 
-Each row renders its title and author together on one compact `TITLE / AUTHOR` line in the same bold type size, immediately followed by an accessible external-link icon for the original source. The icon has no visible "Original source" label. The row also includes its total duration, waveform, and a compact hardware-style play/pause push button. That button shares the deck's graphite surface, bevel, highlight, and physical pressed state, but uses a softly rectangular mounting shape so it remains distinct from the deck transport. Rows are not numbered. Year and notes are optional and are not shown inline; both are available through Credits/License when present.
+Each row renders its title and author together on one compact `TITLE / AUTHOR` line in the same bold type size, immediately followed by an accessible external-link icon for the original source. The icon has no visible "Original source" label. The row also includes its total duration, waveform, and a compact hardware-style play/pause push button. That button shares the deck's graphite surface, bevel, highlight, and physical pressed state, but uses a softly rectangular mounting shape so it remains distinct from the deck transport. Rows are not numbered. Year and notes remain optional catalog metadata and are not shown inline.
 
 For each track, it renders a real waveform of the track. The waveform also acts as the seek control, allowing the user to move playback to a specific position without a separate playback slider.
 
@@ -96,9 +96,9 @@ Playback uses conventional equal-power stereo placement derived from `channelLay
 
 ### The Footer
 
-The footer links to the planned source repository at https://github.com/pinebit/zxmusicfm and to [ZX-Art's ZX Spectrum music collection](https://zxart.ee/eng/music/). It also contains a Credits/License control similar in purpose to https://aym-js.emaxilde.net/license/.
+The footer renders the application version from the root package metadata, links to the planned source repository at https://github.com/pinebit/zxmusicfm and to [ZX-Art's ZX Spectrum music collection](https://zxart.ee/eng/music/), and contains a Credits/License control similar in purpose to https://aym-js.emaxilde.net/license/. These secondary footer controls use a muted neutral gray rather than the brighter amber reserved for playback interactions. The displayed version must not be maintained separately from `package.json`.
 
-Activating Credits/License opens an accessible modal dialog without changing routes. The dialog groups notices into application, playback engine, dependencies, and music credits; traps focus while open; closes by its close control or Escape; and restores focus to the trigger. Its content is derived from maintained project data rather than duplicated across UI components. The music section lists every public track with its title, author, and original source link, plus its year and notes when present.
+Activating Credits/License opens an accessible modal dialog without changing routes. The dialog groups notices into application, playback engine, and dependencies; its application notice credits creator Andrei Smirnov and links safely to `https://github.com/pinebit`. It traps focus while open, closes by its close control or Escape, and restores focus to the trigger. Track attribution is provided directly in each catalog row rather than duplicated in this dialog.
 
 The source repository, ZX-Art, and individual track-source links open in a new tab using safe `noopener noreferrer` behavior. The planned repository URL is allowed to remain unavailable during initial specification work but must resolve before the public launch.
 
@@ -311,9 +311,7 @@ The next requested tunes are imported with their authoritative ZX-Art tracker fo
 - **LyraII8** by Ziutek (1991), STC, YM, ACB: `https://zxart.ee/eng/authors/z/ziutek/lyraii8/`
 - **Insult3m** by Klav (1994), STC, AY, ACB: `https://zxart.ee/eng/authors/k/klav/insult3m/`
 - **Batman** by Titus / Andrey Titov (1995), ASC, AY, ACB: `https://zxart.ee/eng/authors/t/andrey-titov/batman4/`
-- **Megamix Laser Dance** by Titus / Andrey Titov (1995), ASC, AY, ACB: `https://zxart.ee/eng/authors/t/andrey-titov/megamix-laser-dance/`
 - **Assorty2** by IMP (1994), STC, AY, ACB: `https://zxart.ee/eng/authors/i/imp1/assorty2/`
-- **Remixe Lyra Megadamo** by Titus / Andrey Titov (1994), ASC, AY, ACB: `https://zxart.ee/eng/authors/t/andrey-titov/remixe-lyra-megadamo/`
 
 The pinned ZXTune converter has been proven locally to produce valid finite PSG streams for these tracker formats, with durations consistent with the ZX-Art listings. Each imported track retains its ZX-Art page as the required original-source attribution. Per-track license fields are deliberately absent from the content and catalog contracts.
 
@@ -446,7 +444,7 @@ The MVP is done only when all of the following are true:
 - The TypeScript sanity check and production build pass from documented commands. The documented local lint, formatting check, unit/component tests, real-engine tests, Playwright journeys, and generated-artifact validation also pass.
 - The selected playback engine has passed and documented every mandatory proof-of-concept criterion. Its pinned source revision, prepared browser artifacts, licenses, hashes, and rebuild procedure are present and reproducible.
 - The real `pator-solitude` PSG vertical slice and every public track pass source-format validation, canonical-runtime generation, applicable equivalence, seeking, channel, waveform, provenance, and freshness checks.
-- The release catalog contains 20–30 real curated tracks in contiguous order. Every track has valid source attribution, and Credits/License presents the corresponding source link.
+- The release catalog contains 20–30 real curated tracks in contiguous order. Every track has valid source attribution, and its catalog row presents the corresponding source link.
 - All specified player states, controls, sequencing rules, persistence behavior, waveform interactions, meters, error recovery, capability fallback, and Media Session behavior pass their automated or explicitly documented manual acceptance checks.
 - The finished interface works without horizontal overflow at supported mobile widths, preserves the desktop layout and sticky meter behavior, meets WCAG 2.2 AA requirements, supports keyboard-only use, and respects reduced motion.
 - The current and previous major desktop browsers and the current iOS Safari and Android Chrome pass the defined smoke journeys. Any browser-specific limitation allowed by this specification is documented and recovers cleanly.

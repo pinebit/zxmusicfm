@@ -1,10 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-import type { GeneratedCatalog } from '../content/schemas.ts';
-
 type CreditsDialogProps = {
   readonly open: boolean;
-  readonly tracks: GeneratedCatalog['tracks'];
   readonly onClose: () => void;
 };
 
@@ -14,7 +11,7 @@ const dependencyNotices = [
   { name: 'Zod', license: 'MIT', url: 'https://github.com/colinhacks/zod' },
 ] as const;
 
-export function CreditsDialog({ open, tracks, onClose }: CreditsDialogProps) {
+export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -79,7 +76,15 @@ export function CreditsDialog({ open, tracks, onClose }: CreditsDialogProps) {
       <section>
         <h3>Application</h3>
         <p>
-          ZX-MUSIC.FM project source is available under the MIT License. The
+          Created by{' '}
+          <a
+            href="https://github.com/pinebit"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Andrei Smirnov
+          </a>
+          . ZX-MUSIC.FM project source is available under the MIT License. The
           original wordmark, interface, and Spectrum-inspired artwork do not
           imply endorsement by Sinclair or any rights holder.
         </p>
@@ -114,33 +119,6 @@ export function CreditsDialog({ open, tracks, onClose }: CreditsDialogProps) {
             </li>
           ))}
         </ul>
-      </section>
-      <section>
-        <h3>Music</h3>
-        {tracks.length === 0 ? (
-          <p>No music is present in this development catalog.</p>
-        ) : (
-          <ul className="credit-list">
-            {tracks.map((track) => (
-              <li key={track.id}>
-                <strong>{track.title}</strong> by {track.author}
-                {track.year === undefined ? null : (
-                  <span>Year: {track.year}</span>
-                )}
-                {track.notes === undefined ? null : <span>{track.notes}</span>}
-                <span>
-                  <a
-                    href={track.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Original source
-                  </a>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
     </dialog>
   );

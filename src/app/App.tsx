@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import packageMetadata from '../../package.json';
 import {
   decodeWaveformPack,
   fetchVerifiedBytes,
@@ -460,7 +461,16 @@ function PlayerApplication({
       </div>
 
       <footer className="site-footer">
-        <p>Independent, curated ZX Spectrum music radio.</p>
+        <div className="footer-meta">
+          <p>Independent, curated ZX Spectrum music radio.</p>
+          <data
+            className="app-version"
+            value={packageMetadata.version}
+            aria-label={`Application version ${packageMetadata.version}`}
+          >
+            v{packageMetadata.version}
+          </data>
+        </div>
         <nav aria-label="Project and credits">
           <a
             href="https://github.com/pinebit/zxmusicfm"
@@ -485,11 +495,7 @@ function PlayerApplication({
           </button>
         </nav>
       </footer>
-      <CreditsDialog
-        open={creditsOpen}
-        tracks={catalog.tracks}
-        onClose={closeCredits}
-      />
+      <CreditsDialog open={creditsOpen} onClose={closeCredits} />
     </>
   );
 }

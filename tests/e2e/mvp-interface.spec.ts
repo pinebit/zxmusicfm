@@ -24,11 +24,12 @@ test('traps and restores focus for credits and licenses', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: 'Credits / License' });
   await expect(dialog).toBeVisible();
   await expect(
-    dialog.getByRole('link', { name: 'Original source' }),
-  ).toHaveCount(9);
+    dialog.getByRole('link', { name: 'Andrei Smirnov' }),
+  ).toHaveAttribute('href', 'https://github.com/pinebit');
+  await expect(dialog.getByRole('heading', { name: 'Music' })).toHaveCount(0);
   await expect(
-    dialog.locator('a[href="https://zxart.ee/eng/authors/p/pator/solitude/"]'),
-  ).toBeVisible();
+    dialog.getByRole('link', { name: 'Original source' }),
+  ).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();

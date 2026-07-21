@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.52f8589359cc2e156618cf82ec893db3b4ff3b8f03e2f200253a17278116979a.bin",
-    "sha256": "52f8589359cc2e156618cf82ec893db3b4ff3b8f03e2f200253a17278116979a",
-    "byteLength": 110608,
+    "url": "/generated/waveforms.3d0b633bf8f39a9ac66ef8df4ec37c7339d717522db1d781fd633608904659de.bin",
+    "sha256": "3d0b633bf8f39a9ac66ef8df4ec37c7339d717522db1d781fd633608904659de",
+    "byteLength": 86032,
     "formatVersion": 1,
     "bucketCount": 2048,
     "channelCount": 3
@@ -142,30 +142,8 @@
       "waveformByteOffset": 61456
     },
     {
-      "id": "titus-megamix-laser-dance",
-      "order": 7,
-      "title": "Megamix Laser Dance",
-      "author": "Titus",
-      "sourceUrl": "https://zxart.ee/eng/authors/t/andrey-titov/megamix-laser-dance/",
-      "subsong": 1,
-      "sourceFormat": "ASC",
-      "runtimeFormat": "YM6",
-      "runtimeSha256": "7a29fca79775b76338d45d31139bbb134e594018e54359792f6133d88f18f24e",
-      "runtimeByteLength": 36965,
-      "durationSeconds": 46.06,
-      "durationSource": "source",
-      "chipType": "AY",
-      "chipClockHz": 1773400,
-      "frameRateHz": 50,
-      "channelLayout": "ACB",
-      "waveformByteLength": 12288,
-      "year": 1995,
-      "runtimeUrl": "/generated/tracks/titus-megamix-laser-dance.7a29fca79775b76338d45d31139bbb134e594018e54359792f6133d88f18f24e.ym",
-      "waveformByteOffset": 73744
-    },
-    {
       "id": "imp-assorty2",
-      "order": 8,
+      "order": 7,
       "title": "Assorty2",
       "author": "IMP",
       "sourceUrl": "https://zxart.ee/eng/authors/i/imp1/assorty2/",
@@ -183,29 +161,7 @@
       "waveformByteLength": 12288,
       "year": 1994,
       "runtimeUrl": "/generated/tracks/imp-assorty2.a40f9ba3a2601bf78b04930c6e2263a047f1a40d1cc809841a0bdd4af7c8d67a.ym",
-      "waveformByteOffset": 86032
-    },
-    {
-      "id": "titus-remixe-lyra-megadamo",
-      "order": 9,
-      "title": "Remixe Lyra Megadamo",
-      "author": "Titus",
-      "sourceUrl": "https://zxart.ee/eng/authors/t/andrey-titov/remixe-lyra-megadamo/",
-      "subsong": 1,
-      "sourceFormat": "ASC",
-      "runtimeFormat": "YM6",
-      "runtimeSha256": "32b483a82754d99fabe8627d18764bc2bda2839e70c16b695b69ef8cfb5294ed",
-      "runtimeByteLength": 135270,
-      "durationSeconds": 168.94,
-      "durationSource": "source",
-      "chipType": "AY",
-      "chipClockHz": 1773400,
-      "frameRateHz": 50,
-      "channelLayout": "ACB",
-      "waveformByteLength": 12288,
-      "year": 1994,
-      "runtimeUrl": "/generated/tracks/titus-remixe-lyra-megadamo.32b483a82754d99fabe8627d18764bc2bda2839e70c16b695b69ef8cfb5294ed.ym",
-      "waveformByteOffset": 98320
+      "waveformByteOffset": 73744
     }
   ]
 }

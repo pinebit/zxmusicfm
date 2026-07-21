@@ -54,7 +54,7 @@ describe('foundation content generation', () => {
       validateContent(process.cwd(), 'development'),
     ).resolves.toMatchObject({
       mode: 'development',
-      trackCount: 9,
+      trackCount: 7,
     });
   }, 30_000);
 
