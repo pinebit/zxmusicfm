@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.f330f39dc80d4437c7e7ad5c6b9fbf48cbab6b203688440dcbc82cbf850c25fb.bin",
-    "sha256": "f330f39dc80d4437c7e7ad5c6b9fbf48cbab6b203688440dcbc82cbf850c25fb",
+    "url": "/generated/waveforms.e7a908526600cb1a442bfda57c3a7fe1130d1975fa7ee9027cda26d9cf0d75e7.bin",
+    "sha256": "e7a908526600cb1a442bfda57c3a7fe1130d1975fa7ee9027cda26d9cf0d75e7",
     "byteLength": 184336,
     "formatVersion": 1,
     "bucketCount": 2048,
@@ -211,13 +211,13 @@
       "id": "klav-beat",
       "order": 10,
       "title": "BEAT",
-      "author": "Klav",
-      "sourceUrl": "https://zxart.ee/eng/authors/k/klav/beat5/",
+      "author": "ASC",
+      "sourceUrl": "https://zxtunes.com/ru/authors/asc",
       "subsong": 1,
-      "sourceFormat": "STC",
+      "sourceFormat": "ASC",
       "runtimeFormat": "YM6",
-      "runtimeSha256": "82e1d215c2588565486eb4e1052bd59278873c7a80ccc30a80044f9fd4f27982",
-      "runtimeByteLength": 184405,
+      "runtimeSha256": "16e6dc332ca3108b1d633cbc5c5717f1d26f97c19de33f08ea00635a06f982e7",
+      "runtimeByteLength": 184404,
       "durationSeconds": 230.38,
       "durationSource": "source",
       "chipType": "AY",
@@ -225,7 +225,7 @@
       "frameRateHz": 50,
       "channelLayout": "ACB",
       "waveformByteLength": 12288,
-      "runtimeUrl": "/generated/tracks/klav-beat.82e1d215c2588565486eb4e1052bd59278873c7a80ccc30a80044f9fd4f27982.ym",
+      "runtimeUrl": "/generated/tracks/klav-beat.16e6dc332ca3108b1d633cbc5c5717f1d26f97c19de33f08ea00635a06f982e7.ym",
       "waveformByteOffset": 110608
     },
     {

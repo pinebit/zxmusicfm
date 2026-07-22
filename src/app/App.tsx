@@ -285,11 +285,11 @@ function PlayerApplication({
                       <div className="track-meta">
                         <div className="track-identity">
                           <h3>{track.title}</h3>
-                          <span aria-hidden="true">/</span>
+                          <span aria-hidden="true">|</span>
                           <p>{track.author}</p>
                           {track.year !== undefined ? (
                             <>
-                              <span aria-hidden="true">/</span>
+                              <span aria-hidden="true">|</span>
                               <p>{track.year}</p>
                             </>
                           ) : null}
@@ -371,7 +371,13 @@ function PlayerApplication({
               }`}
             >
               <span className="on-air-lamp" aria-hidden="true" />
-              ON AIR
+              <span className="on-air-label">ON AIR</span>
+              {selectedTrack ? (
+                <span className="on-air-track">
+                  {' - '}
+                  {selectedTrack.title} | {selectedTrack.author}
+                </span>
+              ) : null}
             </p>
             <span className="visually-hidden" aria-live="polite">
               {playbackStatusLabels[snapshot.status]}

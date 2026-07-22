@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import type { GeneratedCatalog } from '../content/schemas.ts';
+import { PLAYER_STORAGE_KEY } from '../playback/persistence.ts';
 import { App } from './App.tsx';
 
 const emptyCatalog: GeneratedCatalog = {
@@ -16,6 +17,34 @@ const emptyCatalog: GeneratedCatalog = {
     channelCount: 3,
   },
   tracks: [],
+};
+
+const digest = '0'.repeat(64);
+const catalogWithTrack: GeneratedCatalog = {
+  ...emptyCatalog,
+  tracks: [
+    {
+      id: 'solitude',
+      order: 1,
+      title: 'Solitude',
+      author: 'Pator',
+      sourceUrl: 'https://example.com/solitude',
+      subsong: 1,
+      sourceFormat: 'PSG',
+      runtimeFormat: 'YM6',
+      runtimeUrl: `/generated/tracks/solitude.${digest}.ym`,
+      runtimeSha256: digest,
+      runtimeByteLength: 1,
+      durationSeconds: 2,
+      durationSource: 'source',
+      chipType: 'AY',
+      chipClockHz: 1_773_400,
+      frameRateHz: 50,
+      channelLayout: 'ABC',
+      waveformByteOffset: 32,
+      waveformByteLength: 12_288,
+    },
+  ],
 };
 
 describe('App', () => {
@@ -44,5 +73,26 @@ describe('App', () => {
 
     expect(await screen.findByText('No tracks available')).toBeInTheDocument();
     expect(attempt).toBe(2);
+  });
+
+  it('shows the selected track title and author on the ON AIR sign', async () => {
+    localStorage.setItem(
+      PLAYER_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        selectedTrackId: 'solitude',
+        positionSeconds: 0,
+        volume: 0.8,
+        shuffle: false,
+      }),
+    );
+
+    try {
+      render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+      expect(await screen.findByText('- Solitude | Pator')).toBeInTheDocument();
+    } finally {
+      localStorage.removeItem(PLAYER_STORAGE_KEY);
+    }
   });
 });

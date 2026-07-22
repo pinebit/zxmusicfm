@@ -316,12 +316,27 @@ h3 {
 
 .on-air-sign {
   display: inline-flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 0.42rem;
+  min-width: 0;
   margin-bottom: 0;
 }
 
+.on-air-label {
+  flex: 0 0 auto;
+}
+
+.on-air-track {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .on-air-lamp {
+  flex-shrink: 0;
   width: 0.62rem;
   height: 0.62rem;
   background: #48191d;
