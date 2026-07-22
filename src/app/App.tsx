@@ -24,6 +24,12 @@ import type {
 } from '../playback/PlayerController.ts';
 import { BrandWordmark } from './BrandWordmark.tsx';
 import { ChannelMeters } from './ChannelMeters.tsx';
+import {
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PreviousIcon,
+} from './ControlIcons.tsx';
 import { CreditsDialog } from './CreditsDialog.tsx';
 import { formatTime } from './formatTime.ts';
 import { PositionLeds } from './PositionLeds.tsx';
@@ -267,9 +273,13 @@ function PlayerApplication({
                       aria-label={`${playing ? 'Pause' : 'Play'} ${track.title}`}
                       onClick={() => controller.toggle(track.id)}
                     >
-                      <span aria-hidden="true">
-                        {loading ? '•••' : playing ? '⏸︎' : '▶︎'}
-                      </span>
+                      {loading ? (
+                        <span aria-hidden="true">•••</span>
+                      ) : playing ? (
+                        <PauseIcon />
+                      ) : (
+                        <PlayIcon />
+                      )}
                     </button>
                     <div className="track-main">
                       <div className="track-meta">
@@ -422,7 +432,7 @@ function PlayerApplication({
                 aria-label="Previous track"
                 onClick={() => controller.previous()}
               >
-                <span aria-hidden="true">⏮︎</span>
+                <PreviousIcon />
               </button>
               <button
                 className="transport-primary"
@@ -443,9 +453,7 @@ function PlayerApplication({
                     : controller.playSelected()
                 }
               >
-                <span aria-hidden="true">
-                  {snapshot.status === 'playing' ? '⏸︎' : '▶︎'}
-                </span>
+                {snapshot.status === 'playing' ? <PauseIcon /> : <PlayIcon />}
               </button>
               <button
                 type="button"
@@ -453,7 +461,7 @@ function PlayerApplication({
                 aria-label="Next track"
                 onClick={() => controller.next()}
               >
-                <span aria-hidden="true">⏭︎</span>
+                <NextIcon />
               </button>
             </div>
 

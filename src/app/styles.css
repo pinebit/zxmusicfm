@@ -391,6 +391,15 @@ h3 {
   line-height: 1;
 }
 
+.control-icon {
+  fill: currentcolor;
+}
+
+.play-button .control-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
 .play-button:not(:disabled):hover {
   filter: brightness(1.16);
   transform: translateY(-1px);
@@ -850,6 +859,11 @@ h3 {
   transform: translateY(0.12rem);
 }
 
+.transport button .control-icon {
+  width: clamp(1.15rem, 3vw, 1.45rem);
+  height: clamp(1.15rem, 3vw, 1.45rem);
+}
+
 .transport .transport-primary {
   color: var(--amber);
 }
@@ -1175,6 +1189,17 @@ h3 {
 
   .meter-bank {
     gap: clamp(0.25rem, 2vw, 0.65rem);
+  }
+
+  /* The shuffle toggle carries a status LED plus the icon, so at the narrow
+     mobile control width its contents sit edge-to-edge. Let it grow into the
+     spare space of its column, capped so it stays balanced with the transport
+     buttons. */
+  .deck-toggle {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: var(--deck-control-width);
+    max-width: 3.6rem;
   }
 }
 
