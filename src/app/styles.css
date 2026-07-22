@@ -456,9 +456,33 @@ h3 {
 .track-identity {
   display: flex;
   align-items: baseline;
+  gap: 0.38rem;
   min-width: 0;
   margin-bottom: 0.65rem;
-  gap: 0.38rem;
+}
+
+.track-identity-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-identity-text > * {
+  display: inline;
+}
+
+.track-identity-text > * + * {
+  margin-left: 0.38rem;
+}
+
+.track-identity h3,
+.track-identity p {
+  margin-bottom: 0;
+}
+
+.track-identity-text > span {
+  color: #777c82;
 }
 
 .track-identity h3,
@@ -469,23 +493,8 @@ h3 {
   line-height: 1.35rem;
 }
 
-.track-identity h3 {
-  min-width: 0;
-  margin-bottom: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.track-identity > span {
-  color: #777c82;
-}
-
 .track-identity p {
-  flex: 0 0 auto;
-  margin-bottom: 0;
   color: inherit;
-  white-space: nowrap;
 }
 
 .track-meta p,
@@ -1398,7 +1407,6 @@ h3 {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
-
 }
 
 @media (forced-colors: active) {

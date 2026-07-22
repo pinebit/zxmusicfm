@@ -8,9 +8,9 @@ import { promisify } from 'node:util';
 
 export const ZXTUNE_COMMIT =
   '8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a' as const;
-export const TRACKER_FORMATS = ['PT3', 'STC', 'ASC', 'STP'] as const;
+export const TRACKER_FORMATS = ['PT3', 'STC', 'ASC', 'STP', 'FTC'] as const;
 export type TrackerFormat = (typeof TRACKER_FORMATS)[number];
-export type TrackerExtension = '.pt3' | '.stc' | '.asc' | '.stp';
+export type TrackerExtension = '.pt3' | '.stc' | '.asc' | '.stp' | '.ftc';
 
 const dockerImage = `zxmusicfm-zxtune:${ZXTUNE_COMMIT.slice(0, 12)}`;
 function resolveDockerfile(): string {
@@ -37,6 +37,8 @@ function expectedFormat(extension: TrackerExtension): TrackerFormat {
       return 'ASC';
     case '.stp':
       return 'STP';
+    case '.ftc':
+      return 'FTC';
   }
 }
 

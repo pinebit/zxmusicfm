@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.4401d83688ffb4d0af8a4e30ad97251064e4b04e280cc79d6c0685696fe5f314.bin",
-    "sha256": "4401d83688ffb4d0af8a4e30ad97251064e4b04e280cc79d6c0685696fe5f314",
-    "byteLength": 208912,
+    "url": "/generated/waveforms.4472ced317e62bced7c42d0cf86dfaa089b3d83f5d2ab56d70b90136da542fe0.bin",
+    "sha256": "4472ced317e62bced7c42d0cf86dfaa089b3d83f5d2ab56d70b90136da542fe0",
+    "byteLength": 221200,
     "formatVersion": 1,
     "bucketCount": 2048,
     "channelCount": 3
@@ -381,6 +381,27 @@
       "year": 1987,
       "runtimeUrl": "/generated/tracks/fuxoft-feud.892bbd69fb7972a58b68e86be8f51b1fcc917e70043e9d82deb6cf4210ddb50d.ym",
       "waveformByteOffset": 196624
+    },
+    {
+      "id": "lr-18-where-we-are",
+      "order": 18,
+      "title": "Where We Are",
+      "author": "LR-18",
+      "sourceUrl": "https://bulba.untergrund.net/music_e.htm",
+      "subsong": 1,
+      "sourceFormat": "FTC",
+      "runtimeFormat": "YM6",
+      "runtimeSha256": "25d6cde8c02740236b76736fe899325cd00b821cc142be75aa42e3251cdf7c8a",
+      "runtimeByteLength": 98398,
+      "durationSeconds": 122.86,
+      "durationSource": "source",
+      "chipType": "AY",
+      "chipClockHz": 1773400,
+      "frameRateHz": 50,
+      "channelLayout": "ABC",
+      "waveformByteLength": 12288,
+      "runtimeUrl": "/generated/tracks/lr-18-where-we-are.25d6cde8c02740236b76736fe899325cd00b821cc142be75aa42e3251cdf7c8a.ym",
+      "waveformByteOffset": 208912
     }
   ]
 }

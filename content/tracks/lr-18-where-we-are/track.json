@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "lr-18-where-we-are",
+  "order": 18,
+  "title": "Where We Are",
+  "author": "LR-18",
+  "sourceUrl": "https://bulba.untergrund.net/music_e.htm",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC"
+}

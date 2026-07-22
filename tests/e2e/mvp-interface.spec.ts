@@ -120,6 +120,19 @@ test('fits the acceptance widths and stacks only when space requires it', async 
         volume.y + volume.height / 2 - (transport.y + transport.height / 2),
       ),
     ).toBeLessThan(3);
+    if (width === 320) {
+      const identity = page.locator('.track-identity-text').first();
+      await expect(identity).toHaveCSS('overflow', 'hidden');
+      await expect(identity).toHaveCSS('text-overflow', 'ellipsis');
+      await expect(identity).toHaveCSS('white-space', 'nowrap');
+      const identityBox = await identity.boundingBox();
+      const titleBox = await identity.getByRole('heading').boundingBox();
+      expect(identityBox).not.toBeNull();
+      expect(titleBox).not.toBeNull();
+      if (identityBox !== null && titleBox !== null) {
+        expect(Math.abs(titleBox.x - identityBox.x)).toBeLessThan(1);
+      }
+    }
   }
 
   await page.setViewportSize({ width: 720, height: 450 });

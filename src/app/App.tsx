@@ -285,15 +285,17 @@ function PlayerApplication({
                     <div className="track-main">
                       <div className="track-meta">
                         <div className="track-identity">
-                          <h3>{track.title}</h3>
-                          <span aria-hidden="true">|</span>
-                          <p>{track.author}</p>
-                          {track.year !== undefined ? (
-                            <>
-                              <span aria-hidden="true">|</span>
-                              <p>{track.year}</p>
-                            </>
-                          ) : null}
+                          <div className="track-identity-text">
+                            <h3>{track.title}</h3>
+                            <span aria-hidden="true">|</span>
+                            <p>{track.author}</p>
+                            {track.year !== undefined ? (
+                              <>
+                                <span aria-hidden="true">|</span>
+                                <p>{track.year}</p>
+                              </>
+                            ) : null}
+                          </div>
                           <a
                             className="track-source-link"
                             href={track.sourceUrl}

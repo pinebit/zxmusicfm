@@ -72,6 +72,10 @@ describe('tracker source routing', () => {
       format: 'STP',
       extension: '.stp',
     });
+    expect(detectSupportedSource(opaqueTrackerBytes, 'song.ftc')).toEqual({
+      format: 'FTC',
+      extension: '.ftc',
+    });
   });
 
   it('does not route an unsupported extension as a tracker', () => {
