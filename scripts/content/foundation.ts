@@ -66,7 +66,8 @@ export type ValidationResult = {
 export type TrackInput = {
   readonly directory: string;
   readonly sourcePath: string;
-  readonly sourceExtension: '.ay' | '.psg' | '.ym' | '.pt3' | '.stc' | '.asc';
+  readonly sourceExtension:
+    '.ay' | '.psg' | '.ym' | '.pt3' | '.stc' | '.asc' | '.stp';
   readonly sidecar: TrackSidecar;
 };
 
@@ -160,7 +161,7 @@ export async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
     }
 
     const sourceFiles = (await readdir(directory)).filter((fileName) =>
-      /^source\.(?:ay|psg|ym|pt3|stc|asc)$/u.test(fileName),
+      /^source\.(?:ay|psg|ym|pt3|stc|asc|stp)$/u.test(fileName),
     );
     if (sourceFiles.length !== 1) {
       throw new Error(
@@ -180,7 +181,7 @@ export async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
       );
     }
     if (
-      ['.psg', '.pt3', '.stc', '.asc'].includes(sourceExtension) &&
+      ['.psg', '.pt3', '.stc', '.asc', '.stp'].includes(sourceExtension) &&
       sidecar.durationOverrideSeconds !== undefined
     ) {
       throw new Error(
@@ -221,7 +222,10 @@ function requiredPlaybackField<
 function asTrackerExtension(
   extension: TrackInput['sourceExtension'],
 ): TrackerExtension | undefined {
-  return extension === '.pt3' || extension === '.stc' || extension === '.asc'
+  return extension === '.pt3' ||
+    extension === '.stc' ||
+    extension === '.asc' ||
+    extension === '.stp'
     ? extension
     : undefined;
 }
@@ -924,12 +928,12 @@ export function detectSupportedSource(
       extension,
     };
   } catch (error) {
-    const extension = /^\.(pt3|stc|asc)$/u.exec(suppliedExtension)
+    const extension = /^\.(pt3|stc|asc|stp)$/u.exec(suppliedExtension)
       ? (suppliedExtension as TrackerExtension)
       : undefined;
     if (extension === undefined) throw error;
     return {
-      format: extension.slice(1).toUpperCase() as 'PT3' | 'STC' | 'ASC',
+      format: extension.slice(1).toUpperCase() as 'PT3' | 'STC' | 'ASC' | 'STP',
       extension,
     };
   }

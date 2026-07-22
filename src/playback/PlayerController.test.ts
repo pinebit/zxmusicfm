@@ -104,6 +104,10 @@ class FakeAdapter implements PlaybackAdapter {
     return { A: 0, B: 0, C: 0 } as const;
   }
 
+  getChannelVoices() {
+    return { A: null, B: null, C: null } as const;
+  }
+
   renderOffline(): Promise<never> {
     throw new Error('Not used by controller tests.');
   }

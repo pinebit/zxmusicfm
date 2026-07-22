@@ -65,7 +65,7 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 - Every public track requires a valid human-facing `sourceUrl`; it is the catalog's sole per-track attribution field. Do not add or invent per-track license metadata.
 - Catalog size is a curatorial and deployment choice: development, preview, and release builds may ship any valid number of tracks, including an empty catalog. Invalid tracks must never be silently omitted.
 - AY, YM, and PSG preparation is Node-only. PSG-to-YM6 and waveform generation remain project-owned deterministic paths.
-- PT3, STC, and ASC are accepted only through the pinned ZXTune Docker workflow at commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`.
+- PT3, STC, ASC, and STP are accepted only through the pinned ZXTune Docker workflow at commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`.
 - Tracker conversion runs as a Linux container on the curator's macOS machine. Do not build or introduce an Android application.
 - Preserve original tracker bytes as authoritative. Treat `generated/source.psg`, `generated/tracker-conversion.json`, runtime YM, waveforms, and provenance as derived artifacts.
 - Require ZXTune's detected type to match the tracker extension. Keep processing network-disabled, read-only, capability-free, and bound to an isolated working directory.

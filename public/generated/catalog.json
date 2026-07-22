@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.e7a908526600cb1a442bfda57c3a7fe1130d1975fa7ee9027cda26d9cf0d75e7.bin",
-    "sha256": "e7a908526600cb1a442bfda57c3a7fe1130d1975fa7ee9027cda26d9cf0d75e7",
-    "byteLength": 184336,
+    "url": "/generated/waveforms.6690e38e50ccf247e2d43b53e79b2780315f7fa7179e02edb68e46d0b1006d9b.bin",
+    "sha256": "6690e38e50ccf247e2d43b53e79b2780315f7fa7179e02edb68e46d0b1006d9b",
+    "byteLength": 196624,
     "formatVersion": 1,
     "bucketCount": 2048,
     "channelCount": 3
@@ -337,6 +337,28 @@
       "year": 1988,
       "runtimeUrl": "/generated/tracks/jason-c-brooke-ramparts-128k-title-1.6b49f383d3c5d25dbd59f2b17b3decbe2b1e2eee599c3739de5e2c9ed1feccbf.ym",
       "waveformByteOffset": 172048
+    },
+    {
+      "id": "ksa-action-epilogue",
+      "order": 16,
+      "title": "\"ACTION\" EPILOGUE",
+      "author": "KSA",
+      "sourceUrl": "https://zxtunes.com/ru/authors/ksa-mortal-kombat-hackers-group",
+      "subsong": 1,
+      "sourceFormat": "STP",
+      "runtimeFormat": "YM6",
+      "runtimeSha256": "bb1f05627c428e66c0a63fba35cf87642dccf8006a6f9753071cde1a7f1cea31",
+      "runtimeByteLength": 98401,
+      "durationSeconds": 122.86,
+      "durationSource": "source",
+      "chipType": "AY",
+      "chipClockHz": 1773400,
+      "frameRateHz": 50,
+      "channelLayout": "ACB",
+      "waveformByteLength": 12288,
+      "year": 1996,
+      "runtimeUrl": "/generated/tracks/ksa-action-epilogue.bb1f05627c428e66c0a63fba35cf87642dccf8006a6f9753071cde1a7f1cea31.ym",
+      "waveformByteOffset": 184336
     }
   ]
 }

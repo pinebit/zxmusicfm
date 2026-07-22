@@ -18,9 +18,15 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     solitude.getByRole('link', { name: 'Original source' }),
   ).toHaveAttribute('href', 'https://zxart.ee/eng/authors/p/pator/solitude/');
   await expect(solitude.locator('.waveform-canvas')).toBeVisible();
-  const onAir = page.getByText('ON AIR', { exact: true });
+  const onAir = page.locator('.on-air-sign');
   await expect(onAir).toBeVisible();
   await expect(onAir).not.toHaveClass(/is-live/u);
+  await expect(
+    page.getByRole('img', {
+      name: 'Live notes on an 88-key piano for channels A, B, and C',
+    }),
+  ).toBeVisible();
+  await expect(page.locator('.piano-key')).toHaveCount(88);
 
   const restingNeedleTransforms = await Promise.all(
     ['A', 'B', 'C'].map((channel) =>
@@ -69,8 +75,12 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
       )
       .not.toBe(restingNeedleTransforms[index]);
   }
+  await expect
+    .poll(() => page.locator('.piano-key.is-active').count())
+    .toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Pause Solitude' }).click();
+  await expect(page.locator('.piano-key.is-active')).toHaveCount(0);
   const seek = page.getByRole('slider', { name: 'Seek Solitude' });
   await seek.fill('86.51');
   await expect(seek).toHaveAttribute('aria-valuetext', /1:26 of 2:53/u);

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ksa-action-epilogue",
+  "order": 16,
+  "title": "\"ACTION\" EPILOGUE",
+  "author": "KSA",
+  "sourceUrl": "https://zxtunes.com/ru/authors/ksa-mortal-kombat-hackers-group",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1996
+}

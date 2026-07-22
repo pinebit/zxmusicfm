@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { applyChipAmplitudeModel } from './chipModel.ts';
 import type { RuntimeTrack } from './contracts.ts';
@@ -7,7 +7,10 @@ import {
   createEnginePlayer,
   createEnginePlayerAtSample,
   ENGINE_SAMPLE_RATE,
+  type EnginePlayer,
+  frequencyToMidiNote,
   generateEngineChannels,
+  getEngineChannelVoices,
   initializeYm2149,
 } from './engine.ts';
 import { createYm6, parsePsg, parseYm6, selectAySubsong } from './formats.ts';
@@ -35,6 +38,56 @@ async function fixtureBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await readFile(path));
 }
 
+function createTestAudioContext(): {
+  readonly context: AudioContext;
+  setCurrentTime(value: number): void;
+} {
+  let currentTime = 0;
+  const audioNode = () => ({ connect: vi.fn() });
+  const context = {
+    state: 'running',
+    destination: audioNode(),
+    get currentTime() {
+      return currentTime;
+    },
+    resume: vi.fn(() => Promise.resolve()),
+    close: vi.fn(() => Promise.resolve()),
+    createGain: vi.fn(() => ({ ...audioNode(), gain: { value: 1 } })),
+    createBiquadFilter: vi.fn(() => ({
+      ...audioNode(),
+      type: 'lowpass',
+      frequency: { value: 0 },
+      Q: { value: 0 },
+      gain: { value: 0 },
+    })),
+    createDynamicsCompressor: vi.fn(() => ({
+      ...audioNode(),
+      threshold: { value: 0 },
+      knee: { value: 0 },
+      ratio: { value: 0 },
+      attack: { value: 0 },
+      release: { value: 0 },
+    })),
+    createBuffer: vi.fn((_channels: number, length: number) => {
+      const data = [new Float32Array(length), new Float32Array(length)];
+      return { getChannelData: (channel: number) => data[channel] };
+    }),
+    createBufferSource: vi.fn(() => ({
+      ...audioNode(),
+      buffer: null,
+      addEventListener: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    })),
+  } as unknown as AudioContext;
+  return {
+    context,
+    setCurrentTime(value: number) {
+      currentTime = value;
+    },
+  };
+}
+
 beforeAll(async () => {
   await initializeYm2149(
     await fixtureBytes('vendor/ym2149/ym2149_wasm_bg.wasm'),
@@ -42,6 +95,53 @@ beforeAll(async () => {
 });
 
 describe('pinned ym2149-rs engine', () => {
+  it('converts and validates per-channel tone voices', () => {
+    expect(frequencyToMidiNote(27.5)).toBe(21);
+    expect(frequencyToMidiNote(440)).toBe(69);
+    expect(frequencyToMidiNote(4_186.01)).toBe(108);
+    expect(frequencyToMidiNote(0)).toBeNull();
+
+    const player = {
+      getChannelStates: () => ({
+        channels: [
+          { frequency: 440, amplitude: 1, toneEnabled: true },
+          { frequency: 220, amplitude: 0, toneEnabled: true },
+          { frequency: 110, amplitude: 1, toneEnabled: false },
+        ],
+      }),
+    } as unknown as EnginePlayer;
+    expect(getEngineChannelVoices(player)).toEqual({
+      A: { midiNote: 69, amplitude: 1 },
+      B: null,
+      C: null,
+    });
+  });
+
+  it('publishes voices only when their scheduled audio is audible', async () => {
+    const clock = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(clock.context);
+    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
+    await adapter.play();
+
+    expect(adapter.getChannelVoices()).toEqual({
+      A: null,
+      B: null,
+      C: null,
+    });
+    clock.setCurrentTime(0.02);
+    expect(
+      Object.values(adapter.getChannelVoices()).some((voice) => voice !== null),
+    ).toBe(true);
+
+    adapter.pause();
+    expect(adapter.getChannelVoices()).toEqual({
+      A: null,
+      B: null,
+      C: null,
+    });
+    adapter.dispose();
+  });
+
   it('selects distinct pinned AY and YM nonlinear amplitude models', () => {
     const ymFixedMaximum = 9_184 / 10_922;
     expect(applyChipAmplitudeModel(ymFixedMaximum, 'YM')).toBe(ymFixedMaximum);

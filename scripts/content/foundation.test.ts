@@ -49,7 +49,7 @@ describe('foundation content generation', () => {
 
   it('validates the generated real catalog and provenance', async () => {
     await expect(validateContent(process.cwd())).resolves.toMatchObject({
-      trackCount: 15,
+      trackCount: 16,
     });
   }, 60_000);
 });
@@ -69,6 +69,10 @@ describe('tracker source routing', () => {
     expect(detectSupportedSource(opaqueTrackerBytes, 'song.asc')).toEqual({
       format: 'ASC',
       extension: '.asc',
+    });
+    expect(detectSupportedSource(opaqueTrackerBytes, 'song.stp')).toEqual({
+      format: 'STP',
+      extension: '.stp',
     });
   });
 

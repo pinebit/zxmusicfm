@@ -1,6 +1,7 @@
 import { applyChipAmplitudeModel } from './chipModel.ts';
 import type {
   ChannelLevels,
+  ChannelVoices,
   OfflineRender,
   PlaybackAdapter,
   PlaybackAdapterListener,
@@ -15,11 +16,13 @@ import {
   ENGINE_SAMPLE_RATE,
   type EnginePlayer,
   generateEngineChannels,
+  getEngineChannelVoices,
   initializeYm2149,
   OFFLINE_SAMPLE_RATE,
 } from './engine.ts';
 
 const EMPTY_LEVELS: ChannelLevels = { A: 0, B: 0, C: 0 };
+const EMPTY_VOICES: ChannelVoices = { A: null, B: null, C: null };
 const SCHEDULE_CHUNK_SAMPLES = 4_410;
 const SCHEDULE_AHEAD_SECONDS = 0.3;
 const SCHEDULER_INTERVAL_MS = 50;
@@ -51,20 +54,6 @@ function assertFiniteTrack(track: RuntimeTrack): void {
   if (!Number.isInteger(track.frameRateHz) || track.frameRateHz <= 0) {
     throw new Error(`Track ${track.id} has an invalid frame rate.`);
   }
-}
-
-function rms(
-  channels: Float32Array,
-  channel: number,
-  chipType: RuntimeTrack['chipType'],
-): number {
-  let sum = 0;
-  const sampleCount = channels.length / 3;
-  for (let index = channel; index < channels.length; index += 3) {
-    const sample = applyChipAmplitudeModel(channels[index] ?? 0, chipType);
-    sum += sample * sample;
-  }
-  return sampleCount === 0 ? 0 : Math.sqrt(sum / sampleCount);
 }
 
 function mixStereoSample(
@@ -114,6 +103,13 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     readonly time: number;
     readonly levels: ChannelLevels;
   }[] = [];
+  // Pitch changes are recorded at source-frame resolution and stamped with
+  // their audible AudioContext time. Reading the engine directly would expose
+  // the buffers scheduled up to 300 ms ahead.
+  private voiceTimeline: {
+    readonly time: number;
+    readonly voices: ChannelVoices;
+  }[] = [];
   private volume = 1;
   private loadGeneration = 0;
   private disposed = false;
@@ -133,6 +129,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.positionSeconds = 0;
     this.status = 'loading';
     this.levelTimeline = [];
+    this.voiceTimeline = [];
     this.publish();
 
     try {
@@ -211,6 +208,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.positionSeconds = position;
     this.status = 'paused';
     this.levelTimeline = [];
+    this.voiceTimeline = [];
     this.publish();
   }
 
@@ -223,6 +221,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.positionSeconds = 0;
     this.status = 'ready';
     this.levelTimeline = [];
+    this.voiceTimeline = [];
     this.publish();
   }
 
@@ -237,6 +236,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.replacePlayerAt(position, false);
     this.positionSeconds = position;
     this.levelTimeline = [];
+    this.voiceTimeline = [];
 
     if (position >= this.durationSeconds) {
       this.status = 'ended';
@@ -274,6 +274,22 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       B: current.B * this.volume,
       C: current.C * this.volume,
     };
+  }
+
+  getChannelVoices(): ChannelVoices {
+    if (!isPlayingStatus(this.status) || this.audioContext === undefined) {
+      return EMPTY_VOICES;
+    }
+    const now = this.audioContext.currentTime;
+    while (this.voiceTimeline.length > 1) {
+      const next = this.voiceTimeline[1];
+      if (next === undefined || next.time > now) break;
+      this.voiceTimeline.shift();
+    }
+    const current = this.voiceTimeline[0];
+    return current !== undefined && current.time <= now
+      ? current.voices
+      : EMPTY_VOICES;
   }
 
   async renderOffline(
@@ -397,6 +413,8 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.positionSeconds = 0;
     this.durationSeconds = 0;
     this.track = undefined;
+    this.levelTimeline = [];
+    this.voiceTimeline = [];
   }
 
   private assertNotDisposed(): void {
@@ -499,6 +517,11 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       if (next === undefined || next.time > audibleCutoff) break;
       this.levelTimeline.shift();
     }
+    while (this.voiceTimeline.length > 1) {
+      const next = this.voiceTimeline[1];
+      if (next === undefined || next.time > audibleCutoff) break;
+      this.voiceTimeline.shift();
+    }
 
     const nativeTotal = Math.round(this.durationSeconds * ENGINE_SAMPLE_RATE);
     while (
@@ -509,32 +532,60 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
         SCHEDULE_CHUNK_SAMPLES,
         nativeTotal - this.scheduledNativeSample,
       );
-      const generated = generateEngineChannels(player, count).channels;
       const buffer = context.createBuffer(2, count, ENGINE_SAMPLE_RATE);
       const left = buffer.getChannelData(0);
       const right = buffer.getChannelData(1);
-      for (let sample = 0; sample < count; sample += 1) {
-        const base = sample * 3;
-        const a = applyChipAmplitudeModel(generated[base] ?? 0, track.chipType);
-        const b = applyChipAmplitudeModel(
-          generated[base + 1] ?? 0,
-          track.chipType,
+      const squared = { A: 0, B: 0, C: 0 };
+      let generatedOffset = 0;
+      while (generatedOffset < count) {
+        const absoluteSample = this.scheduledNativeSample + generatedOffset;
+        const currentFrame = Math.floor(
+          (absoluteSample * track.frameRateHz) / ENGINE_SAMPLE_RATE,
         );
-        const c = applyChipAmplitudeModel(
-          generated[base + 2] ?? 0,
-          track.chipType,
+        const nextFrameSample = Math.ceil(
+          ((currentFrame + 1) * ENGINE_SAMPLE_RATE) / track.frameRateHz,
         );
-        const stereo = mixStereoSample(a, b, c, track.channelLayout);
-        left[sample] = stereo[0];
-        right[sample] = stereo[1];
+        const segmentCount = Math.min(
+          count - generatedOffset,
+          Math.max(1, nextFrameSample - absoluteSample),
+        );
+        const generated = generateEngineChannels(player, segmentCount).channels;
+        this.voiceTimeline.push({
+          time: this.nextScheduleTime + generatedOffset / ENGINE_SAMPLE_RATE,
+          voices: getEngineChannelVoices(player),
+        });
+
+        for (let sample = 0; sample < segmentCount; sample += 1) {
+          const base = sample * 3;
+          const outputIndex = generatedOffset + sample;
+          const a = applyChipAmplitudeModel(
+            generated[base] ?? 0,
+            track.chipType,
+          );
+          const b = applyChipAmplitudeModel(
+            generated[base + 1] ?? 0,
+            track.chipType,
+          );
+          const c = applyChipAmplitudeModel(
+            generated[base + 2] ?? 0,
+            track.chipType,
+          );
+          squared.A += a * a;
+          squared.B += b * b;
+          squared.C += c * c;
+          const stereo = mixStereoSample(a, b, c, track.channelLayout);
+          left[outputIndex] = stereo[0];
+          right[outputIndex] = stereo[1];
+        }
+        generatedOffset += segmentCount;
       }
 
       this.levelTimeline.push({
         time: this.nextScheduleTime,
         levels: {
-          A: rms(generated, 0, track.chipType),
-          B: rms(generated, 1, track.chipType),
-          C: rms(generated, 2, track.chipType),
+          A: Math.sqrt(squared.A / count),
+          B: Math.sqrt(squared.B / count),
+          C: Math.sqrt(squared.C / count),
         },
       });
       const source = context.createBufferSource();
@@ -560,6 +611,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.positionSeconds = this.durationSeconds;
     this.status = 'ended';
     this.levelTimeline = [];
+    this.voiceTimeline = [];
     this.publish();
   }
 

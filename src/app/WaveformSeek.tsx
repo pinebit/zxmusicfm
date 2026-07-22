@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { DecodedWaveform } from '../content/runtime.ts';
 import { WAVEFORM_BUCKET_COUNT } from '../playback/waveform.ts';
+import { channelPalette } from './channelPalette.ts';
 import { formatTime } from './formatTime.ts';
 
 type WaveformSeekProps = {
@@ -15,9 +16,7 @@ type WaveformSeekProps = {
 };
 
 const waveformPalette = {
-  A: '#dca6ad',
-  B: '#dfcda2',
-  C: '#9fcbd0',
+  ...channelPalette,
   baseline: '#777d84',
   divider: '#34383d',
   playhead: '#f4e7c3',

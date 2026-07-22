@@ -14,6 +14,15 @@ export type ChannelId = 'A' | 'B' | 'C';
 
 export type ChannelLevels = Readonly<Record<ChannelId, number>>;
 
+export type ChannelVoice = {
+  readonly midiNote: number;
+  readonly amplitude: number;
+};
+
+// Current pitch and normalized register amplitude for each audible tone
+// generator. A null channel is silent, noise-only, or has no finite frequency.
+export type ChannelVoices = Readonly<Record<ChannelId, ChannelVoice | null>>;
+
 export type RuntimeTrack = {
   readonly id: string;
   readonly bytes: Uint8Array;
@@ -48,6 +57,7 @@ export type PlaybackAdapter = {
   seek(positionSeconds: number): Promise<void>;
   setVolume(volume: number): void;
   getChannelLevels(): ChannelLevels;
+  getChannelVoices(): ChannelVoices;
   renderOffline(
     track: RuntimeTrack,
     signal: AbortSignal,

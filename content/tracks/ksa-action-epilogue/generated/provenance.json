@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Action_2.stp",
+  "sourceFormat": "STP",
+  "sourceSha256": "d96ef70a9ace550458bf1095e7cd28d926ef5161f9ebadf48845b9e1ffd7c08c",
+  "sourceByteLength": 4972,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "bb1f05627c428e66c0a63fba35cf87642dccf8006a6f9753071cde1a7f1cea31",
+  "runtimeByteLength": 98401,
+  "frameCount": 6143,
+  "durationSeconds": 122.86,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "fadb10058f2c043510f2d040344d12483ad8d14df3fd14647f3ccd649f3d58ee",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STP",
+    "sourceSha256": "d96ef70a9ace550458bf1095e7cd28d926ef5161f9ebadf48845b9e1ffd7c08c",
+    "psgSha256": "333048da26532ada089106c227ddb36d1722cf61aae498033b9e39737df8b287",
+    "psgByteLength": 61900
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

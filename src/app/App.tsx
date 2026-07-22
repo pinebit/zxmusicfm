@@ -33,6 +33,7 @@ import {
 import { CreditsDialog } from './CreditsDialog.tsx';
 import { formatTime } from './formatTime.ts';
 import { PositionLeds } from './PositionLeds.tsx';
+import { PianoKeyboard } from './PianoKeyboard.tsx';
 import { VolumeKnob } from './VolumeKnob.tsx';
 import { WaveformSeek } from './WaveformSeek.tsx';
 
@@ -387,6 +388,10 @@ function PlayerApplication({
             <p className="choose-track">Choose a track to start listening.</p>
           ) : null}
           <ChannelMeters
+            adapter={controller.getAdapter()}
+            playing={snapshot.status === 'playing'}
+          />
+          <PianoKeyboard
             adapter={controller.getAdapter()}
             playing={snapshot.status === 'playing'}
           />
