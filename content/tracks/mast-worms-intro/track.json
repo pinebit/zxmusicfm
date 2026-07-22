@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mast-worms-intro",
+  "order": 21,
+  "title": "Worms intro",
+  "author": "Mast",
+  "sourceUrl": "https://zxart.ee/eng/authors/m/mast/worms-intro/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 1999
+}

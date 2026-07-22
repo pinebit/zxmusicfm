@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "KentZak01.ay",
+  "sourceFormat": "AY",
+  "sourceSha256": "bab1c4769fe94460a669df50b637b8ea61b3cd157137257e617f1a08ca7c0cbd",
+  "sourceByteLength": 4025,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "d76ebe3c3e39dec69c055ed3c93640fdae65c3ba9853e83a97fc1e9449a0ec20",
+  "runtimeByteLength": 144111,
+  "frameCount": 9000,
+  "durationSeconds": 180,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "55aa675e9ae3cbf1c032f1df0c5ef6d1ef46c38b8223ec44e74d9305971bc209",
+  "trackerConversion": null,
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

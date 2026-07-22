@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "fuxoft-commando",
+  "order": 22,
+  "title": "Commando",
+  "author": "Fuxoft (František Fuka)",
+  "sourceUrl": "https://demozoo.org/music/15391/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 1988
+}

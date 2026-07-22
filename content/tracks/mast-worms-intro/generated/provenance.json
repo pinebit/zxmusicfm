@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:Mast_-_Worms_intro_(1999).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "15d2eece34e43e847b16ee14b570f5f30ba439949af3c5e1d0cb9990c755d2ef",
+  "sourceByteLength": 3458,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "6719cca88e869a400d37964c08107b6db8c78df236375a5c070a607176fa97fc",
+  "runtimeByteLength": 98396,
+  "frameCount": 6143,
+  "durationSeconds": 122.86,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "9aa231657a2ac14813648d23e24bd48a74cc40f0471b5ef9597c5261e9b64f3d",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "PT3",
+    "sourceSha256": "15d2eece34e43e847b16ee14b570f5f30ba439949af3c5e1d0cb9990c755d2ef",
+    "psgSha256": "f42d14dfa789f08d4f54f442234e2ad770f58fc2c3858348641bde4dd8ee9b9c",
+    "psgByteLength": 48324
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

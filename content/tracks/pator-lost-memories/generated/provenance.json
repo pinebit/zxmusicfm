@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:Pator_-_Lost_Memories_(2021)_(Lost_Party_2021,_2).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "abc61836ea7f357e7c3e24744c52becea07a28bdd6ea1d0e27a76f1e6512f84d",
+  "sourceByteLength": 9822,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "1b8cfe54720878b20723cd5cfd75fea16ede9d9e53f27492678deebcdd6bab26",
+  "runtimeByteLength": 134031,
+  "frameCount": 8370,
+  "durationSeconds": 167.4,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "9831a7f5ba6a8b9c1d56aeb79bba01503de782b4cf2a110221a7e474260054ff",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "PT3",
+    "sourceSha256": "abc61836ea7f357e7c3e24744c52becea07a28bdd6ea1d0e27a76f1e6512f84d",
+    "psgSha256": "b97120597bd860ba79097d75130eb746c0f374316286c3f8b1202d7eed9a67d9",
+    "psgByteLength": 69808
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}
