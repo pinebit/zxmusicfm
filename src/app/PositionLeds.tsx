@@ -9,7 +9,7 @@ type PositionLedsProps = {
 /**
  * A non-interactive strip of faded LEDs below the gauges. It fills left to
  * right with the playback position (orange), switches to the volume level
- * (green) while the knob is being turned, and slow-flashes while paused.
+ * (green) while the knob is being turned.
  * Position and volume remain available to assistive tech through the seek and
  * volume sliders, so the strip itself is decorative.
  */

@@ -40,7 +40,7 @@ describe('PianoKeyboard', () => {
     expect(pianoKeys.filter(({ black }) => black)).toHaveLength(36);
   });
 
-  it('splits shared notes by channel and marks out-of-range activity', () => {
+  it('splits shared notes by channel and ignores out-of-range activity', () => {
     let nextFrame: FrameRequestCallback | undefined;
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       nextFrame = callback;
@@ -66,9 +66,7 @@ describe('PianoKeyboard', () => {
     expect(middleA?.style.getPropertyValue('--key-active-fill')).toContain(
       'linear-gradient',
     );
-    expect(
-      container.querySelector('.piano-overflow-high .channel-c'),
-    ).toHaveClass('is-active');
+    expect(container.querySelector('.piano-overflow')).not.toBeInTheDocument();
     const initialIntensity = Number(middleA?.dataset.intensity);
 
     act(() => nextFrame?.(16));
@@ -80,14 +78,8 @@ describe('PianoKeyboard', () => {
     const releaseIntensity = Number(middleA?.dataset.intensity);
     expect(middleA).toHaveClass('is-active');
     expect(releaseIntensity).toBeLessThan(sustainedIntensity);
-    expect(
-      container.querySelector('.piano-overflow-high .channel-c'),
-    ).toHaveClass('is-active');
 
     act(() => nextFrame?.(PIANO_RELEASE_MS + 33));
     expect(middleA).not.toHaveClass('is-active');
-    expect(
-      container.querySelector('.piano-overflow-high .channel-c'),
-    ).not.toHaveClass('is-active');
   });
 });

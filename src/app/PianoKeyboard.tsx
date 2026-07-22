@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type {
   ChannelId,
@@ -126,17 +126,10 @@ type PianoKeyboardProps = {
 };
 
 export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
+  const [enabledChannels, setEnabledChannels] = useState<
+    ReadonlySet<ChannelId>
+  >(() => new Set(CHANNELS));
   const keyRefs = useRef(new Map<number, HTMLSpanElement>());
-  const lowRefs = useRef<Record<ChannelId, HTMLSpanElement | null>>({
-    A: null,
-    B: null,
-    C: null,
-  });
-  const highRefs = useRef<Record<ChannelId, HTMLSpanElement | null>>({
-    A: null,
-    B: null,
-    C: null,
-  });
   const activeKeys = useRef(new Set<number>());
   const visualVoices = useRef(new Map<string, VisualVoice>());
   const previousSignature = useRef('');
@@ -165,6 +158,7 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
           }
         >();
         for (const channel of CHANNELS) {
+          if (!enabledChannels.has(channel)) continue;
           const voice = voices[channel];
           if (voice === null) continue;
           const midi = Math.round(voice.midiNote);
@@ -176,6 +170,10 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
         }
 
         for (const [id, visual] of visualVoices.current) {
+          if (!enabledChannels.has(visual.channel)) {
+            visualVoices.current.delete(id);
+            continue;
+          }
           const signal = signals.get(id);
           const energy = advanceKeyEnergy(
             visual.energy,
@@ -199,25 +197,12 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
       }
 
       const grouped = new Map<number, VisualVoice[]>();
-      const lowEnergies = new Map<ChannelId, number>();
-      const highEnergies = new Map<ChannelId, number>();
       for (const visual of visualVoices.current.values()) {
-        const { midi, channel, energy } = visual;
-        if (midi < PIANO_MIN_MIDI) {
-          lowEnergies.set(
-            channel,
-            Math.max(lowEnergies.get(channel) ?? 0, energy),
-          );
-        } else if (midi > PIANO_MAX_MIDI) {
-          highEnergies.set(
-            channel,
-            Math.max(highEnergies.get(channel) ?? 0, energy),
-          );
-        } else {
-          const groupedVoices = grouped.get(midi) ?? [];
-          groupedVoices.push(visual);
-          grouped.set(midi, groupedVoices);
-        }
+        const { midi } = visual;
+        if (midi < PIANO_MIN_MIDI || midi > PIANO_MAX_MIDI) continue;
+        const groupedVoices = grouped.get(midi) ?? [];
+        groupedVoices.push(visual);
+        grouped.set(midi, groupedVoices);
       }
       for (const groupedVoices of grouped.values()) {
         groupedVoices.sort(
@@ -225,21 +210,13 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
             CHANNELS.indexOf(left.channel) - CHANNELS.indexOf(right.channel),
         );
       }
-      const signature = [
-        [...grouped]
-          .sort(([left], [right]) => left - right)
-          .map(
-            ([midi, groupedVoices]) =>
-              `${midi}:${groupedVoices.map(({ channel, energy }) => `${channel}${energy.toFixed(3)}`).join('')}`,
-          )
-          .join(','),
-        CHANNELS.map(
-          (channel) => lowEnergies.get(channel)?.toFixed(3) ?? '-',
-        ).join(','),
-        CHANNELS.map(
-          (channel) => highEnergies.get(channel)?.toFixed(3) ?? '-',
-        ).join(','),
-      ].join('|');
+      const signature = [...grouped]
+        .sort(([left], [right]) => left - right)
+        .map(
+          ([midi, groupedVoices]) =>
+            `${midi}:${groupedVoices.map(({ channel, energy }) => `${channel}${energy.toFixed(3)}`).join('')}`,
+        )
+        .join(',');
 
       if (signature !== previousSignature.current) {
         for (const midi of activeKeys.current) {
@@ -253,31 +230,6 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
           }
         }
         activeKeys.current.clear();
-        for (const channel of CHANNELS) {
-          lowRefs.current[channel]?.classList.remove('is-active');
-          lowRefs.current[channel]?.style.removeProperty(
-            '--overflow-intensity',
-          );
-          highRefs.current[channel]?.classList.remove('is-active');
-          highRefs.current[channel]?.style.removeProperty(
-            '--overflow-intensity',
-          );
-        }
-
-        for (const channel of CHANNELS) {
-          const low = lowEnergies.get(channel);
-          const lowIndicator = lowRefs.current[channel];
-          if (low !== undefined && lowIndicator !== null) {
-            lowIndicator.style.setProperty('--overflow-intensity', `${low}`);
-            lowIndicator.classList.add('is-active');
-          }
-          const high = highEnergies.get(channel);
-          const highIndicator = highRefs.current[channel];
-          if (high !== undefined && highIndicator !== null) {
-            highIndicator.style.setProperty('--overflow-intensity', `${high}`);
-            highIndicator.classList.add('is-active');
-          }
-        }
 
         for (const [midi, groupedVoices] of grouped) {
           const key = keyRefs.current.get(midi);
@@ -308,7 +260,16 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
 
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
-  }, [adapter, playing]);
+  }, [adapter, enabledChannels, playing]);
+
+  const toggleChannel = (channel: ChannelId) => {
+    setEnabledChannels((current) => {
+      const next = new Set(current);
+      if (next.has(channel)) next.delete(channel);
+      else next.add(channel);
+      return next;
+    });
+  };
 
   const whiteKeys = pianoKeys.filter(({ black }) => !black);
   const blackKeys = pianoKeys.filter(({ black }) => black);
@@ -326,46 +287,47 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
   );
 
   return (
-    <div
-      className="piano-visualizer"
-      role="img"
-      aria-label="Live notes on an 88-key piano for channels A, B, and C"
-    >
-      <div className="piano-keyboard-heading" aria-hidden="true" />
-      <div className="piano-keyboard-row" aria-hidden="true">
-        <span className="piano-overflow piano-overflow-low">
-          {CHANNELS.map((channel) => (
-            <i
-              ref={(element) => {
-                lowRefs.current[channel] = element;
-              }}
-              className={`channel-${channel.toLowerCase()}`}
-              style={{
-                background: channelPalette[channel],
-                color: channelPalette[channel],
-              }}
-              key={channel}
-            />
-          ))}
-        </span>
+    <div className="piano-visualizer">
+      <div className="piano-keyboard-heading">
+        <div
+          className="piano-channel-toggles"
+          role="group"
+          aria-label="Keyboard channels"
+        >
+          {CHANNELS.map((channel) => {
+            const enabled = enabledChannels.has(channel);
+            return (
+              <button
+                className="piano-channel-toggle"
+                type="button"
+                aria-label={`Channel ${channel} on keyboard`}
+                aria-pressed={enabled}
+                title={`Toggle channel ${channel} keyboard notes`}
+                onClick={() => toggleChannel(channel)}
+                key={channel}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    background: enabled
+                      ? channelPalette[channel]
+                      : '#111315',
+                    borderColor: channelPalette[channel],
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div
+        className="piano-keyboard-row"
+        role="img"
+        aria-label="Live notes on an 88-key piano for channels A, B, and C"
+      >
         <span className="piano-keybed">
           {whiteKeys.map(renderKey)}
           {blackKeys.map(renderKey)}
-        </span>
-        <span className="piano-overflow piano-overflow-high">
-          {CHANNELS.map((channel) => (
-            <i
-              ref={(element) => {
-                highRefs.current[channel] = element;
-              }}
-              className={`channel-${channel.toLowerCase()}`}
-              style={{
-                background: channelPalette[channel],
-                color: channelPalette[channel],
-              }}
-              key={channel}
-            />
-          ))}
         </span>
       </div>
     </div>

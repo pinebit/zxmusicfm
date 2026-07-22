@@ -734,15 +734,53 @@ h3 {
 }
 
 .piano-keyboard-heading {
-  min-height: 0.8rem;
+  display: flex;
+  min-height: 1.25rem;
+  align-items: center;
+  justify-content: flex-end;
   margin-bottom: 0.25rem;
 }
 
-.piano-keyboard-row {
+.piano-channel-toggles {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.piano-channel-toggle {
   display: grid;
-  grid-template-columns: 0.32rem minmax(0, 1fr) 0.32rem;
-  gap: 0.22rem;
-  align-items: stretch;
+  width: 1.75rem;
+  height: 1.25rem;
+  padding: 0;
+  place-items: center;
+  background: transparent;
+  border: 0;
+}
+
+.piano-channel-toggle span {
+  display: block;
+  width: 1.5rem;
+  height: 0.42rem;
+  border: 1px solid;
+  border-radius: 0.08rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%);
+}
+
+.piano-channel-toggle[aria-pressed='false'] span {
+  opacity: 0.48;
+  box-shadow: inset 0 0.08rem 0.14rem rgb(0 0 0 / 65%);
+}
+
+.piano-channel-toggle:hover span {
+  opacity: 1;
+}
+
+.piano-channel-toggle:active {
+  transform: translateY(1px);
+}
+
+.piano-keyboard-row {
+  display: block;
 }
 
 .piano-keybed {
@@ -791,25 +829,6 @@ h3 {
 
 .piano-key-black.is-active {
   z-index: 3;
-}
-
-.piano-overflow {
-  display: grid;
-  grid-template-rows: repeat(3, 1fr);
-  gap: 0.14rem;
-  padding-block: 0.15rem;
-}
-
-.piano-overflow i {
-  min-height: 0;
-  opacity: 0.12;
-  border: 1px solid #050606;
-  border-radius: 0.08rem;
-}
-
-.piano-overflow i.is-active {
-  opacity: calc(0.18 + var(--overflow-intensity) * 0.82);
-  box-shadow: 0 0 0.32rem currentcolor;
 }
 
 .deck-options {
@@ -882,6 +901,8 @@ h3 {
 }
 
 .position-leds {
+  --position-led-rgb: 255 138 60;
+
   display: flex;
   gap: clamp(0.12rem, 0.5vw, 0.22rem);
   margin: 0 0.7rem 0.35rem;
@@ -896,24 +917,19 @@ h3 {
   flex: 1 1 0;
   min-width: 0;
   height: 0.42rem;
-  background: #17191c;
+  overflow: hidden;
+  background: #08090a;
+  border: 1px solid #292c30;
   border-radius: 0.1rem;
-  box-shadow: inset 0 0 0.12rem rgb(0 0 0 / 70%);
 }
 
 .position-led.is-lit {
-  background: #ff8a3c;
-  opacity: 0.6;
-  box-shadow: 0 0 0.32rem rgb(255 138 60 / 40%);
+  background: rgb(var(--position-led-rgb) / 68%);
+  border-color: rgb(var(--position-led-rgb) / 52%);
 }
 
-.position-leds[data-mode='volume'] .position-led.is-lit {
-  background: var(--green);
-  box-shadow: 0 0 0.32rem rgb(107 199 125 / 42%);
-}
-
-.position-leds[data-mode='position'][data-paused='true'] .position-led.is-lit {
-  animation: led-pause-flash 1.6s ease-in-out infinite;
+.position-leds[data-mode='volume'] {
+  --position-led-rgb: 107 199 125;
 }
 
 .deck-controls {
@@ -925,8 +941,6 @@ h3 {
   gap: clamp(0.3rem, 1vw, 0.85rem);
   margin: 0.35rem 0.35rem 0.4rem;
   padding: 0.8rem 0.25rem 0.35rem;
-  border-top: 1px solid #36393c;
-  box-shadow: 0 -1px 0 #050606;
 }
 
 .transport {
@@ -1224,17 +1238,6 @@ h3 {
   }
 }
 
-@keyframes led-pause-flash {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 0.14;
-  }
-}
-
 /* One dot-cell hop that settles, for a single letter of the wordmark.
    The -1px translate is one SVG user unit — exactly one dot pitch. */
 @keyframes brand-letter-bounce {
@@ -1395,6 +1398,7 @@ h3 {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+
 }
 
 @media (forced-colors: active) {
@@ -1435,8 +1439,7 @@ h3 {
     background: CanvasText;
   }
 
-  .piano-key.is-active,
-  .piano-overflow i.is-active {
+  .piano-key.is-active {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
