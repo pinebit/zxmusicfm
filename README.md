@@ -6,6 +6,8 @@ playback, real three-channel waveforms and meters, sequencing, persistence,
 accessible controls, recoverable errors, and credits. Project conventions and
 constraints live in [AGENTS.md](AGENTS.md).
 
+![ZX-MUSIC.FM player showing curated tracks, three-channel waveforms, level meters, and piano visualization](assets/zxscreenshot.jpg)
+
 ## Toolchain
 
 - Node.js 24.14.1
