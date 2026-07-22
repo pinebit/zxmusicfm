@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.61cdbc455533f4e8f1b8435cecb5cd0b57d78ac52108e8fdf51670631a12653c.bin",
-    "sha256": "61cdbc455533f4e8f1b8435cecb5cd0b57d78ac52108e8fdf51670631a12653c",
-    "byteLength": 270352,
+    "url": "/generated/waveforms.f6e643b1c02ecb10efd3ed7087459dec8c46c23f2417fabe95f5aa650c4d23ae.bin",
+    "sha256": "f6e643b1c02ecb10efd3ed7087459dec8c46c23f2417fabe95f5aa650c4d23ae",
+    "byteLength": 258064,
     "formatVersion": 1,
     "bucketCount": 2048,
     "channelCount": 3
@@ -404,30 +404,8 @@
       "waveformByteOffset": 208912
     },
     {
-      "id": "kent-new-year",
-      "order": 19,
-      "title": "New Year",
-      "author": "Kent (Pavel Vorobyev)",
-      "sourceUrl": "https://zxtunes.com/author.php?id=476",
-      "subsong": 1,
-      "sourceFormat": "AY",
-      "runtimeFormat": "YM6",
-      "runtimeSha256": "d76ebe3c3e39dec69c055ed3c93640fdae65c3ba9853e83a97fc1e9449a0ec20",
-      "runtimeByteLength": 144111,
-      "durationSeconds": 180,
-      "durationSource": "source",
-      "chipType": "AY",
-      "chipClockHz": 1773400,
-      "frameRateHz": 50,
-      "channelLayout": "ACB",
-      "waveformByteLength": 12288,
-      "year": 1994,
-      "runtimeUrl": "/generated/tracks/kent-new-year.d76ebe3c3e39dec69c055ed3c93640fdae65c3ba9853e83a97fc1e9449a0ec20.ym",
-      "waveformByteOffset": 221200
-    },
-    {
       "id": "pator-lost-memories",
-      "order": 20,
+      "order": 19,
       "title": "Lost Memories",
       "author": "Pator",
       "sourceUrl": "https://zxart.ee/eng/authors/p/pator/lost-memories/",
@@ -445,11 +423,11 @@
       "waveformByteLength": 12288,
       "year": 2021,
       "runtimeUrl": "/generated/tracks/pator-lost-memories.1b8cfe54720878b20723cd5cfd75fea16ede9d9e53f27492678deebcdd6bab26.ym",
-      "waveformByteOffset": 233488
+      "waveformByteOffset": 221200
     },
     {
       "id": "mast-worms-intro",
-      "order": 21,
+      "order": 20,
       "title": "Worms intro",
       "author": "Mast",
       "sourceUrl": "https://zxart.ee/eng/authors/m/mast/worms-intro/",
@@ -467,11 +445,11 @@
       "waveformByteLength": 12288,
       "year": 1999,
       "runtimeUrl": "/generated/tracks/mast-worms-intro.6719cca88e869a400d37964c08107b6db8c78df236375a5c070a607176fa97fc.ym",
-      "waveformByteOffset": 245776
+      "waveformByteOffset": 233488
     },
     {
       "id": "fuxoft-commando",
-      "order": 22,
+      "order": 21,
       "title": "Commando",
       "author": "Fuxoft (František Fuka)",
       "sourceUrl": "https://demozoo.org/music/15391/",
@@ -489,7 +467,7 @@
       "waveformByteLength": 12288,
       "year": 1988,
       "runtimeUrl": "/generated/tracks/fuxoft-commando.6db79e4e1e0246b4faf622652283326e5a38b0bba172f911fb0dcca0d494dc28.ym",
-      "waveformByteOffset": 258064
+      "waveformByteOffset": 245776
     }
   ]
 }
