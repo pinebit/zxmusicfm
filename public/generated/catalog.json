@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.f6e643b1c02ecb10efd3ed7087459dec8c46c23f2417fabe95f5aa650c4d23ae.bin",
-    "sha256": "f6e643b1c02ecb10efd3ed7087459dec8c46c23f2417fabe95f5aa650c4d23ae",
-    "byteLength": 258064,
+    "url": "/generated/waveforms.16af2d899b63ca343de309872caef087b4881c36eae28ff51a8a5decbce4a5d9.bin",
+    "sha256": "16af2d899b63ca343de309872caef087b4881c36eae28ff51a8a5decbce4a5d9",
+    "byteLength": 270352,
     "formatVersion": 1,
     "bucketCount": 2048,
     "channelCount": 3
@@ -468,6 +468,28 @@
       "year": 1988,
       "runtimeUrl": "/generated/tracks/fuxoft-commando.6db79e4e1e0246b4faf622652283326e5a38b0bba172f911fb0dcca0d494dc28.ym",
       "waveformByteOffset": 245776
+    },
+    {
+      "id": "kent-new-year",
+      "order": 22,
+      "title": "New Year",
+      "author": "Kent (Pavel Vorobyev)",
+      "sourceUrl": "https://zxtunes.com/author.php?id=476",
+      "subsong": 1,
+      "sourceFormat": "STC",
+      "runtimeFormat": "YM6",
+      "runtimeSha256": "a3f6d86326dc04a09e1514d739297039b6dfa36bd2cd76b0fbd866fdfe3200b7",
+      "runtimeByteLength": 86122,
+      "durationSeconds": 107.5,
+      "durationSource": "source",
+      "chipType": "AY",
+      "chipClockHz": 1773400,
+      "frameRateHz": 50,
+      "channelLayout": "ACB",
+      "waveformByteLength": 12288,
+      "year": 1994,
+      "runtimeUrl": "/generated/tracks/kent-new-year.a3f6d86326dc04a09e1514d739297039b6dfa36bd2cd76b0fbd866fdfe3200b7.ym",
+      "waveformByteOffset": 258064
     }
   ]
 }

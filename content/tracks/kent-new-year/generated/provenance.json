@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "KentZak01-NEWYEAR.stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "d76881fc8629de873d480e78a24604191dca936137ff67cae50fd9222fef0f85",
+  "sourceByteLength": 2749,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "a3f6d86326dc04a09e1514d739297039b6dfa36bd2cd76b0fbd866fdfe3200b7",
+  "runtimeByteLength": 86122,
+  "frameCount": 5375,
+  "durationSeconds": 107.5,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "594ce55a3bd8a3beff8badfd9bfaca1f6ae91451262a574845942cd99e633f1e",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "d76881fc8629de873d480e78a24604191dca936137ff67cae50fd9222fef0f85",
+    "psgSha256": "9d78bf33a3b95c9fd31a63fa5feb6977a74529853a1d11bf929dfff1b4f0c66f",
+    "psgByteLength": 62886
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

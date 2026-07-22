@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "kent-new-year",
+  "order": 22,
+  "title": "New Year",
+  "author": "Kent (Pavel Vorobyev)",
+  "sourceUrl": "https://zxtunes.com/author.php?id=476",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1994
+}
