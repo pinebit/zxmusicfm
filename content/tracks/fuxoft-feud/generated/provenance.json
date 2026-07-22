@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Feud(1).ay",
+  "sourceFormat": "AY",
+  "sourceSha256": "fdf0ca9fe6541d99284fda8b041fdc8e6453cab39f99b10aac3d314a7f967bfc",
+  "sourceByteLength": 2216,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "892bbd69fb7972a58b68e86be8f51b1fcc917e70043e9d82deb6cf4210ddb50d",
+  "runtimeByteLength": 143310,
+  "frameCount": 8950,
+  "durationSeconds": 179,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "dc2bd4ec05a2b8f6927a73980af853edc4d0df04e99d89f609e9d81323911927",
+  "trackerConversion": null,
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

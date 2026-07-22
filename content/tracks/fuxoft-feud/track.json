@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "fuxoft-feud",
+  "order": 17,
+  "title": "Feud",
+  "author": "Fuxoft (František Fuka)",
+  "sourceUrl": "https://www.cvgm.net/demovibes/song/904/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 1987
+}

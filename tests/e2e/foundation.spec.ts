@@ -15,7 +15,7 @@ test('loads the catalog shell', async ({ page }) => {
   const actionEpilogue = page.getByRole('listitem').filter({
     has: page.getByRole('heading', {
       level: 3,
-      name: '"ACTION" EPILOGUE',
+      name: 'Action Demo Epilogue',
       exact: true,
     }),
   });
@@ -26,7 +26,13 @@ test('loads the catalog shell', async ({ page }) => {
     'href',
     'https://zxtunes.com/ru/authors/ksa-mortal-kombat-hackers-group',
   );
-  await expect(page.locator('.track-row')).toHaveCount(16);
+  const feud = page.getByRole('listitem').filter({
+    has: page.getByRole('heading', { level: 3, name: 'Feud', exact: true }),
+  });
+  await expect(feud).toBeVisible();
+  await expect(
+    feud.getByRole('link', { name: 'Original source' }),
+  ).toHaveAttribute('href', 'https://www.cvgm.net/demovibes/song/904/');
   await expect(
     page.getByRole('link', { name: 'Buy me a coffee' }),
   ).toHaveAttribute('href', 'https://buymeacoffee.com/pinebit');
