@@ -14,6 +14,6 @@ test('loads the catalog shell', async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator('.track-row')).toHaveCount(11);
   await expect(
-    page.getByRole('link', { name: 'ZX-MUSIC.FM V0.1' }),
-  ).toHaveAttribute('href', 'https://github.com/pinebit/zxmusicfm');
+    page.getByRole('link', { name: 'Buy me a coffee' }),
+  ).toHaveAttribute('href', 'https://buymeacoffee.com/pinebit');
 });

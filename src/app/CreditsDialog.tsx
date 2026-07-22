@@ -1,14 +1,65 @@
 import { useEffect, useRef } from 'react';
 
+import packageMetadata from '../../package.json';
+
 type CreditsDialogProps = {
   readonly open: boolean;
   readonly onClose: () => void;
 };
 
 const dependencyNotices = [
-  { name: 'React', license: 'MIT', url: 'https://github.com/facebook/react' },
+  {
+    name: 'React and React DOM',
+    license: 'MIT',
+    url: 'https://github.com/facebook/react',
+  },
   { name: 'Vite', license: 'MIT', url: 'https://github.com/vitejs/vite' },
   { name: 'Zod', license: 'MIT', url: 'https://github.com/colinhacks/zod' },
+  {
+    name: 'Inter Variable',
+    license: 'SIL Open Font License 1.1',
+    url: 'https://fontsource.org/fonts/inter',
+  },
+  {
+    name: 'Space Grotesk Variable',
+    license: 'SIL Open Font License 1.1',
+    url: 'https://fontsource.org/fonts/space-grotesk',
+  },
+  {
+    name: 'TypeScript',
+    license: 'Apache License 2.0',
+    url: 'https://github.com/microsoft/TypeScript',
+  },
+  {
+    name: 'Vitest',
+    license: 'MIT',
+    url: 'https://github.com/vitest-dev/vitest',
+  },
+  {
+    name: 'Playwright',
+    license: 'Apache License 2.0',
+    url: 'https://github.com/microsoft/playwright',
+  },
+  {
+    name: 'React Testing Library',
+    license: 'MIT',
+    url: 'https://github.com/testing-library/react-testing-library',
+  },
+  {
+    name: 'axe-core for Playwright',
+    license: 'Mozilla Public License 2.0',
+    url: 'https://github.com/dequelabs/axe-core-npm',
+  },
+  {
+    name: 'ESLint',
+    license: 'MIT',
+    url: 'https://github.com/eslint/eslint',
+  },
+  {
+    name: 'Prettier',
+    license: 'MIT',
+    url: 'https://github.com/prettier/prettier',
+  },
 ] as const;
 
 export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
@@ -59,7 +110,7 @@ export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
     >
       <div className="dialog-heading">
         <div>
-          <h2 id="credits-title">Credits / License</h2>
+          <h2 id="credits-title">About</h2>
         </div>
         <button
           ref={closeRef}
@@ -83,10 +134,32 @@ export function CreditsDialog({ open, onClose }: CreditsDialogProps) {
           >
             Andrei Smirnov
           </a>
-          . ZX-MUSIC.FM project source is available under the MIT License. The
-          original wordmark, interface, and Spectrum-inspired artwork do not
-          imply endorsement by Sinclair or any rights holder.
+          . This is a vibe-coding experiment made with state-of-the-art AI
+          models from Anthropic and OpenAI. The project source is available
+          under the MIT License. The original wordmark, interface, and
+          Spectrum-inspired artwork do not imply endorsement by Sinclair or any
+          rights holder.
         </p>
+        <dl className="project-meta">
+          <div>
+            <dt>Version</dt>
+            <dd>
+              <code>{packageMetadata.version}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd>
+              <a
+                href="https://github.com/pinebit/zxmusicfm"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub repository
+              </a>
+            </dd>
+          </div>
+        </dl>
       </section>
       <section>
         <h3>Curation</h3>

@@ -35,6 +35,7 @@ import {
   parseYm3,
   parseYm6,
   prepareYmRuntime,
+  selectAySubsong,
   type RegisterFrame,
 } from '../../src/playback/formats.ts';
 import {
@@ -413,16 +414,10 @@ function captureAy(
   readonly frames: readonly RegisterFrame[];
   readonly durationSource: 'source' | 'override';
 } {
-  const player = createEnginePlayer(source);
+  const player = createEnginePlayer(
+    selectAySubsong(source, input.sidecar.subsong),
+  );
   try {
-    if (
-      input.sidecar.subsong > player.subsongCount() ||
-      !player.setSubsong(input.sidecar.subsong)
-    ) {
-      throw new Error(
-        `${input.sidecar.id}: AY subsong ${input.sidecar.subsong} is unavailable.`,
-      );
-    }
     const reliable = player.hasDurationInfo() && player.duration_seconds() > 0;
     const override = input.sidecar.durationOverrideSeconds;
     if (reliable && override !== undefined) {

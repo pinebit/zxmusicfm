@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "MmcM - Fragment dh-2018 (2018) (DiHalt 2018, 1).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "49bbbb25c610d3a8b4251cb207b37ad75b43b1ec7554cc6d05b6463b37b35ebb",
+  "sourceByteLength": 5912,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "7d89ac46f5e99b6de8e5a593e45b95cd233b80acbe38dfa921c7b7578a19fa79",
+  "runtimeByteLength": 95313,
+  "frameCount": 5950,
+  "durationSeconds": 119,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "ab6fce117620833a853c854640e395e538da2039c7cafc61e5f4db24e06beb37",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "PT3",
+    "sourceSha256": "49bbbb25c610d3a8b4251cb207b37ad75b43b1ec7554cc6d05b6463b37b35ebb",
+    "psgSha256": "fc7996939d9cfb4c062657f18b62f72e556aaddbf82620099ccebf6646bdafd1",
+    "psgByteLength": 54204
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Dreamer - HI!!! (1996).asc",
+  "sourceFormat": "ASC",
+  "sourceSha256": "4646d26babf700dbe0298b6a3438584af22240786ad943720d8f6e20584950f3",
+  "sourceByteLength": 5534,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "c746fdc0b774ae6c5ea8a408819d828e857faedf8b94c4debf9d0bfb7b700bfe",
+  "runtimeByteLength": 170329,
+  "frameCount": 10639,
+  "durationSeconds": 212.78,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "1fec003179418622f055e499db0669d180c2c6a9c3056a9d67f41f26b71b82bb",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "ASC",
+    "sourceSha256": "4646d26babf700dbe0298b6a3438584af22240786ad943720d8f6e20584950f3",
+    "psgSha256": "4b48ab5aa5061ee4326a677a5222e42e5a21a50fc824c2a56b4a7594d6d50355",
+    "psgByteLength": 94376
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

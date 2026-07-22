@@ -1,12 +1,16 @@
+import { readFileSync } from 'node:fs';
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+const packageMetadata = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+) as { readonly version: string };
+
 test('has no serious or critical accessibility findings', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Credits / License' }).click();
-  await expect(
-    page.getByRole('dialog', { name: 'Credits / License' }),
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'About' }).click();
+  await expect(page.getByRole('dialog', { name: 'About' })).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
@@ -19,13 +23,17 @@ test('has no serious or critical accessibility findings', async ({ page }) => {
 
 test('traps and restores focus for credits and licenses', async ({ page }) => {
   await page.goto('/');
-  const trigger = page.getByRole('button', { name: 'Credits / License' });
+  const trigger = page.getByRole('button', { name: 'About' });
   await trigger.click();
-  const dialog = page.getByRole('dialog', { name: 'Credits / License' });
+  const dialog = page.getByRole('dialog', { name: 'About' });
   await expect(dialog).toBeVisible();
   await expect(
     dialog.getByRole('link', { name: 'Andrei Smirnov' }),
   ).toHaveAttribute('href', 'https://github.com/pinebit');
+  await expect(dialog.getByText(packageMetadata.version)).toBeVisible();
+  await expect(
+    dialog.getByRole('link', { name: 'GitHub repository' }),
+  ).toHaveAttribute('href', 'https://github.com/pinebit/zxmusicfm');
   await expect(dialog.getByRole('heading', { name: 'Music' })).toHaveCount(0);
   await expect(
     dialog.getByRole('link', { name: 'Original source' }),

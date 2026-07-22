@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "dreamer-hi",
+  "order": 14,
+  "title": "HI!!!",
+  "author": "Dreamer",
+  "sourceUrl": "https://zxart.ee/eng/authors/d/dreamer/hi3/",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1996
+}

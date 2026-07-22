@@ -21,6 +21,11 @@ export type Ym6Options = {
 };
 
 const PSG_HEADER_LENGTH = 16;
+const AY_HEADER_LENGTH = 20;
+const AY_SONG_COUNT_OFFSET = 16;
+const AY_FIRST_SONG_OFFSET = 17;
+const AY_SONG_TABLE_POINTER_OFFSET = 18;
+const AY_SONG_ENTRY_LENGTH = 4;
 const REGISTER_COUNT = 16;
 const YM6_HEADER_LENGTH = 34;
 const textEncoder = new TextEncoder();
@@ -107,6 +112,62 @@ function pushFrame(
   const frame = registers.slice();
   frame[13] = envelopeShape ?? 0xff;
   frames.push(frame);
+}
+
+/** Select one song from a multi-song ZXAY container without changing the source bytes. */
+export function selectAySubsong(
+  bytes: Uint8Array,
+  subsong: number,
+): Uint8Array {
+  if (bytes.length < AY_HEADER_LENGTH || !hasMagic(bytes, 'ZXAYEMUL', 0)) {
+    fail('AY input is missing the ZXAYEMUL signature or complete header.');
+  }
+  if (!Number.isInteger(subsong) || subsong < 1) {
+    fail(`AY subsong ${subsong} must be a positive integer.`);
+  }
+
+  const songCount =
+    readByte(
+      bytes,
+      AY_SONG_COUNT_OFFSET,
+      'AY input is missing its song count.',
+    ) + 1;
+  if (subsong > songCount) {
+    fail(
+      `AY subsong ${subsong} is unavailable; source contains ${songCount} subsongs.`,
+    );
+  }
+
+  const sourceView = new DataView(
+    bytes.buffer,
+    bytes.byteOffset,
+    bytes.byteLength,
+  );
+  const tableOffset =
+    AY_SONG_TABLE_POINTER_OFFSET +
+    sourceView.getInt16(AY_SONG_TABLE_POINTER_OFFSET, false);
+  const tableEnd = tableOffset + songCount * AY_SONG_ENTRY_LENGTH;
+  if (tableOffset < AY_HEADER_LENGTH || tableEnd > bytes.length) {
+    fail('AY input has an invalid song table pointer.');
+  }
+
+  const selectedEntryOffset =
+    tableOffset + (subsong - 1) * AY_SONG_ENTRY_LENGTH;
+  const selectedTablePointer =
+    selectedEntryOffset - AY_SONG_TABLE_POINTER_OFFSET;
+  if (selectedTablePointer < -0x8000 || selectedTablePointer > 0x7fff) {
+    fail(`AY subsong ${subsong} song table pointer is out of range.`);
+  }
+
+  const selected = Uint8Array.from(bytes);
+  selected[AY_SONG_COUNT_OFFSET] = 0;
+  selected[AY_FIRST_SONG_OFFSET] = 0;
+  new DataView(
+    selected.buffer,
+    selected.byteOffset,
+    selected.byteLength,
+  ).setInt16(AY_SONG_TABLE_POINTER_OFFSET, selectedTablePointer, false);
+  return selected;
 }
 
 /** Parse the uncompressed AY Emulator PSG stream accepted by the MVP. */

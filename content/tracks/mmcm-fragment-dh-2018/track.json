@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mmcm-fragment-dh-2018",
+  "order": 13,
+  "title": "Fragment dh-2018",
+  "author": "MmcM",
+  "sourceUrl": "https://zxart.ee/eng/authors/m/mmcm1/fragment-dh-2018/",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2018
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Jason C. Brooke - Ramparts (128k Title) 1 (1988).ay",
+  "sourceFormat": "AY",
+  "sourceSha256": "05cea8afe185ce96abdc9a6a6bf9d19f1f030919ba894b90225dddd5dcf409d0",
+  "sourceByteLength": 5096,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "6b49f383d3c5d25dbd59f2b17b3decbe2b1e2eee599c3739de5e2c9ed1feccbf",
+  "runtimeByteLength": 192120,
+  "frameCount": 12000,
+  "durationSeconds": 240,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "05c227ae714fc7563bf959b7bda2d7689fd2fa80cd997098983e4a3f4eab7239",
+  "trackerConversion": null,
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

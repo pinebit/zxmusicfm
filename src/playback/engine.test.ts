@@ -10,7 +10,7 @@ import {
   generateEngineChannels,
   initializeYm2149,
 } from './engine.ts';
-import { parsePsg, createYm6, parseYm6 } from './formats.ts';
+import { createYm6, parsePsg, parseYm6, selectAySubsong } from './formats.ts';
 import {
   captureSyntheticAyAsYm6,
   createProofRuntimeTrack,
@@ -134,6 +134,24 @@ describe('pinned ym2149-rs engine', () => {
       }
     },
   );
+
+  it('selects the requested song from a multi-song ZXAY container', async () => {
+    const source = await readFile(
+      'content/tracks/matty-batman-cathedral/source.ay',
+    );
+    const selected = selectAySubsong(source, 7);
+    const player = createEnginePlayer(selected);
+    const metadata = player.metadata;
+
+    expect(source[16]).toBe(6);
+    expect(selected[16]).toBe(0);
+    expect(metadata.title).toBe(
+      'Batman The Movie - Level 5 - The Cathedral (AY)',
+    );
+    expect(metadata.duration_seconds).toBe(131);
+    metadata.free();
+    player.free();
+  });
 
   it('matches uninterrupted Solitude output at every fixed seek position', async () => {
     const psg = parsePsg(

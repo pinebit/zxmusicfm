@@ -49,7 +49,7 @@ describe('foundation content generation', () => {
 
   it('validates the generated real catalog and provenance', async () => {
     await expect(validateContent(process.cwd())).resolves.toMatchObject({
-      trackCount: 11,
+      trackCount: 15,
     });
   }, 60_000);
 });
