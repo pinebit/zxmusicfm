@@ -13,8 +13,16 @@ import {
 
 afterEach(() => vi.restoreAllMocks());
 
+function colorChannelSum(fill: string): number {
+  const channels = fill.match(/\d+/g)?.slice(0, 3).map(Number);
+  if (channels?.length !== 3) {
+    throw new Error(`Expected an RGB color in "${fill}".`);
+  }
+  return channels.reduce((sum, channel) => sum + channel, 0);
+}
+
 describe('PianoKeyboard', () => {
-  it('builds brightness under signal and decays it after cutoff', () => {
+  it('builds energy under signal and decays it after cutoff', () => {
     const firstPress = advanceKeyEnergy(0, 1, 16);
     const sustained = advanceKeyEnergy(firstPress, 1, 16);
     const released = advanceKeyEnergy(sustained, 0, 60);
@@ -68,16 +76,27 @@ describe('PianoKeyboard', () => {
     );
     expect(container.querySelector('.piano-overflow')).not.toBeInTheDocument();
     const initialIntensity = Number(middleA?.dataset.intensity);
+    const initialColor = colorChannelSum(
+      middleA?.style.getPropertyValue('--key-active-fill') ?? '',
+    );
 
     act(() => nextFrame?.(16));
     const sustainedIntensity = Number(middleA?.dataset.intensity);
+    const sustainedColor = colorChannelSum(
+      middleA?.style.getPropertyValue('--key-active-fill') ?? '',
+    );
     expect(sustainedIntensity).toBeGreaterThan(initialIntensity);
+    expect(sustainedColor).toBeLessThan(initialColor);
 
     voices = { A: null, B: null, C: null };
     act(() => nextFrame?.(32));
     const releaseIntensity = Number(middleA?.dataset.intensity);
+    const releaseColor = colorChannelSum(
+      middleA?.style.getPropertyValue('--key-active-fill') ?? '',
+    );
     expect(middleA).toHaveClass('is-active');
     expect(releaseIntensity).toBeLessThan(sustainedIntensity);
+    expect(releaseColor).toBeGreaterThan(sustainedColor);
 
     act(() => nextFrame?.(PIANO_RELEASE_MS + 33));
     expect(middleA).not.toHaveClass('is-active');

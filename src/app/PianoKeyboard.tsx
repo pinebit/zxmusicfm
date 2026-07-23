@@ -101,9 +101,13 @@ function blendColor(background: string, foreground: string, amount: number) {
 }
 
 function activeKeyFill(voices: readonly VisualVoice[], black: boolean): string {
-  const base = black ? '#111315' : '#cbc5b5';
+  const shadow = black ? '#08090a' : '#393731';
   const activeColor = ({ channel, energy }: VisualVoice) =>
-    blendColor(base, channelPalette[channel], 0.12 + energy * 0.88);
+    blendColor(
+      channelPalette[channel],
+      shadow,
+      0.08 + energy * (black ? 0.68 : 0.58),
+    );
   const stops = voices.flatMap((voice, index) => {
     const start = (index / voices.length) * 100;
     const end = ((index + 1) / voices.length) * 100;
@@ -117,7 +121,8 @@ function activeKeyGlow(voices: readonly VisualVoice[]): string {
     right.energy > left.energy ? right : left,
   );
   const [red, green, blue] = hexChannels(channelPalette[strongest.channel]);
-  return `rgb(${red} ${green} ${blue} / ${clamp(strongest.energy * 0.72)})`;
+  const inverseEnergy = 1 - strongest.energy;
+  return `rgb(${red} ${green} ${blue} / ${clamp(0.16 + inverseEnergy * 0.44)})`;
 }
 
 type PianoKeyboardProps = {
@@ -309,9 +314,7 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
                 <span
                   aria-hidden="true"
                   style={{
-                    background: enabled
-                      ? channelPalette[channel]
-                      : '#111315',
+                    background: enabled ? channelPalette[channel] : '#111315',
                     borderColor: channelPalette[channel],
                   }}
                 />
