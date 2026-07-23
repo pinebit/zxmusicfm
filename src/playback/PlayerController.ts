@@ -157,7 +157,8 @@ export class PlayerController {
   }
 
   playSelected(): void {
-    const trackId = this.snapshot.selectedTrackId;
+    const trackId =
+      this.snapshot.selectedTrackId ?? this.catalog.tracks[0]?.id ?? null;
     if (trackId !== null) this.play(trackId);
   }
 

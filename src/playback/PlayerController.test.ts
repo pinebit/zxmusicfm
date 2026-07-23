@@ -145,6 +145,30 @@ function dependencies(
 }
 
 describe('PlayerController async ownership', () => {
+  it('plays the first catalog track when no track was previously selected', async () => {
+    const adapter = new FakeAdapter();
+    const controller = new PlayerController(
+      catalog,
+      dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
+    );
+
+    expect(controller.getSnapshot()).toMatchObject({
+      status: 'idle',
+      selectedTrackId: null,
+    });
+
+    controller.playSelected();
+
+    await vi.waitFor(() => {
+      expect(controller.getSnapshot()).toMatchObject({
+        status: 'playing',
+        selectedTrackId: 'one',
+      });
+    });
+    expect(adapter.loads).toEqual(['one']);
+    controller.dispose();
+  });
+
   it('ignores a stale failure after a rapid newer selection succeeds', async () => {
     const first = deferred<Uint8Array>();
     const adapter = new FakeAdapter();

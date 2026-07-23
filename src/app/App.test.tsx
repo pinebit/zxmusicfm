@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { GeneratedCatalog } from '../content/schemas.ts';
 import { PLAYER_STORAGE_KEY } from '../playback/persistence.ts';
@@ -46,6 +46,8 @@ const catalogWithTrack: GeneratedCatalog = {
     },
   ],
 };
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('App', () => {
   it('shows the empty-state for a valid empty catalog', async () => {
@@ -94,5 +96,16 @@ describe('App', () => {
     } finally {
       localStorage.removeItem(PLAYER_STORAGE_KEY);
     }
+  });
+
+  it('keeps the main play button enabled before a track is selected', async () => {
+    vi.stubGlobal('AudioContext', vi.fn());
+    vi.stubGlobal('crypto', { subtle: {} });
+
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Play first track' }),
+    ).toBeEnabled();
   });
 });

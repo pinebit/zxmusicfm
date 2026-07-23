@@ -450,15 +450,13 @@ function PlayerApplication({
               <button
                 className="transport-primary"
                 type="button"
-                disabled={
-                  controlsDisabled ||
-                  selectedTrack === undefined ||
-                  snapshot.status === 'loading'
-                }
+                disabled={controlsDisabled || snapshot.status === 'loading'}
                 aria-label={
                   snapshot.status === 'playing'
                     ? 'Pause selected track'
-                    : 'Play selected track'
+                    : selectedTrack === undefined
+                      ? 'Play first track'
+                      : 'Play selected track'
                 }
                 onClick={() =>
                   snapshot.status === 'playing'
