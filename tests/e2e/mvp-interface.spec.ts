@@ -210,7 +210,7 @@ test('uses the approved distraction-free Deck layout', async ({
     expect(
       Math.abs(meters.x + meters.width / 2 - (panel.x + panel.width / 2)),
     ).toBeLessThan(2);
-    expect(meters.width).toBeLessThanOrEqual(keyboard.width * 0.51);
+    expect(meters.width).toBeLessThanOrEqual(keyboard.width * 0.57);
     expect(keyboard.width / keyboard.height).toBeCloseTo(8.2, 1);
     expect(maximizedControls.width).toBeCloseTo(normalControls.width, 0);
   }

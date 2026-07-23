@@ -395,8 +395,8 @@ h3 {
   margin-bottom: clamp(0.8rem, 2.25dvh, 1.7rem);
 }
 
-.player-layout.deck-maximized .meter {
-  container-type: inline-size;
+.player-layout.deck-maximized .meter::after {
+  width: clamp(0.42rem, 7cqi, 1.2rem);
 }
 
 .player-layout.deck-maximized .meter-scale {
@@ -771,6 +771,7 @@ h3 {
   position: relative;
   display: grid;
   place-items: center;
+  container-type: inline-size;
   min-width: 0;
   aspect-ratio: 1.34;
   overflow: hidden;
@@ -811,7 +812,7 @@ h3 {
   bottom: 12%;
   left: 50%;
   z-index: 3;
-  width: clamp(0.42rem, 1.2vw, 0.68rem);
+  width: clamp(0.28rem, 7cqi, 0.68rem);
   aspect-ratio: 1;
   content: '';
   background: radial-gradient(circle at 35% 30%, #8c8f91, #202224 64%);
@@ -1498,7 +1499,7 @@ h3 {
     position: static;
     align-self: start;
     width: 100%;
-    height: 0.55rem;
+    height: 0.25rem;
     transform: skewX(-32deg);
     transform-origin: center;
   }
@@ -1528,6 +1529,31 @@ h3 {
   }
 }
 
+@media (min-width: 1025px) and (orientation: landscape) {
+  .player-layout.deck-maximized .meter-heading {
+    margin-bottom: 0.6rem;
+  }
+
+  .player-layout.deck-maximized .meter-bank {
+    width: min(56%, 86dvh);
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 1024px) and (hover: none) and (pointer: coarse) {
+  .player-layout.deck-maximized .meter-scale {
+    font-size: clamp(0.33rem, 0.66vw, 0.51rem);
+  }
+
+  .player-layout.deck-maximized .meter-unit {
+    font-size: clamp(0.32rem, 0.65vw, 0.48rem);
+  }
+
+  .player-layout.deck-maximized .meter strong {
+    font-size: clamp(0.35rem, 0.72vw, 0.54rem);
+  }
+}
+
 @media (max-width: 1024px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
   .player-layout.deck-maximized {
     padding: max(0.25rem, env(safe-area-inset-top))
@@ -1545,6 +1571,10 @@ h3 {
     display: none;
   }
 
+  .player-layout.deck-maximized .meter-heading {
+    margin-bottom: 0.45rem;
+  }
+
   .player-layout.deck-maximized .deck-toggle {
     flex: 0 1 auto;
     width: var(--deck-control-width);
@@ -1553,12 +1583,13 @@ h3 {
   }
 
   .player-layout.deck-maximized .meter-bank {
+    width: min(55%, 90dvh);
     margin-bottom: clamp(0.2rem, 1dvh, 0.4rem);
     padding-bottom: 0.3rem;
   }
 
   .player-layout.deck-maximized .piano-visualizer {
-    margin-bottom: clamp(0.2rem, 1dvh, 0.4rem);
+    margin-bottom: clamp(0.45rem, 1.5dvh, 0.7rem);
   }
 
   .player-layout.deck-maximized .deck-controls {

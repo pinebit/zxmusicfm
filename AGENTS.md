@@ -46,6 +46,7 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 - Preserve one lazy `AudioContext` and at most one playback-engine instance. Engine/WASM and music bytes must remain lazy-loaded after a permitted user gesture.
 - Preserve generation/cancellation checks for every async selection. Late loads, failures, seeks, or decoder results must not mutate newer state.
 - Keep high-frequency meter and waveform work out of React render cycles. Publish only semantic transitions and coarse position updates.
+- Waveform canvases redraw directly when their rendered size changes, including after their track list is restored on fullscreen exit. Do not refetch waveform data or route resize-only redraws through React.
 - The browser runtime contract is finite, seekable generated YM. Do not add prerecorded audio fallback, overlapping playback, crossfades, or browser-side tracker parsing.
 - Maintain the exact A/B/C channel identity, waveform colors, mix behavior, volume semantics, sequencing, persistence, Media Session, and error recovery as currently implemented.
 - The stereo mix passes through a fixed master processing chain before the volume gain node: sub-sonic high-pass, bass low-shelf, safety limiter, then high-frequency low-pass. Preserve the chain and its order; retune only by explicit product decision. The offline render that feeds per-channel waveforms stays dry (unprocessed).
@@ -55,6 +56,8 @@ Continuous integration is intentionally limited to the TypeScript sanity check a
 
 - Target WCAG 2.2 AA. Every interactive control needs an accessible name, keyboard behavior, visible focus, and non-color state communication.
 - Preserve the waveform's semantic range control and its conventional slider fallback when canvas or waveform data fails.
+- Preserve desktop distraction-free mode and its established deck proportions. On mobile portrait, expose distraction-free mode only when native fullscreen and landscape orientation locking are available; activate the expanded deck only after the device is actually landscape, exit cleanly after a rejected landscape request, and keep the control available for retries.
+- Keep the mobile-landscape distraction-free layout compact without changing the UV meters' `1.34` aspect ratio, the desktop control geometry, or normal-mode responsive proportions.
 - Preserve dialog focus trapping/restoration, reduced-motion behavior, forced-colors usability, 200% zoom usability, and responsive layouts without horizontal overflow.
 - External links open safely with `noopener noreferrer`. Bundled music is not exposed through direct download controls.
 - Keep fonts, code, images, audio, and generated data self-hosted. Maintain the restrictive CSP and security headers.

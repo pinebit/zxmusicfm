@@ -57,8 +57,8 @@ type WaveformState =
     };
 
 const initialState: CatalogState = { status: 'loading' };
-// Keep this aligned with the mobile layout breakpoint in styles.css.
-const mobileLayoutQuery = '(max-width: 760px)';
+const mobilePortraitQuery =
+  '(max-width: 1024px) and (orientation: portrait) and (hover: none) and (pointer: coarse)';
 
 function catalogReducer(
   _state: CatalogState,
@@ -145,6 +145,9 @@ function PlayerApplication({
   });
   const [waveformAttempt, setWaveformAttempt] = useState(0);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [mobilePortrait, setMobilePortrait] = useState(
+    () => window.matchMedia(mobilePortraitQuery).matches,
+  );
   const creditsTrigger = useRef<HTMLButtonElement>(null);
   const deckMaximizeTrigger = useRef<HTMLButtonElement>(null);
   const playerLayout = useRef<HTMLDivElement>(null);
@@ -152,16 +155,30 @@ function PlayerApplication({
   const capable = hasRequiredCapabilities();
   const hasTracks = catalog.tracks.length > 0;
   const controlsDisabled = !capable || !hasTracks;
-  const lockMobileLandscape = useCallback(() => {
-    if (!window.matchMedia(mobileLayoutQuery).matches) return;
+  const lockMobileLandscape = useCallback(async (): Promise<boolean> => {
     const orientation = (
       window.screen as unknown as {
         readonly orientation?: ScreenOrientation;
       }
     ).orientation;
-    if (typeof orientation?.lock !== 'function') return;
-    void orientation.lock('landscape').catch(() => undefined);
+    if (typeof orientation?.lock !== 'function') return false;
+    try {
+      await orientation.lock('landscape');
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
+  const orientation = (
+    window.screen as unknown as {
+      readonly orientation?: ScreenOrientation;
+    }
+  ).orientation;
+  const mobileLandscapeFullscreenAvailable =
+    typeof document.documentElement.requestFullscreen === 'function' &&
+    typeof orientation?.lock === 'function';
+  const deckMaximizationAvailable =
+    !mobilePortrait || mobileLandscapeFullscreenAvailable;
   const closeDeckMaximized = useCallback(() => {
     if (document.fullscreenElement === playerLayout.current) {
       void document.exitFullscreen();
@@ -175,6 +192,8 @@ function PlayerApplication({
       closeDeckMaximized();
       return;
     }
+    const requiresLandscapeLock =
+      window.matchMedia(mobilePortraitQuery).matches;
     const layout = playerLayout.current;
     const controlsWidth = deckControls.current?.getBoundingClientRect().width;
     if (controlsWidth !== undefined) {
@@ -184,12 +203,23 @@ function PlayerApplication({
       );
     }
     if (layout === null || typeof layout.requestFullscreen !== 'function') {
+      if (requiresLandscapeLock) return;
       onDeckMaximizedChange(true);
       return;
     }
-    void layout.requestFullscreen().then(lockMobileLandscape, () => {
-      onDeckMaximizedChange(true);
-    });
+    void layout.requestFullscreen().then(
+      async () => {
+        if (!requiresLandscapeLock) return;
+        if (await lockMobileLandscape()) return;
+        if (document.fullscreenElement === layout) {
+          await document.exitFullscreen().catch(() => undefined);
+        }
+      },
+      () => {
+        if (requiresLandscapeLock) return;
+        onDeckMaximizedChange(true);
+      },
+    );
   }, [
     closeDeckMaximized,
     deckMaximized,
@@ -265,6 +295,22 @@ function PlayerApplication({
   useEffect(() => controller.activate(), [controller]);
 
   useEffect(() => {
+    const media = window.matchMedia(mobilePortraitQuery);
+    const syncMobilePortrait = () => {
+      setMobilePortrait(media.matches);
+      if (
+        !media.matches &&
+        document.fullscreenElement === playerLayout.current
+      ) {
+        onDeckMaximizedChange(true);
+      }
+    };
+    syncMobilePortrait();
+    media.addEventListener('change', syncMobilePortrait);
+    return () => media.removeEventListener('change', syncMobilePortrait);
+  }, [onDeckMaximizedChange]);
+
+  useEffect(() => {
     if (!deckMaximized) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -275,7 +321,9 @@ function PlayerApplication({
 
   useEffect(() => {
     const syncFullscreenState = () => {
-      const maximized = document.fullscreenElement === playerLayout.current;
+      const maximized =
+        document.fullscreenElement === playerLayout.current &&
+        !window.matchMedia(mobilePortraitQuery).matches;
       onDeckMaximizedChange(maximized);
       if (!maximized) {
         window.setTimeout(() => deckMaximizeTrigger.current?.focus(), 0);
@@ -486,25 +534,27 @@ function PlayerApplication({
             <span className="visually-hidden" aria-live="polite">
               {playbackStatusLabels[snapshot.status]}
             </span>
-            <button
-              ref={deckMaximizeTrigger}
-              type="button"
-              className="deck-maximize-button"
-              aria-label={
-                deckMaximized
-                  ? 'Exit distraction-free mode'
-                  : 'Enter distraction-free mode'
-              }
-              title={
-                deckMaximized
-                  ? 'Exit distraction-free mode'
-                  : 'Enter distraction-free mode'
-              }
-              aria-pressed={deckMaximized}
-              onClick={toggleDeckMaximized}
-            >
-              {deckMaximized ? <RestoreIcon /> : <MaximizeIcon />}
-            </button>
+            {deckMaximizationAvailable ? (
+              <button
+                ref={deckMaximizeTrigger}
+                type="button"
+                className="deck-maximize-button"
+                aria-label={
+                  deckMaximized
+                    ? 'Exit distraction-free mode'
+                    : 'Enter distraction-free mode'
+                }
+                title={
+                  deckMaximized
+                    ? 'Exit distraction-free mode'
+                    : 'Enter distraction-free mode'
+                }
+                aria-pressed={deckMaximized}
+                onClick={toggleDeckMaximized}
+              >
+                {deckMaximized ? <RestoreIcon /> : <MaximizeIcon />}
+              </button>
+            ) : null}
           </div>
           {selectedTrack === undefined ? (
             <p className="choose-track">Choose a track to start listening.</p>

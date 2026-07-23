@@ -6,6 +6,13 @@ import type { GeneratedCatalog } from '../content/schemas.ts';
 import { PLAYER_STORAGE_KEY } from '../playback/persistence.ts';
 import { App } from './App.tsx';
 
+const mobilePortraitQuery =
+  '(max-width: 1024px) and (orientation: portrait) and (hover: none) and (pointer: coarse)';
+const requestFullscreenDescriptor = Object.getOwnPropertyDescriptor(
+  Element.prototype,
+  'requestFullscreen',
+);
+
 const emptyCatalog: GeneratedCatalog = {
   schemaVersion: 1,
   waveforms: {
@@ -47,7 +54,32 @@ const catalogWithTrack: GeneratedCatalog = {
   ],
 };
 
-afterEach(() => vi.unstubAllGlobals());
+function stubMobilePortrait(): void {
+  const noop = (): void => undefined;
+  vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
+    matches: query === mobilePortraitQuery,
+    media: query,
+    onchange: null,
+    addEventListener: noop,
+    removeEventListener: noop,
+    addListener: noop,
+    removeListener: noop,
+    dispatchEvent: () => false,
+  }));
+}
+
+afterEach(() => {
+  if (requestFullscreenDescriptor === undefined) {
+    Reflect.deleteProperty(Element.prototype, 'requestFullscreen');
+  } else {
+    Object.defineProperty(
+      Element.prototype,
+      'requestFullscreen',
+      requestFullscreenDescriptor,
+    );
+  }
+  vi.unstubAllGlobals();
+});
 
 describe('App', () => {
   it('shows the empty-state for a valid empty catalog', async () => {
@@ -165,35 +197,60 @@ describe('App', () => {
     const user = userEvent.setup();
     const requestFullscreen = vi.fn(() => Promise.resolve());
     const lock = vi.fn(() => Promise.resolve());
-    const noop = (): void => undefined;
-    vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
-      matches: query === '(max-width: 760px)',
-      media: query,
-      onchange: null,
-      addEventListener: noop,
-      removeEventListener: noop,
-      addListener: noop,
-      removeListener: noop,
-      dispatchEvent: () => false,
-    }));
+    stubMobilePortrait();
     vi.stubGlobal('screen', { orientation: { lock } });
+    Object.defineProperty(Element.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: requestFullscreen,
+    });
 
     render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
 
     const enterButton = await screen.findByRole('button', {
       name: 'Enter distraction-free mode',
     });
-    const layout = enterButton.closest('.player-layout');
-    if (layout === null) throw new Error('Player layout is missing.');
-    Object.defineProperty(layout, 'requestFullscreen', {
-      configurable: true,
-      value: requestFullscreen,
-    });
-
     await user.click(enterButton);
 
     expect(requestFullscreen).toHaveBeenCalledOnce();
     await waitFor(() => expect(lock).toHaveBeenCalledWith('landscape'));
+  });
+
+  it('keeps mobile distraction-free mode available after a rejected landscape lock', async () => {
+    const user = userEvent.setup();
+    const requestFullscreen = vi.fn(() => Promise.resolve());
+    const lock = vi.fn(() => Promise.reject(new Error('Lock rejected.')));
+    stubMobilePortrait();
+    vi.stubGlobal('screen', { orientation: { lock } });
+    Object.defineProperty(Element.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: requestFullscreen,
+    });
+
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const enterButton = await screen.findByRole('button', {
+      name: 'Enter distraction-free mode',
+    });
+    await user.click(enterButton);
+    await waitFor(() => expect(lock).toHaveBeenCalledTimes(1));
+    expect(enterButton).toBeInTheDocument();
+
+    await user.click(enterButton);
+    await waitFor(() => expect(lock).toHaveBeenCalledTimes(2));
+    expect(requestFullscreen).toHaveBeenCalledTimes(2);
+  });
+
+  it('hides mobile distraction-free mode when landscape locking is unavailable', async () => {
+    stubMobilePortrait();
+
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    await screen.findByRole('button', { name: 'Play Solitude' });
+    expect(
+      screen.queryByRole('button', {
+        name: 'Enter distraction-free mode',
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders playback progress beneath the ON AIR text', async () => {
