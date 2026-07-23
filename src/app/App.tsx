@@ -57,6 +57,8 @@ type WaveformState =
     };
 
 const initialState: CatalogState = { status: 'loading' };
+// Keep this aligned with the mobile layout breakpoint in styles.css.
+const mobileLayoutQuery = '(max-width: 760px)';
 
 function catalogReducer(
   _state: CatalogState,
@@ -150,6 +152,16 @@ function PlayerApplication({
   const capable = hasRequiredCapabilities();
   const hasTracks = catalog.tracks.length > 0;
   const controlsDisabled = !capable || !hasTracks;
+  const lockMobileLandscape = useCallback(() => {
+    if (!window.matchMedia(mobileLayoutQuery).matches) return;
+    const orientation = (
+      window.screen as unknown as {
+        readonly orientation?: ScreenOrientation;
+      }
+    ).orientation;
+    if (typeof orientation?.lock !== 'function') return;
+    void orientation.lock('landscape').catch(() => undefined);
+  }, []);
   const closeDeckMaximized = useCallback(() => {
     if (document.fullscreenElement === playerLayout.current) {
       void document.exitFullscreen();
@@ -175,8 +187,15 @@ function PlayerApplication({
       onDeckMaximizedChange(true);
       return;
     }
-    void layout.requestFullscreen().catch(() => onDeckMaximizedChange(true));
-  }, [closeDeckMaximized, deckMaximized, onDeckMaximizedChange]);
+    void layout.requestFullscreen().then(lockMobileLandscape, () => {
+      onDeckMaximizedChange(true);
+    });
+  }, [
+    closeDeckMaximized,
+    deckMaximized,
+    lockMobileLandscape,
+    onDeckMaximizedChange,
+  ]);
 
   useEffect(() => {
     const abort = new AbortController();

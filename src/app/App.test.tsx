@@ -161,6 +161,41 @@ describe('App', () => {
     expect(layout).not.toHaveClass('deck-maximized');
   });
 
+  it('requests landscape after entering native fullscreen on mobile', async () => {
+    const user = userEvent.setup();
+    const requestFullscreen = vi.fn(() => Promise.resolve());
+    const lock = vi.fn(() => Promise.resolve());
+    const noop = (): void => undefined;
+    vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
+      matches: query === '(max-width: 760px)',
+      media: query,
+      onchange: null,
+      addEventListener: noop,
+      removeEventListener: noop,
+      addListener: noop,
+      removeListener: noop,
+      dispatchEvent: () => false,
+    }));
+    vi.stubGlobal('screen', { orientation: { lock } });
+
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const enterButton = await screen.findByRole('button', {
+      name: 'Enter distraction-free mode',
+    });
+    const layout = enterButton.closest('.player-layout');
+    if (layout === null) throw new Error('Player layout is missing.');
+    Object.defineProperty(layout, 'requestFullscreen', {
+      configurable: true,
+      value: requestFullscreen,
+    });
+
+    await user.click(enterButton);
+
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+    await waitFor(() => expect(lock).toHaveBeenCalledWith('landscape'));
+  });
+
   it('renders playback progress beneath the ON AIR text', async () => {
     localStorage.setItem(
       PLAYER_STORAGE_KEY,

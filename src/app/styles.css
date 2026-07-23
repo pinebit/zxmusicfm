@@ -1528,6 +1528,46 @@ h3 {
   }
 }
 
+@media (max-width: 1024px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  .player-layout.deck-maximized {
+    padding: max(0.25rem, env(safe-area-inset-top))
+      max(0.25rem, env(safe-area-inset-right))
+      max(0.25rem, env(safe-area-inset-bottom))
+      max(0.25rem, env(safe-area-inset-left));
+  }
+
+  .player-layout.deck-maximized .meter-panel {
+    padding: 0.5rem;
+    scrollbar-width: none;
+  }
+
+  .player-layout.deck-maximized .meter-panel::-webkit-scrollbar {
+    display: none;
+  }
+
+  .player-layout.deck-maximized .deck-toggle {
+    flex: 0 1 auto;
+    width: var(--deck-control-width);
+    min-width: 0;
+    max-width: none;
+  }
+
+  .player-layout.deck-maximized .meter-bank {
+    margin-bottom: clamp(0.2rem, 1dvh, 0.4rem);
+    padding-bottom: 0.3rem;
+  }
+
+  .player-layout.deck-maximized .piano-visualizer {
+    margin-bottom: clamp(0.2rem, 1dvh, 0.4rem);
+  }
+
+  .player-layout.deck-maximized .deck-controls {
+    width: min(100%, 32rem);
+    margin-top: 0;
+    padding-top: 0.2rem;
+  }
+}
+
 @media (max-width: 420px) {
   .app-shell {
     width: calc(100% - 1rem);
