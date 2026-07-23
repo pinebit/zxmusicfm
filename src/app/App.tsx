@@ -25,14 +25,15 @@ import type {
 import { BrandWordmark } from './BrandWordmark.tsx';
 import { ChannelMeters } from './ChannelMeters.tsx';
 import {
+  MaximizeIcon,
   NextIcon,
   PauseIcon,
   PlayIcon,
   PreviousIcon,
+  RestoreIcon,
 } from './ControlIcons.tsx';
 import { CreditsDialog } from './CreditsDialog.tsx';
 import { formatTime } from './formatTime.ts';
-import { PositionLeds } from './PositionLeds.tsx';
 import { PianoKeyboard } from './PianoKeyboard.tsx';
 import { VolumeKnob } from './VolumeKnob.tsx';
 import { WaveformSeek } from './WaveformSeek.tsx';
@@ -124,8 +125,12 @@ function playerErrorMessage(error: PlayerError): string {
 
 function PlayerApplication({
   catalog,
+  deckMaximized,
+  onDeckMaximizedChange,
 }: {
   readonly catalog: GeneratedCatalog;
+  readonly deckMaximized: boolean;
+  readonly onDeckMaximizedChange: (maximized: boolean) => void;
 }) {
   const controller = useMemo(() => new PlayerController(catalog), [catalog]);
   const snapshot = useSyncExternalStore(
@@ -139,16 +144,39 @@ function PlayerApplication({
   const [waveformAttempt, setWaveformAttempt] = useState(0);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const creditsTrigger = useRef<HTMLButtonElement>(null);
-  const [volumeActive, setVolumeActive] = useState(false);
-  const volumeTimer = useRef<number | undefined>(undefined);
-  const flashVolume = useCallback(() => {
-    setVolumeActive(true);
-    window.clearTimeout(volumeTimer.current);
-    volumeTimer.current = window.setTimeout(() => setVolumeActive(false), 900);
-  }, []);
+  const deckMaximizeTrigger = useRef<HTMLButtonElement>(null);
+  const playerLayout = useRef<HTMLDivElement>(null);
+  const deckControls = useRef<HTMLDivElement>(null);
   const capable = hasRequiredCapabilities();
   const hasTracks = catalog.tracks.length > 0;
   const controlsDisabled = !capable || !hasTracks;
+  const closeDeckMaximized = useCallback(() => {
+    if (document.fullscreenElement === playerLayout.current) {
+      void document.exitFullscreen();
+    } else {
+      onDeckMaximizedChange(false);
+      window.setTimeout(() => deckMaximizeTrigger.current?.focus(), 0);
+    }
+  }, [onDeckMaximizedChange]);
+  const toggleDeckMaximized = useCallback(() => {
+    if (deckMaximized) {
+      closeDeckMaximized();
+      return;
+    }
+    const layout = playerLayout.current;
+    const controlsWidth = deckControls.current?.getBoundingClientRect().width;
+    if (controlsWidth !== undefined) {
+      layout?.style.setProperty(
+        '--normal-deck-controls-width',
+        `${controlsWidth}px`,
+      );
+    }
+    if (layout === null || typeof layout.requestFullscreen !== 'function') {
+      onDeckMaximizedChange(true);
+      return;
+    }
+    void layout.requestFullscreen().catch(() => onDeckMaximizedChange(true));
+  }, [closeDeckMaximized, deckMaximized, onDeckMaximizedChange]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -181,6 +209,11 @@ function PlayerApplication({
   useEffect(() => {
     const pageHide = () => controller.persistNow();
     const keyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && deckMaximized) {
+        event.preventDefault();
+        closeDeckMaximized();
+        return;
+      }
       if (
         event.code !== 'Space' ||
         event.repeat ||
@@ -200,15 +233,47 @@ function PlayerApplication({
       window.removeEventListener('pagehide', pageHide);
       window.removeEventListener('keydown', keyboard);
     };
-  }, [capable, controller, snapshot.selectedTrackId, snapshot.status]);
+  }, [
+    capable,
+    closeDeckMaximized,
+    controller,
+    deckMaximized,
+    onDeckMaximizedChange,
+    snapshot.selectedTrackId,
+    snapshot.status,
+  ]);
 
   useEffect(() => controller.activate(), [controller]);
 
-  useEffect(() => () => window.clearTimeout(volumeTimer.current), []);
+  useEffect(() => {
+    if (!deckMaximized) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [deckMaximized]);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      const maximized = document.fullscreenElement === playerLayout.current;
+      onDeckMaximizedChange(maximized);
+      if (!maximized) {
+        window.setTimeout(() => deckMaximizeTrigger.current?.focus(), 0);
+      }
+    };
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    return () =>
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+  }, [onDeckMaximizedChange]);
 
   const selectedTrack = catalog.tracks.find(
     ({ id }) => id === snapshot.selectedTrackId,
   );
+  const playbackProgress =
+    snapshot.durationSeconds > 0
+      ? snapshot.positionSeconds / snapshot.durationSeconds
+      : 0;
   const closeCredits = useCallback(() => {
     setCreditsOpen(false);
     window.setTimeout(() => creditsTrigger.current?.focus(), 0);
@@ -240,7 +305,15 @@ function PlayerApplication({
         </section>
       ) : null}
 
-      <div className="player-layout">
+      <div
+        ref={playerLayout}
+        className={`player-layout${deckMaximized ? ' deck-maximized' : ''}`}
+        onClick={(event) => {
+          if (deckMaximized && event.target === event.currentTarget) {
+            closeDeckMaximized();
+          }
+        }}
+      >
         <section className="track-panel" aria-labelledby="track-list-heading">
           <div className="panel-heading">
             <h2 id="track-list-heading" className="section-kicker">
@@ -368,23 +441,51 @@ function PlayerApplication({
 
         <aside className="meter-panel" aria-label="Playback deck">
           <div className="meter-heading">
-            <p
-              className={`section-kicker on-air-sign${
-                snapshot.status === 'playing' ? ' is-live' : ''
-              }`}
-            >
-              <span className="on-air-lamp" aria-hidden="true" />
-              <span className="on-air-label">ON AIR</span>
-              {selectedTrack ? (
-                <span className="on-air-track">
-                  {' - '}
-                  {selectedTrack.title} | {selectedTrack.author}
-                </span>
-              ) : null}
-            </p>
+            <div className="on-air-display">
+              <p
+                className={`section-kicker on-air-sign${
+                  snapshot.status === 'playing' ? ' is-live' : ''
+                }`}
+              >
+                <span className="on-air-lamp" aria-hidden="true" />
+                <span className="on-air-label">ON AIR</span>
+                {selectedTrack ? (
+                  <span className="on-air-track">
+                    {' - '}
+                    {selectedTrack.title} | {selectedTrack.author}
+                  </span>
+                ) : null}
+              </p>
+              <span className="on-air-progress" aria-hidden="true">
+                <span
+                  style={{
+                    width: `${Math.max(0, Math.min(1, playbackProgress)) * 100}%`,
+                  }}
+                />
+              </span>
+            </div>
             <span className="visually-hidden" aria-live="polite">
               {playbackStatusLabels[snapshot.status]}
             </span>
+            <button
+              ref={deckMaximizeTrigger}
+              type="button"
+              className="deck-maximize-button"
+              aria-label={
+                deckMaximized
+                  ? 'Exit distraction-free mode'
+                  : 'Enter distraction-free mode'
+              }
+              title={
+                deckMaximized
+                  ? 'Exit distraction-free mode'
+                  : 'Enter distraction-free mode'
+              }
+              aria-pressed={deckMaximized}
+              onClick={toggleDeckMaximized}
+            >
+              {deckMaximized ? <RestoreIcon /> : <MaximizeIcon />}
+            </button>
           </div>
           {selectedTrack === undefined ? (
             <p className="choose-track">Choose a track to start listening.</p>
@@ -397,19 +498,8 @@ function PlayerApplication({
             adapter={controller.getAdapter()}
             playing={snapshot.status === 'playing'}
           />
-          <PositionLeds
-            fraction={
-              volumeActive
-                ? snapshot.preferences.volume
-                : snapshot.durationSeconds > 0
-                  ? snapshot.positionSeconds / snapshot.durationSeconds
-                  : 0
-            }
-            mode={volumeActive ? 'volume' : 'position'}
-            paused={snapshot.status === 'paused'}
-          />
 
-          <div className="deck-controls">
+          <div ref={deckControls} className="deck-controls">
             <div className="deck-options">
               <button
                 type="button"
@@ -480,10 +570,7 @@ function PlayerApplication({
               <VolumeKnob
                 value={snapshot.preferences.volume * 100}
                 disabled={!hasTracks}
-                onChange={(value) => {
-                  controller.setVolume(value / 100);
-                  flashVolume();
-                }}
+                onChange={(value) => controller.setVolume(value / 100)}
               />
             </div>
           </div>
@@ -523,6 +610,7 @@ function PlayerApplication({
 export function App({ catalogLoader = loadCatalog }: AppProps) {
   const [state, dispatch] = useReducer(catalogReducer, initialState);
   const [attempt, setAttempt] = useState(0);
+  const [deckMaximized, setDeckMaximized] = useState(false);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -536,7 +624,7 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
   }, [attempt, catalogLoader]);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${deckMaximized ? ' deck-focus-mode' : ''}`}>
       <header className="brand-header">
         <div className="brand-titles">
           <h1>
@@ -571,7 +659,11 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
         </section>
       ) : null}
       {state.status === 'ready' ? (
-        <PlayerApplication catalog={state.catalog} />
+        <PlayerApplication
+          catalog={state.catalog}
+          deckMaximized={deckMaximized}
+          onDeckMaximizedChange={setDeckMaximized}
+        />
       ) : null}
     </main>
   );

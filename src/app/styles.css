@@ -314,13 +314,155 @@ h3 {
   box-shadow: inset 0 0.1rem 0.3rem rgb(0 0 0 / 72%);
 }
 
+.deck-maximize-button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0.32rem;
+  place-items: center;
+  color: #c7c9cc;
+  background: #17191b;
+  border: 1px solid #484c52;
+  border-radius: 0.2rem;
+}
+
+.deck-maximize-button:hover {
+  color: var(--amber);
+  border-color: #767b82;
+}
+
+.deck-maximize-button:active {
+  transform: translateY(1px);
+}
+
+.deck-maximize-button .control-icon {
+  width: 100%;
+  height: 100%;
+  fill: currentcolor;
+}
+
+.player-layout.deck-maximized {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: clamp(0.45rem, 1.5vw, 1rem);
+  overflow: hidden;
+  background: rgb(5 6 7 / 92%);
+}
+
+.player-layout.deck-maximized .track-panel {
+  display: none;
+}
+
+.player-layout.deck-maximized .meter-panel {
+  position: relative;
+  top: auto;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.player-layout.deck-maximized .meter-heading {
+  margin-bottom: clamp(0.9rem, 2dvh, 1.5rem);
+  padding: 0.55rem 0.75rem;
+}
+
+.player-layout.deck-maximized .on-air-sign {
+  font-size: 0.82rem;
+}
+
+.player-layout.deck-maximized .on-air-lamp {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+.player-layout.deck-maximized .on-air-progress {
+  height: 0.16rem;
+  margin-top: 0.4rem;
+}
+
+.player-layout.deck-maximized .deck-maximize-button {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.player-layout.deck-maximized .meter-bank {
+  width: min(50%, 77.5dvh);
+  margin-inline: auto;
+  margin-bottom: clamp(0.8rem, 2.25dvh, 1.7rem);
+}
+
+.player-layout.deck-maximized .meter {
+  container-type: inline-size;
+}
+
+.player-layout.deck-maximized .meter-scale {
+  font-size: clamp(0.51rem, 5.2cqi, 1.2rem);
+}
+
+.player-layout.deck-maximized .meter-unit {
+  font-size: clamp(0.48rem, 4.8cqi, 1.1rem);
+}
+
+.player-layout.deck-maximized .meter strong {
+  font-size: clamp(0.54rem, 5.4cqi, 1.2rem);
+}
+
+.player-layout.deck-maximized .piano-visualizer {
+  margin-inline: 0;
+  margin-bottom: clamp(0.9rem, 2.4dvh, 1.8rem);
+}
+
+.player-layout.deck-maximized .piano-keybed {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 8.2 / 1;
+}
+
+.player-layout.deck-maximized .deck-controls {
+  width: min(100%, var(--normal-deck-controls-width, 32rem));
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.app-shell.deck-focus-mode > .brand-header,
+.app-shell.deck-focus-mode > .notice-panel,
+.app-shell.deck-focus-mode > .waveform-notice,
+.app-shell.deck-focus-mode > .site-footer {
+  display: none;
+}
+
 .on-air-sign {
   display: inline-flex;
-  flex: 1 1 auto;
   align-items: center;
   gap: 0.42rem;
+  width: 100%;
   min-width: 0;
   margin-bottom: 0;
+}
+
+.on-air-display {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.on-air-progress {
+  display: block;
+  height: 0.14rem;
+  margin-top: 0.32rem;
+  overflow: hidden;
+  background: #24272a;
+  border-radius: 0.1rem;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 72%);
+}
+
+.on-air-progress > span {
+  display: block;
+  height: 100%;
+  background: rgb(242 193 78 / 48%);
 }
 
 .on-air-label {
@@ -807,13 +949,21 @@ h3 {
   position: absolute;
   top: 0;
   display: block;
+  overflow: hidden;
   border-style: solid;
   transition: none;
 }
 
 .piano-key-white {
   height: 100%;
-  background: linear-gradient(180deg, #f1eddf, #c6c0ae);
+  background:
+    linear-gradient(
+      90deg,
+      rgb(255 255 255 / 18%),
+      transparent 13% 82%,
+      rgb(72 66 52 / 12%)
+    ),
+    linear-gradient(180deg, #f3efe2, #d7d1bf 62%, #bdb6a4);
   border-width: 0 1px 1px 0;
   border-color: #55534e;
 }
@@ -821,10 +971,75 @@ h3 {
 .piano-key-black {
   z-index: 2;
   height: 62%;
-  background: linear-gradient(105deg, #25272a, #050606 70%);
+  background:
+    linear-gradient(
+      100deg,
+      rgb(255 255 255 / 12%),
+      transparent 24% 68%,
+      rgb(0 0 0 / 55%)
+    ),
+    linear-gradient(180deg, #282a2c, #0b0c0d 58%, #030404);
   border-width: 0 1px 2px;
   border-color: #030404;
   box-shadow: 0 0.13rem 0.2rem rgb(0 0 0 / 68%);
+}
+
+.piano-key::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+}
+
+.piano-key-white::after {
+  background:
+    linear-gradient(
+      92deg,
+      transparent 0 18%,
+      rgb(89 75 50 / 7%) 23%,
+      transparent 29% 61%,
+      rgb(102 86 57 / 5%) 68%,
+      transparent 76%
+    ),
+    repeating-linear-gradient(
+      87deg,
+      transparent 0 0.28rem,
+      rgb(83 72 52 / 4%) 0.32rem,
+      transparent 0.38rem 0.72rem
+    ),
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 20%),
+      transparent 20% 76%,
+      rgb(75 65 48 / 8%)
+    );
+  opacity: 0.42;
+}
+
+.piano-key-black::after {
+  background:
+    repeating-linear-gradient(
+      91deg,
+      transparent 0 0.16rem,
+      rgb(255 255 255 / 4%) 0.2rem,
+      transparent 0.24rem 0.46rem
+    ),
+    linear-gradient(
+      90deg,
+      rgb(255 255 255 / 9%),
+      transparent 22% 72%,
+      rgb(0 0 0 / 28%)
+    ),
+    linear-gradient(180deg, rgb(255 255 255 / 7%), transparent 35%);
+  opacity: 0.55;
+}
+
+.player-layout.deck-maximized .piano-key-white::after {
+  opacity: 0.68;
+}
+
+.player-layout.deck-maximized .piano-key-black::after {
+  opacity: 0.78;
 }
 
 .piano-key.is-active {
@@ -907,38 +1122,6 @@ h3 {
 
 .deck-toggle:not(:disabled):active {
   transform: translateY(0.12rem);
-}
-
-.position-leds {
-  --position-led-rgb: 255 138 60;
-
-  display: flex;
-  gap: clamp(0.12rem, 0.5vw, 0.22rem);
-  margin: 0 0.7rem 0.35rem;
-  padding: 0.32rem 0.4rem;
-  background: #0b0c0d;
-  border: 1px solid #33363a;
-  border-radius: 0.2rem;
-  box-shadow: inset 0 0.1rem 0.3rem rgb(0 0 0 / 72%);
-}
-
-.position-led {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 0.42rem;
-  overflow: hidden;
-  background: #08090a;
-  border: 1px solid #292c30;
-  border-radius: 0.1rem;
-}
-
-.position-led.is-lit {
-  background: rgb(var(--position-led-rgb) / 68%);
-  border-color: rgb(var(--position-led-rgb) / 52%);
-}
-
-.position-leds[data-mode='volume'] {
-  --position-led-rgb: 107 199 125;
 }
 
 .deck-controls {
@@ -1026,24 +1209,49 @@ h3 {
   inset: -0.42rem;
   content: '';
   background: repeating-conic-gradient(
-    from -142deg,
+    from -135deg,
     #b8bbbd 0 1.8deg,
     transparent 1.8deg 15deg
   );
   border-radius: 50%;
   opacity: 0.8;
-  -webkit-mask: radial-gradient(
-    circle,
-    transparent 0 68%,
-    #000 69% 76%,
-    transparent 77%
+  -webkit-mask-image:
+    radial-gradient(circle, transparent 0 68%, #000 69% 76%, transparent 77%),
+    conic-gradient(from -135deg, #000 0 271.8deg, transparent 271.8deg 360deg);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(circle, transparent 0 68%, #000 69% 76%, transparent 77%),
+    conic-gradient(from -135deg, #000 0 271.8deg, transparent 271.8deg 360deg);
+  mask-composite: intersect;
+}
+
+.volume-knob::after {
+  position: absolute;
+  inset: -0.42rem;
+  content: '';
+  background: repeating-conic-gradient(
+    from -135deg,
+    var(--amber) 0 1.8deg,
+    transparent 1.8deg 15deg
   );
-  mask: radial-gradient(
-    circle,
-    transparent 0 68%,
-    #000 69% 76%,
-    transparent 77%
-  );
+  border-radius: 50%;
+  filter: drop-shadow(0 0 0.16rem rgb(242 193 78 / 38%));
+  -webkit-mask-image:
+    radial-gradient(circle, transparent 0 68%, #000 69% 76%, transparent 77%),
+    conic-gradient(
+      from -135deg,
+      #000 0 var(--volume-level-sweep),
+      transparent var(--volume-level-sweep) 360deg
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(circle, transparent 0 68%, #000 69% 76%, transparent 77%),
+    conic-gradient(
+      from -135deg,
+      #000 0 var(--volume-level-sweep),
+      transparent var(--volume-level-sweep) 360deg
+    );
+  mask-composite: intersect;
 }
 
 .volume-knob span {
@@ -1453,7 +1661,8 @@ h3 {
   }
 
   .meter-panel::before,
-  .volume-knob::before {
+  .volume-knob::before,
+  .volume-knob::after {
     display: none;
   }
 }

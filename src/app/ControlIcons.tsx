@@ -48,3 +48,19 @@ export function NextIcon() {
     </ControlIcon>
   );
 }
+
+export function MaximizeIcon() {
+  return (
+    <ControlIcon>
+      <path d="M4 10V4h6v2H6v4H4zm10-6h6v6h-2V6h-4V4zM6 14v4h4v2H4v-6h2zm12 0h2v6h-6v-2h4v-4z" />
+    </ControlIcon>
+  );
+}
+
+export function RestoreIcon() {
+  return (
+    <ControlIcon>
+      <path d="M10 4v6H4V8h4V4h2zm4 0h2v4h4v2h-6V4zM4 14h6v6H8v-4H4v-2zm12 2v4h-2v-6h6v2h-4z" />
+    </ControlIcon>
+  );
+}

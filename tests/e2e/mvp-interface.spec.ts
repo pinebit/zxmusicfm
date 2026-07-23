@@ -157,3 +157,67 @@ test('supports reduced motion and the global playback shortcut', async ({
     page.getByRole('button', { name: 'Play Solitude' }),
   ).toBeVisible();
 });
+
+test('uses the approved distraction-free Deck layout', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Distraction-free geometry runs once in Chromium.',
+  );
+  await page.addInitScript(() => {
+    Object.defineProperty(Element.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: undefined,
+    });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+
+  const controls = page.locator('.deck-controls');
+  const normalControls = await controls.boundingBox();
+  expect(normalControls).not.toBeNull();
+
+  const enterButton = page.getByRole('button', {
+    name: 'Enter distraction-free mode',
+  });
+  await expect(enterButton).toHaveAttribute(
+    'title',
+    'Enter distraction-free mode',
+  );
+  await enterButton.click();
+
+  await expect(page.locator('.player-layout')).toHaveClass(/deck-maximized/);
+  await expect(page.locator('.brand-header')).toBeHidden();
+  await expect(page.locator('.track-panel')).toBeHidden();
+
+  const panel = await page.locator('.meter-panel').boundingBox();
+  const meters = await page.locator('.meter-bank').boundingBox();
+  const keyboard = await page.locator('.piano-keybed').boundingBox();
+  const maximizedControls = await controls.boundingBox();
+  expect(panel).not.toBeNull();
+  expect(meters).not.toBeNull();
+  expect(keyboard).not.toBeNull();
+  expect(maximizedControls).not.toBeNull();
+  if (
+    panel !== null &&
+    meters !== null &&
+    keyboard !== null &&
+    normalControls !== null &&
+    maximizedControls !== null
+  ) {
+    expect(
+      Math.abs(meters.x + meters.width / 2 - (panel.x + panel.width / 2)),
+    ).toBeLessThan(2);
+    expect(meters.width).toBeLessThanOrEqual(keyboard.width * 0.51);
+    expect(keyboard.width / keyboard.height).toBeCloseTo(8.2, 1);
+    expect(maximizedControls.width).toBeCloseTo(normalControls.width, 0);
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.player-layout')).not.toHaveClass(
+    /deck-maximized/,
+  );
+  await expect(enterButton).toBeFocused();
+});

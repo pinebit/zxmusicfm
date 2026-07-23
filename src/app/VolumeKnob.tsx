@@ -37,6 +37,9 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
         style={
           {
             '--volume-turn': `${-135 + percent * 2.7}deg`,
+            '--volume-level-sweep': `${
+              percent === 0 ? 0 : Math.min(271.8, percent * 2.7 + 1.8)
+            }deg`,
           } as CSSProperties
         }
         onKeyDown={(event) => {

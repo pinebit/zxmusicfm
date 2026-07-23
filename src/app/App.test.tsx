@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -107,5 +107,82 @@ describe('App', () => {
     expect(
       await screen.findByRole('button', { name: 'Play first track' }),
     ).toBeEnabled();
+  });
+
+  it('enters and exits distraction-free mode without fullscreen support', async () => {
+    const user = userEvent.setup();
+
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const enterButton = await screen.findByRole('button', {
+      name: 'Enter distraction-free mode',
+    });
+    await user.click(enterButton);
+
+    const exitButton = screen.getByRole('button', {
+      name: 'Exit distraction-free mode',
+    });
+    const layout = exitButton.closest('.player-layout');
+    expect(layout).toHaveClass('deck-maximized');
+    expect(document.querySelector('.app-shell')).toHaveClass('deck-focus-mode');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: 'Enter distraction-free mode',
+        }),
+      ).toHaveFocus(),
+    );
+    expect(layout).not.toHaveClass('deck-maximized');
+    expect(document.body.style.overflow).toBe('');
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Enter distraction-free mode',
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Exit distraction-free mode',
+      }),
+    );
+    expect(layout).not.toHaveClass('deck-maximized');
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Enter distraction-free mode',
+      }),
+    );
+    if (layout === null) throw new Error('Player layout is missing.');
+    await user.click(layout);
+    expect(layout).not.toHaveClass('deck-maximized');
+  });
+
+  it('renders playback progress beneath the ON AIR text', async () => {
+    localStorage.setItem(
+      PLAYER_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        selectedTrackId: 'solitude',
+        positionSeconds: 1,
+        volume: 0.8,
+        shuffle: false,
+      }),
+    );
+
+    try {
+      render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+      await screen.findByText('- Solitude | Pator');
+      expect(
+        document.querySelector<HTMLElement>('.on-air-progress > span'),
+      ).toHaveStyle({ width: '50%' });
+      expect(document.querySelector('.position-leds')).not.toBeInTheDocument();
+    } finally {
+      localStorage.removeItem(PLAYER_STORAGE_KEY);
+    }
   });
 });
