@@ -5,6 +5,7 @@ import type {
   ChannelOrder,
   ChannelVoices,
   OfflineRender,
+  OscilloscopeSamples,
   PlaybackAdapter,
   PlaybackAdapterListener,
   PlaybackAdapterSnapshot,
@@ -32,6 +33,7 @@ const START_LATENCY_SECONDS = 0.02;
 const CENTER_GAIN = Math.SQRT1_2;
 const MIX_HEADROOM = 0.5;
 const CHANNELS = ['A', 'B', 'C'] as const;
+const OSCILLOSCOPE_FFT_SIZE = 1_024;
 
 // Master post-processing chain applied to the stereo mix, in order:
 // sub-sonic high-pass → bass low-shelf → safety limiter → high-frequency
@@ -78,6 +80,14 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private channelInput: AudioNode | undefined;
   private channelMixGains:
     Readonly<Record<ChannelId, readonly [GainNode, GainNode]>> | undefined;
+  private channelAnalysers:
+    | Readonly<Record<ChannelId, AnalyserNode>>
+    | undefined;
+  private readonly oscilloscopeSamples: OscilloscopeSamples = {
+    A: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
+    B: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
+    C: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
+  };
   private scheduledSources = new Set<AudioBufferSourceNode>();
   private scheduler: ReturnType<typeof globalThis.setInterval> | undefined;
   private nextScheduleTime = 0;
@@ -287,6 +297,18 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       : EMPTY_VOICES;
   }
 
+  getOscilloscopeSamples(): OscilloscopeSamples {
+    const analysers = this.channelAnalysers;
+    if (analysers !== undefined) {
+      for (const channel of CHANNELS) {
+        analysers[channel].getFloatTimeDomainData(
+          this.oscilloscopeSamples[channel],
+        );
+      }
+    }
+    return this.oscilloscopeSamples;
+  }
+
   async renderOffline(
     track: RuntimeTrack,
     signal: AbortSignal,
@@ -403,6 +425,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.masterInput = undefined;
     this.channelInput = undefined;
     this.channelMixGains = undefined;
+    this.channelAnalysers = undefined;
     if (context !== undefined && context.state !== 'closed') {
       void context.close();
     }
@@ -475,12 +498,21 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     splitter.channelInterpretation = 'discrete';
     const merger = context.createChannelMerger(2);
     merger.connect(highpass);
-    const channelMixGains = Object.fromEntries(
+    const channelAnalysers = Object.fromEntries(
       CHANNELS.map((channel, channelIndex) => {
+        const analyser = context.createAnalyser();
+        analyser.fftSize = OSCILLOSCOPE_FFT_SIZE;
+        analyser.smoothingTimeConstant = 0;
+        splitter.connect(analyser, channelIndex);
+        return [channel, analyser];
+      }),
+    ) as Record<ChannelId, AnalyserNode>;
+    const channelMixGains = Object.fromEntries(
+      CHANNELS.map((channel) => {
         const left = context.createGain();
         const right = context.createGain();
-        splitter.connect(left, channelIndex);
-        splitter.connect(right, channelIndex);
+        channelAnalysers[channel].connect(left);
+        channelAnalysers[channel].connect(right);
         left.connect(merger, 0, 0);
         right.connect(merger, 0, 1);
         return [channel, [left, right] as const];
@@ -488,6 +520,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     ) as Record<ChannelId, readonly [GainNode, GainNode]>;
     this.channelInput = splitter;
     this.channelMixGains = channelMixGains;
+    this.channelAnalysers = channelAnalysers;
     this.updateChannelMix();
   }
 

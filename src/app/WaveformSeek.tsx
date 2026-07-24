@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { DecodedWaveform } from '../content/runtime.ts';
+import type { PlaybackAdapter } from '../playback/contracts.ts';
 import { WAVEFORM_BUCKET_COUNT } from '../playback/waveform.ts';
 import { channelPalette } from './channelPalette.ts';
 import { formatTime } from './formatTime.ts';
 
 type WaveformSeekProps = {
+  readonly adapter?: Pick<
+    PlaybackAdapter,
+    'getSnapshot' | 'getOscilloscopeSamples'
+  >;
+  readonly playing?: boolean;
   readonly waveform: DecodedWaveform | undefined;
   readonly duration: number;
   readonly position: number;
@@ -21,9 +27,13 @@ const waveformPalette = {
   divider: '#34383d',
   playhead: '#f4e7c3',
   unplayed: '#111315',
+  lensBackground: '#0b0d0f',
+  lensBorder: '#c9a956',
 } as const;
 
 export function WaveformSeek({
+  adapter,
+  playing = false,
   waveform,
   duration,
   position,
@@ -50,7 +60,7 @@ export function WaveformSeek({
       setCanvasFailed(true);
       return;
     }
-    const drawWaveform = () => {
+    const drawWaveform = (currentPosition = displayedPosition) => {
       const ratio = Math.max(1, window.devicePixelRatio);
       const width = Math.max(1, Math.round(canvas.clientWidth * ratio));
       const height = Math.max(1, Math.round(canvas.clientHeight * ratio));
@@ -59,7 +69,10 @@ export function WaveformSeek({
         canvas.height = height;
       }
       context.clearRect(0, 0, width, height);
-      const progress = duration === 0 ? 0 : displayedPosition / duration;
+      const progress = Math.min(
+        1,
+        Math.max(0, duration === 0 ? 0 : currentPosition / duration),
+      );
       const channels = ['A', 'B', 'C'] as const;
       const laneHeight = height / channels.length;
       context.lineCap = 'round';
@@ -104,14 +117,143 @@ export function WaveformSeek({
         context.globalAlpha = 1;
         context.fillStyle = waveformPalette.playhead;
         context.fillRect(progress * width - ratio, 0, ratio * 2, height);
+
+        const lensSize = Math.min(height, width);
+        const lensX = Math.min(
+          width - lensSize,
+          Math.max(0, progress * width - lensSize / 2),
+        );
+        const lensY = 0;
+        const lensLaneHeight = lensSize / channels.length;
+        const oscilloscopeSamples = adapter?.getOscilloscopeSamples?.();
+
+        context.save();
+        context.globalAlpha = 1;
+        context.shadowColor = 'rgb(0 0 0 / 55%)';
+        context.shadowBlur = ratio * 4;
+        context.fillStyle = waveformPalette.lensBackground;
+        context.fillRect(lensX, lensY, lensSize, lensSize);
+        context.restore();
+
+        context.save();
+        context.beginPath();
+        context.rect(lensX, lensY, lensSize, lensSize);
+        context.clip();
+
+        for (const [index, channel] of channels.entries()) {
+          const center = lensY + lensLaneHeight * (index + 0.5);
+          const amplitude = lensLaneHeight * 0.37;
+          if (index > 0) {
+            context.globalAlpha = 1;
+            context.strokeStyle = waveformPalette.divider;
+            context.lineWidth = Math.max(1, ratio * 0.75);
+            context.beginPath();
+            context.moveTo(lensX, lensY + lensLaneHeight * index);
+            context.lineTo(lensX + lensSize, lensY + lensLaneHeight * index);
+            context.stroke();
+          }
+
+          context.globalAlpha = 0.45;
+          context.strokeStyle = waveformPalette.baseline;
+          context.lineWidth = Math.max(1, ratio * 0.5);
+          context.beginPath();
+          context.moveTo(lensX, center);
+          context.lineTo(lensX + lensSize, center);
+          context.stroke();
+
+          const samples = oscilloscopeSamples?.[channel];
+          if (samples !== undefined) {
+            const sampleCount = Math.min(256, samples.length);
+            const latestStart = samples.length - sampleCount;
+            const triggerSearchStart = Math.max(
+              1,
+              latestStart - sampleCount,
+            );
+            let sampleStart = latestStart;
+            for (
+              let sample = triggerSearchStart;
+              sample <= latestStart;
+              sample += 1
+            ) {
+              const previous = samples[sample - 1] ?? 0;
+              const current = samples[sample] ?? 0;
+              if (previous <= 0 && current > 0) {
+                sampleStart = sample;
+                break;
+              }
+            }
+            context.globalAlpha = 1;
+            context.strokeStyle = waveformPalette[channel];
+            context.lineWidth = Math.max(1, ratio);
+            context.beginPath();
+            for (let sample = 0; sample < sampleCount; sample += 1) {
+              const x = lensX + (sample / (sampleCount - 1)) * lensSize;
+              const value = samples[sampleStart + sample] ?? 0;
+              const y = center - value * amplitude;
+              if (sample === 0) context.moveTo(x, y);
+              else context.lineTo(x, y);
+            }
+            context.stroke();
+          }
+        }
+
+        const lensPlayheadX = Math.min(
+          lensX + lensSize,
+          Math.max(lensX, progress * width),
+        );
+        context.globalAlpha = 1;
+        context.fillStyle = waveformPalette.playhead;
+        context.fillRect(
+          lensPlayheadX - ratio * 0.75,
+          lensY,
+          ratio * 1.5,
+          lensSize,
+        );
+        context.restore();
+
+        context.globalAlpha = 1;
+        context.strokeStyle = waveformPalette.lensBorder;
+        context.lineWidth = Math.max(1, ratio);
+        context.strokeRect(
+          lensX + ratio * 0.5,
+          lensY + ratio * 0.5,
+          lensSize - ratio,
+          lensSize - ratio,
+        );
       }
     };
 
-    drawWaveform();
-    const resizeObserver = new ResizeObserver(drawWaveform);
+    let latestPosition = displayedPosition;
+    const drawCurrent = () => drawWaveform(latestPosition);
+    drawCurrent();
+    const resizeObserver = new ResizeObserver(drawCurrent);
     resizeObserver.observe(canvas);
-    return () => resizeObserver.disconnect();
-  }, [displayedPosition, duration, showPosition, visualWaveform]);
+    let frame = 0;
+    if (showPosition && playing && preview === undefined) {
+      const startedAt = performance.now();
+      const positionAtStart = displayedPosition;
+      const animate = (now: number) => {
+        latestPosition =
+          adapter?.getSnapshot().positionSeconds ??
+          Math.min(duration, positionAtStart + (now - startedAt) / 1_000);
+        drawWaveform(latestPosition);
+        frame = requestAnimationFrame(animate);
+      };
+      frame = requestAnimationFrame(animate);
+    }
+    return () => {
+      resizeObserver.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [
+    adapter,
+    displayedPosition,
+    duration,
+    playing,
+    preview,
+    showPosition,
+    visualWaveform,
+  ]);
 
   const positionHoverMarker = (clientX: number) => {
     const range = rangeRef.current;

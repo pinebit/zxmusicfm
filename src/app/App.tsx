@@ -395,7 +395,7 @@ function PlayerApplication({
             </div>
           ) : (
             <ol className="track-list">
-              {catalog.tracks.map((track) => {
+              {catalog.tracks.map((track, trackIndex) => {
                 const selected = snapshot.selectedTrackId === track.id;
                 const position = selected ? snapshot.positionSeconds : 0;
                 const playing = selected && snapshot.status === 'playing';
@@ -407,6 +407,9 @@ function PlayerApplication({
                     aria-current={selected ? 'true' : undefined}
                     key={track.id}
                   >
+                    <span className="track-index" aria-hidden="true">
+                      {String(trackIndex + 1).padStart(2, '0')}
+                    </span>
                     <button
                       className="play-button"
                       type="button"
@@ -425,34 +428,33 @@ function PlayerApplication({
                     <div className="track-main">
                       <div className="track-meta">
                         <div className="track-identity">
-                          <div className="track-identity-text">
-                            <h3>{track.title}</h3>
-                            <span aria-hidden="true">|</span>
+                          <h3>{track.title}</h3>
+                          <div className="track-secondary">
                             <p>{track.author}</p>
                             {track.year !== undefined ? (
                               <>
-                                <span aria-hidden="true">|</span>
+                                <span aria-hidden="true">·</span>
                                 <p>{track.year}</p>
                               </>
                             ) : null}
-                          </div>
-                          <a
-                            className="track-source-link"
-                            href={track.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Original source for ${track.title}`}
-                            title="Original source"
-                          >
-                            <svg
-                              aria-hidden="true"
-                              viewBox="0 0 24 24"
-                              focusable="false"
+                            <a
+                              className="track-source-link"
+                              href={track.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Original source for ${track.title}`}
+                              title="Original source"
                             >
-                              <path d="M14 3h7v7h-2V6.4l-9.3 9.3-1.4-1.4L17.6 5H14V3Z" />
-                              <path d="M19 19H5V5h6V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6h-2v6Z" />
-                            </svg>
-                          </a>
+                              <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                focusable="false"
+                              >
+                                <path d="M14 3h7v7h-2V6.4l-9.3 9.3-1.4-1.4L17.6 5H14V3Z" />
+                                <path d="M19 19H5V5h6V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6h-2v6Z" />
+                              </svg>
+                            </a>
+                          </div>
                         </div>
                         <time
                           dateTime={`PT${Math.round(track.durationSeconds)}S`}
@@ -462,6 +464,10 @@ function PlayerApplication({
                         </time>
                       </div>
                       <WaveformSeek
+                        adapter={
+                          selected ? controller.getAdapter() : undefined
+                        }
+                        playing={playing}
                         waveform={
                           waveforms.status === 'ready'
                             ? waveforms.tracks.get(track.id)
@@ -577,7 +583,7 @@ function PlayerApplication({
             <div className="deck-options">
               <button
                 type="button"
-                className="deck-toggle"
+                className="deck-button deck-toggle"
                 aria-label="Shuffle"
                 aria-pressed={snapshot.preferences.shuffle}
                 disabled={catalog.tracks.length < 2}
@@ -602,42 +608,44 @@ function PlayerApplication({
               ) : null}
             </div>
 
-            <div className="transport" aria-label="Playback controls">
-              <button
-                type="button"
-                disabled={controlsDisabled || selectedTrack === undefined}
-                aria-label="Previous track"
-                onClick={() => controller.previous()}
-              >
-                <PreviousIcon />
-              </button>
-              <button
-                className="transport-primary"
-                type="button"
-                disabled={controlsDisabled || snapshot.status === 'loading'}
-                aria-label={
-                  snapshot.status === 'playing'
-                    ? 'Pause selected track'
-                    : selectedTrack === undefined
-                      ? 'Play first track'
-                      : 'Play selected track'
-                }
-                onClick={() =>
-                  snapshot.status === 'playing'
-                    ? controller.pause()
-                    : controller.playSelected()
-                }
-              >
-                {snapshot.status === 'playing' ? <PauseIcon /> : <PlayIcon />}
-              </button>
-              <button
-                type="button"
-                disabled={controlsDisabled || catalog.tracks.length < 2}
-                aria-label="Next track"
-                onClick={() => controller.next()}
-              >
-                <NextIcon />
-              </button>
+            <div className="transport">
+              <div className="transport-buttons" aria-label="Playback controls">
+                <button
+                  type="button"
+                  disabled={controlsDisabled || selectedTrack === undefined}
+                  aria-label="Previous track"
+                  onClick={() => controller.previous()}
+                >
+                  <PreviousIcon />
+                </button>
+                <button
+                  className="transport-primary"
+                  type="button"
+                  disabled={controlsDisabled || snapshot.status === 'loading'}
+                  aria-label={
+                    snapshot.status === 'playing'
+                      ? 'Pause selected track'
+                      : selectedTrack === undefined
+                        ? 'Play first track'
+                        : 'Play selected track'
+                  }
+                  onClick={() =>
+                    snapshot.status === 'playing'
+                      ? controller.pause()
+                      : controller.playSelected()
+                  }
+                >
+                  {snapshot.status === 'playing' ? <PauseIcon /> : <PlayIcon />}
+                </button>
+                <button
+                  type="button"
+                  disabled={controlsDisabled || catalog.tracks.length < 2}
+                  aria-label="Next track"
+                  onClick={() => controller.next()}
+                >
+                  <NextIcon />
+                </button>
+              </div>
             </div>
 
             <div className="volume-control">

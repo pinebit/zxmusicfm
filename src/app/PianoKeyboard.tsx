@@ -13,6 +13,13 @@ export const PIANO_MAX_MIDI = 108; // C8
 export const PIANO_RELEASE_MS = 220;
 
 const CHANNELS = ['A', 'B', 'C'] as const;
+const CHANNELS_BY_ORDER: Readonly<
+  Record<ChannelOrder, readonly ChannelId[]>
+> = {
+  ABC: ['A', 'B', 'C'],
+  ACB: ['A', 'C', 'B'],
+  BAC: ['B', 'A', 'C'],
+};
 const PIANO_ATTACK_MS = 45;
 const MINIMUM_VISIBLE_ENERGY = 0.02;
 const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
@@ -129,8 +136,8 @@ function activeKeyGlow(voices: readonly VisualVoice[]): string {
 type PianoKeyboardProps = {
   readonly adapter: Pick<PlaybackAdapter, 'getChannelVoices'> | undefined;
   readonly playing: boolean;
-  readonly channelOrder: ChannelOrder;
-  readonly onChannelOrderChange: (channelOrder: ChannelOrder) => void;
+  readonly channelOrder?: ChannelOrder;
+  readonly onChannelOrderChange?: (channelOrder: ChannelOrder) => void;
 };
 
 const CHANNEL_ORDERS: readonly ChannelOrder[] = ['ABC', 'ACB', 'BAC'];
@@ -286,10 +293,13 @@ export function PianoKeyboard({
     });
   };
   const nextChannelOrder =
-    CHANNEL_ORDERS[
-      (CHANNEL_ORDERS.indexOf(channelOrder) + 1) % CHANNEL_ORDERS.length
-    ] ?? 'ABC';
-
+    channelOrder === undefined
+      ? undefined
+      : (CHANNEL_ORDERS[
+          (CHANNEL_ORDERS.indexOf(channelOrder) + 1) % CHANNEL_ORDERS.length
+        ] ?? 'ABC');
+  const displayedChannels =
+    channelOrder === undefined ? CHANNELS : CHANNELS_BY_ORDER[channelOrder];
   const whiteKeys = pianoKeys.filter(({ black }) => !black);
   const blackKeys = pianoKeys.filter(({ black }) => black);
   const renderKey = ({ midi, black, left, width }: PianoKey) => (
@@ -308,42 +318,55 @@ export function PianoKeyboard({
   return (
     <div className="piano-visualizer">
       <div className="piano-keyboard-heading">
-        <button
-          className="piano-channel-order"
-          type="button"
-          aria-label={`Stereo channel order ${channelOrder}; change to ${nextChannelOrder}`}
-          title={`Stereo channel order: ${channelOrder}`}
-          onClick={() => onChannelOrderChange(nextChannelOrder)}
-        >
-          <span aria-hidden="true">{channelOrder.split('').join('·')}</span>
-        </button>
-        <div
-          className="piano-channel-toggles"
-          role="group"
-          aria-label="Keyboard channels"
-        >
-          {CHANNELS.map((channel) => {
-            const enabled = enabledChannels.has(channel);
-            return (
-              <button
-                className="piano-channel-toggle"
-                type="button"
-                aria-label={`Channel ${channel} on keyboard`}
-                aria-pressed={enabled}
-                title={`Toggle channel ${channel} keyboard notes`}
-                onClick={() => toggleChannel(channel)}
-                key={channel}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    background: enabled ? channelPalette[channel] : '#111315',
-                    borderColor: channelPalette[channel],
-                  }}
-                />
-              </button>
-            );
-          })}
+        <div className="piano-channel-controls">
+          {channelOrder !== undefined &&
+          nextChannelOrder !== undefined &&
+          onChannelOrderChange !== undefined ? (
+            <button
+              className="piano-stereo-cycle"
+              type="button"
+              aria-label={`Stereo channel order ${channelOrder}; change to ${nextChannelOrder}`}
+              title={`Stereo order: ${channelOrder}`}
+              onClick={() => onChannelOrderChange(nextChannelOrder)}
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                <path d="M7 5h10.2l-2.6-2.6L16 1l5 5-5 5-1.4-1.4L17.2 7H7V5Zm10 12H6.8l2.6-2.6L8 13l-5 5 5 5 1.4-1.4L6.8 19H17v-2Z" />
+              </svg>
+            </button>
+          ) : null}
+          <div
+            className="piano-channel-toggles"
+            role="group"
+            aria-label="Keyboard channels"
+          >
+            {displayedChannels.map((channel) => {
+              const enabled = enabledChannels.has(channel);
+              return (
+                <button
+                  className="piano-channel-toggle"
+                  type="button"
+                  aria-label={`Channel ${channel} on keyboard`}
+                  aria-pressed={enabled}
+                  title={`Toggle channel ${channel} keyboard notes`}
+                  onClick={() => toggleChannel(channel)}
+                  key={channel}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      background: enabled
+                        ? channelPalette[channel]
+                        : '#111315',
+                      borderColor: channelPalette[channel],
+                      color: enabled ? '#17191b' : channelPalette[channel],
+                    }}
+                  >
+                    {channel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
       <div
