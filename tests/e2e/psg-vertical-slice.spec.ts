@@ -60,10 +60,13 @@ test('plays, seeks, meters, persists, and attributes the real Solitude PSG', asy
     .evaluate((knob) => getComputedStyle(knob).backgroundImage);
   expect(transportSurface).toBe(volumeSurface);
   for (const [index, channel] of ['A', 'B', 'C'].entries()) {
+    const stereoPosition = ['left', 'center', 'right'][index];
     await expect
       .poll(async () =>
         page
-          .locator(`meter[aria-label="Channel ${channel} level"]`)
+          .locator(
+            `meter[aria-label="Channel ${channel} level, ${stereoPosition} stereo position"]`,
+          )
           .evaluate((meter: HTMLMeterElement) => meter.value),
       )
       .toBeGreaterThan(0);

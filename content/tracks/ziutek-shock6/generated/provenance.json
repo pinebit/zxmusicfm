@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "Ziutek - Shock6 (1992).stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "1d2cd1ec817615cfbec78036c0d2ed1262173b91cddb31bce9dee4569c988848",
+  "sourceByteLength": 1813,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "d4a39400d7295378f5458688714fcb5a1437b958402bd30d73d863bd5da946a4",
+  "runtimeByteLength": 129113,
+  "frameCount": 8063,
+  "durationSeconds": 161.26,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "d88e0da718ae43265f69aafc5a74bd17b9bbe5489e547b9d4bc34f61a81e5b7b",
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "1d2cd1ec817615cfbec78036c0d2ed1262173b91cddb31bce9dee4569c988848",
+    "psgSha256": "acbf250d61ee5a3a3c7d16ea134558239c48b8aeec78ddde41519c32c757ae59",
+    "psgByteLength": 72528
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

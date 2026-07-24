@@ -562,10 +562,15 @@ function PlayerApplication({
           <ChannelMeters
             adapter={controller.getAdapter()}
             playing={snapshot.status === 'playing'}
+            channelOrder={snapshot.preferences.channelOrder}
           />
           <PianoKeyboard
             adapter={controller.getAdapter()}
             playing={snapshot.status === 'playing'}
+            channelOrder={snapshot.preferences.channelOrder}
+            onChannelOrderChange={(channelOrder) =>
+              controller.setChannelOrder(channelOrder)
+            }
           />
 
           <div ref={deckControls} className="deck-controls">

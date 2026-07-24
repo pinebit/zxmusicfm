@@ -1,6 +1,8 @@
 import { applyChipAmplitudeModel } from './chipModel.ts';
 import type {
+  ChannelId,
   ChannelLevels,
+  ChannelOrder,
   ChannelVoices,
   OfflineRender,
   PlaybackAdapter,
@@ -29,6 +31,7 @@ const SCHEDULER_INTERVAL_MS = 50;
 const START_LATENCY_SECONDS = 0.02;
 const CENTER_GAIN = Math.SQRT1_2;
 const MIX_HEADROOM = 0.5;
+const CHANNELS = ['A', 'B', 'C'] as const;
 
 // Master post-processing chain applied to the stereo mix, in order:
 // sub-sonic high-pass → bass low-shelf → safety limiter → high-frequency
@@ -56,24 +59,6 @@ function assertFiniteTrack(track: RuntimeTrack): void {
   }
 }
 
-function mixStereoSample(
-  a: number,
-  b: number,
-  c: number,
-  layout: RuntimeTrack['channelLayout'],
-): readonly [number, number] {
-  if (layout === 'ABC') {
-    return [
-      (a + b * CENTER_GAIN) * MIX_HEADROOM,
-      (c + b * CENTER_GAIN) * MIX_HEADROOM,
-    ];
-  }
-  return [
-    (a + c * CENTER_GAIN) * MIX_HEADROOM,
-    (b + c * CENTER_GAIN) * MIX_HEADROOM,
-  ];
-}
-
 function isPlayingStatus(status: PlaybackStatus): boolean {
   return status === 'playing';
 }
@@ -87,9 +72,12 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private listeners = new Set<PlaybackAdapterListener>();
   private audioContext: AudioContext | undefined;
   private gainNode: GainNode | undefined;
-  // Head of the master post-processing chain; every scheduled source connects
-  // here. The chain runs to `gainNode` and is built once in `buildAudioGraph`.
+  // Head of the master post-processing chain, after the channel router. The
+  // chain runs to `gainNode` and is built once in `buildAudioGraph`.
   private masterInput: AudioNode | undefined;
+  private channelInput: AudioNode | undefined;
+  private channelMixGains:
+    Readonly<Record<ChannelId, readonly [GainNode, GainNode]>> | undefined;
   private scheduledSources = new Set<AudioBufferSourceNode>();
   private scheduler: ReturnType<typeof globalThis.setInterval> | undefined;
   private nextScheduleTime = 0;
@@ -111,6 +99,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     readonly voices: ChannelVoices;
   }[] = [];
   private volume = 1;
+  private channelOrder: ChannelOrder = 'ABC';
   private loadGeneration = 0;
   private disposed = false;
 
@@ -255,6 +244,12 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   setVolume(volume: number): void {
     this.volume = clamp(Number.isFinite(volume) ? volume : 0, 0, 1);
     this.updateGain();
+  }
+
+  setChannelOrder(channelOrder: ChannelOrder): void {
+    if (this.channelOrder === channelOrder) return;
+    this.channelOrder = channelOrder;
+    this.updateChannelMix();
   }
 
   getChannelLevels(): ChannelLevels {
@@ -406,6 +401,8 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.audioContext = undefined;
     this.gainNode = undefined;
     this.masterInput = undefined;
+    this.channelInput = undefined;
+    this.channelMixGains = undefined;
     if (context !== undefined && context.state !== 'closed') {
       void context.close();
     }
@@ -434,9 +431,10 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     return context;
   }
 
-  // Builds the fixed output graph once: sources → highpass → bass → limiter →
-  // smoothing → gain(volume) → destination. Sources connect to `masterInput`
-  // (the highpass), so the whole chain colors every scheduled buffer.
+  // Builds the fixed output graph once: three discrete chip channels → stereo
+  // routing → highpass → bass → limiter → smoothing → gain(volume) →
+  // destination. Keeping routing gains outside scheduled buffers lets channel
+  // order changes take effect while those buffers are already playing.
   private buildAudioGraph(context: AudioContext): void {
     const gain = context.createGain();
     gain.connect(context.destination);
@@ -470,11 +468,71 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     limiter.connect(smoothing);
     smoothing.connect(gain);
     this.masterInput = highpass;
+
+    const splitter = context.createChannelSplitter(3);
+    splitter.channelCount = 3;
+    splitter.channelCountMode = 'explicit';
+    splitter.channelInterpretation = 'discrete';
+    const merger = context.createChannelMerger(2);
+    merger.connect(highpass);
+    const channelMixGains = Object.fromEntries(
+      CHANNELS.map((channel, channelIndex) => {
+        const left = context.createGain();
+        const right = context.createGain();
+        splitter.connect(left, channelIndex);
+        splitter.connect(right, channelIndex);
+        left.connect(merger, 0, 0);
+        right.connect(merger, 0, 1);
+        return [channel, [left, right] as const];
+      }),
+    ) as Record<ChannelId, readonly [GainNode, GainNode]>;
+    this.channelInput = splitter;
+    this.channelMixGains = channelMixGains;
+    this.updateChannelMix();
   }
 
   private updateGain(): void {
     if (this.gainNode !== undefined) {
       this.gainNode.gain.value = this.volume;
+    }
+  }
+
+  private updateChannelMix(): void {
+    const gains = this.channelMixGains;
+    if (gains === undefined) return;
+    const [leftChannel, centerChannel, rightChannel] = this.channelOrder;
+    const context = this.audioContext;
+    const transitionEnd =
+      context !== undefined && isPlayingStatus(this.status)
+        ? context.currentTime + 0.008
+        : undefined;
+    const setGain = (parameter: AudioParam, value: number) => {
+      if (context === undefined || transitionEnd === undefined) {
+        parameter.value = value;
+        return;
+      }
+      parameter.cancelScheduledValues(context.currentTime);
+      parameter.setValueAtTime(parameter.value, context.currentTime);
+      parameter.linearRampToValueAtTime(value, transitionEnd);
+    };
+    for (const channel of CHANNELS) {
+      const [left, right] = gains[channel];
+      setGain(
+        left.gain,
+        channel === leftChannel
+          ? MIX_HEADROOM
+          : channel === centerChannel
+            ? CENTER_GAIN * MIX_HEADROOM
+            : 0,
+      );
+      setGain(
+        right.gain,
+        channel === rightChannel
+          ? MIX_HEADROOM
+          : channel === centerChannel
+            ? CENTER_GAIN * MIX_HEADROOM
+            : 0,
+      );
     }
   }
 
@@ -532,9 +590,10 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
         SCHEDULE_CHUNK_SAMPLES,
         nativeTotal - this.scheduledNativeSample,
       );
-      const buffer = context.createBuffer(2, count, ENGINE_SAMPLE_RATE);
-      const left = buffer.getChannelData(0);
-      const right = buffer.getChannelData(1);
+      const buffer = context.createBuffer(3, count, ENGINE_SAMPLE_RATE);
+      const outputA = buffer.getChannelData(0);
+      const outputB = buffer.getChannelData(1);
+      const outputC = buffer.getChannelData(2);
       const squared = { A: 0, B: 0, C: 0 };
       let generatedOffset = 0;
       while (generatedOffset < count) {
@@ -573,9 +632,9 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
           squared.A += a * a;
           squared.B += b * b;
           squared.C += c * c;
-          const stereo = mixStereoSample(a, b, c, track.channelLayout);
-          left[outputIndex] = stereo[0];
-          right[outputIndex] = stereo[1];
+          outputA[outputIndex] = a;
+          outputB[outputIndex] = b;
+          outputC[outputIndex] = c;
         }
         generatedOffset += segmentCount;
       }
@@ -590,7 +649,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       });
       const source = context.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.masterInput ?? gain);
+      source.connect(this.channelInput ?? this.masterInput ?? gain);
       source.addEventListener(
         'ended',
         () => {

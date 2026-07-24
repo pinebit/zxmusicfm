@@ -1,7 +1,10 @@
+import { useState } from 'react';
+
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ChannelVoices } from '../playback/contracts.ts';
+import type { ChannelOrder, ChannelVoices } from '../playback/contracts.ts';
 import {
   advanceKeyEnergy,
   pianoKeys,
@@ -34,7 +37,14 @@ describe('PianoKeyboard', () => {
   });
 
   it('renders the conventional 88-key A0 through C8 range', () => {
-    render(<PianoKeyboard adapter={undefined} playing={false} />);
+    render(
+      <PianoKeyboard
+        adapter={undefined}
+        playing={false}
+        channelOrder="ABC"
+        onChannelOrderChange={() => undefined}
+      />,
+    );
 
     expect(
       screen.getByRole('img', {
@@ -46,6 +56,44 @@ describe('PianoKeyboard', () => {
     expect(pianoKeys.at(-1)?.midi).toBe(PIANO_MAX_MIDI);
     expect(pianoKeys.filter(({ black }) => !black)).toHaveLength(52);
     expect(pianoKeys.filter(({ black }) => black)).toHaveLength(36);
+  });
+
+  it('cycles through the three stereo channel orders', async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [channelOrder, setChannelOrder] = useState<ChannelOrder>('ABC');
+      return (
+        <PianoKeyboard
+          adapter={undefined}
+          playing={false}
+          channelOrder={channelOrder}
+          onChannelOrderChange={setChannelOrder}
+        />
+      );
+    }
+    render(<Harness />);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Stereo channel order ABC; change to ACB',
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Stereo channel order ACB; change to BAC',
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Stereo channel order BAC; change to ABC',
+      }),
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Stereo channel order ABC; change to ACB',
+      }),
+    ).toHaveTextContent('ABC');
   });
 
   it('splits shared notes by channel and ignores out-of-range activity', () => {
@@ -64,7 +112,12 @@ describe('PianoKeyboard', () => {
     };
     const adapter = { getChannelVoices: () => voices };
     const { container } = render(
-      <PianoKeyboard adapter={adapter} playing={true} />,
+      <PianoKeyboard
+        adapter={adapter}
+        playing={true}
+        channelOrder="ABC"
+        onChannelOrderChange={() => undefined}
+      />,
     );
 
     act(() => nextFrame?.(0));

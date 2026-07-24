@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "id": "ziutek-lyraii8",
-  "order": 6,
-  "title": "Lyra II part 8",
+  "id": "ziutek-shock6",
+  "order": 23,
+  "title": "Shock6",
   "author": "Ziutek",
-  "sourceUrl": "https://zxart.ee/eng/authors/z/ziutek/lyraii8/",
+  "sourceUrl": "https://zxart.ee/eng/authors/z/ziutek/shock6/",
   "subsong": 1,
   "chipType": "YM",
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ACB",
-  "year": 1991
+  "year": 1992
 }

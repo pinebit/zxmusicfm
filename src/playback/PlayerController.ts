@@ -2,6 +2,7 @@ import type { GeneratedCatalog } from '../content/schemas.ts';
 import { fetchVerifiedBytes } from '../content/runtime.ts';
 import { requestPlaybackAudioPermission } from './audioPermission.ts';
 import type {
+  ChannelOrder,
   PlaybackAdapter,
   PlaybackAdapterSnapshot,
   RuntimeTrack,
@@ -260,6 +261,14 @@ export class PlayerController {
     });
   }
 
+  setChannelOrder(channelOrder: ChannelOrder): void {
+    this.adapter?.setChannelOrder(channelOrder);
+    this.setPreferences({
+      ...this.snapshot.preferences,
+      channelOrder,
+    });
+  }
+
   persistNow(): void {
     const position =
       this.adapter?.getSnapshot().positionSeconds ??
@@ -409,6 +418,7 @@ export class PlayerController {
       throw new Error('Player controller has been disposed.');
     }
     adapter.setVolume(this.snapshot.preferences.volume);
+    adapter.setChannelOrder(this.snapshot.preferences.channelOrder);
     this.adapterUnsubscribe = adapter.subscribe((next) => {
       this.handleAdapterSnapshot(next);
     });

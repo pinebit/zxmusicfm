@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type {
   ChannelId,
+  ChannelOrder,
   ChannelVoices,
   PlaybackAdapter,
 } from '../playback/contracts.ts';
@@ -128,9 +129,18 @@ function activeKeyGlow(voices: readonly VisualVoice[]): string {
 type PianoKeyboardProps = {
   readonly adapter: Pick<PlaybackAdapter, 'getChannelVoices'> | undefined;
   readonly playing: boolean;
+  readonly channelOrder: ChannelOrder;
+  readonly onChannelOrderChange: (channelOrder: ChannelOrder) => void;
 };
 
-export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
+const CHANNEL_ORDERS: readonly ChannelOrder[] = ['ABC', 'ACB', 'BAC'];
+
+export function PianoKeyboard({
+  adapter,
+  playing,
+  channelOrder,
+  onChannelOrderChange,
+}: PianoKeyboardProps) {
   const [enabledChannels, setEnabledChannels] = useState<
     ReadonlySet<ChannelId>
   >(() => new Set(CHANNELS));
@@ -275,6 +285,10 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
       return next;
     });
   };
+  const nextChannelOrder =
+    CHANNEL_ORDERS[
+      (CHANNEL_ORDERS.indexOf(channelOrder) + 1) % CHANNEL_ORDERS.length
+    ] ?? 'ABC';
 
   const whiteKeys = pianoKeys.filter(({ black }) => !black);
   const blackKeys = pianoKeys.filter(({ black }) => black);
@@ -294,6 +308,15 @@ export function PianoKeyboard({ adapter, playing }: PianoKeyboardProps) {
   return (
     <div className="piano-visualizer">
       <div className="piano-keyboard-heading">
+        <button
+          className="piano-channel-order"
+          type="button"
+          aria-label={`Stereo channel order ${channelOrder}; change to ${nextChannelOrder}`}
+          title={`Stereo channel order: ${channelOrder}`}
+          onClick={() => onChannelOrderChange(nextChannelOrder)}
+        >
+          {channelOrder}
+        </button>
         <div
           className="piano-channel-toggles"
           role="group"

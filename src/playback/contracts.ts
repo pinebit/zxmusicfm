@@ -12,6 +12,8 @@ export type PlaybackStatus = (typeof playbackStatuses)[number];
 
 export type ChannelId = 'A' | 'B' | 'C';
 
+export type ChannelOrder = 'ABC' | 'ACB' | 'BAC';
+
 export type ChannelLevels = Readonly<Record<ChannelId, number>>;
 
 export type ChannelVoice = {
@@ -56,6 +58,7 @@ export type PlaybackAdapter = {
   stop(): void;
   seek(positionSeconds: number): Promise<void>;
   setVolume(volume: number): void;
+  setChannelOrder(channelOrder: ChannelOrder): void;
   getChannelLevels(): ChannelLevels;
   getChannelVoices(): ChannelVoices;
   renderOffline(

@@ -29,6 +29,7 @@ describe('player persistence', () => {
       positionSeconds: 2,
       volume: 0.4,
       shuffle: true,
+      channelOrder: 'ABC',
     });
     expect(restored).not.toHaveProperty('playing');
   });
@@ -42,6 +43,7 @@ describe('player persistence', () => {
           positionSeconds: 0.75,
           volume: 'loud',
           shuffle: false,
+          channelOrder: 'BAC',
         },
         tracks,
       ),
@@ -49,7 +51,24 @@ describe('player persistence', () => {
       selectedTrackId: 'proof',
       positionSeconds: 0.75,
       volume: 0.8,
+      channelOrder: 'BAC',
     });
+  });
+
+  it('falls back to ABC for an unknown channel order', () => {
+    expect(
+      parsePlayerPreferences(
+        {
+          schemaVersion: 1,
+          selectedTrackId: null,
+          positionSeconds: 0,
+          volume: 0.8,
+          shuffle: false,
+          channelOrder: 'CAB',
+        },
+        tracks,
+      ).channelOrder,
+    ).toBe('ABC');
   });
 
   it('treats unavailable storage as best-effort', () => {

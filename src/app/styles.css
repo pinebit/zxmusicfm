@@ -889,8 +889,34 @@ h3 {
   display: flex;
   min-height: 1.25rem;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin-bottom: 0.25rem;
+}
+
+.piano-channel-order {
+  min-width: 2.25rem;
+  height: 1.1rem;
+  padding: 0 0.28rem;
+  color: #c7c9cc;
+  background: #111315;
+  border: 1px solid #565b61;
+  border-radius: 0.16rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 9%),
+    0 1px 0 rgb(0 0 0 / 65%);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.07em;
+}
+
+.piano-channel-order:hover {
+  color: var(--cream);
+  border-color: #858b92;
+}
+
+.piano-channel-order:active {
+  transform: translateY(1px);
 }
 
 .piano-channel-toggles {

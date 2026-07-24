@@ -1,16 +1,32 @@
 import { useEffect, useRef } from 'react';
 
-import type { PlaybackAdapter } from '../playback/contracts.ts';
+import type {
+  ChannelId,
+  ChannelOrder,
+  PlaybackAdapter,
+} from '../playback/contracts.ts';
 
 type ChannelMetersProps = {
   readonly adapter: PlaybackAdapter | undefined;
   readonly playing: boolean;
+  readonly channelOrder: ChannelOrder;
 };
 
 // Below this smoothed level a needle is visually at rest, so the loop can stop.
 const SETTLED_LEVEL = 0.0005;
+const CHANNELS_BY_ORDER: Readonly<Record<ChannelOrder, readonly ChannelId[]>> =
+  {
+    ABC: ['A', 'B', 'C'],
+    ACB: ['A', 'C', 'B'],
+    BAC: ['B', 'A', 'C'],
+  };
+const STEREO_POSITIONS = ['left', 'center', 'right'] as const;
 
-export function ChannelMeters({ adapter, playing }: ChannelMetersProps) {
+export function ChannelMeters({
+  adapter,
+  playing,
+  channelOrder,
+}: ChannelMetersProps) {
   const gaugeRefs = useRef<Record<'A' | 'B' | 'C', HTMLDivElement | null>>({
     A: null,
     B: null,
@@ -71,8 +87,11 @@ export function ChannelMeters({ adapter, playing }: ChannelMetersProps) {
   }, [adapter, playing]);
 
   return (
-    <div className="meter-bank" aria-label="Live AY channel levels">
-      {(['A', 'B', 'C'] as const).map((channel) => (
+    <div
+      className="meter-bank"
+      aria-label="Live AY channel levels arranged by stereo position"
+    >
+      {CHANNELS_BY_ORDER[channelOrder].map((channel, index) => (
         <div
           ref={(element) => {
             gaugeRefs.current[channel] = element;
@@ -92,7 +111,7 @@ export function ChannelMeters({ adapter, playing }: ChannelMetersProps) {
             }}
             min={0}
             max={1}
-            aria-label={`Channel ${channel} level`}
+            aria-label={`Channel ${channel} level, ${STEREO_POSITIONS[index]} stereo position`}
           />
           <span className="meter-needle" aria-hidden="true" />
           <strong>CH {channel}</strong>

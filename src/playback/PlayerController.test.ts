@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { GeneratedCatalog } from '../content/schemas.ts';
 import type {
+  ChannelOrder,
   PlaybackAdapter,
   PlaybackAdapterListener,
   PlaybackAdapterSnapshot,
@@ -65,6 +66,7 @@ class FakeAdapter implements PlaybackAdapter {
     durationSeconds: 0,
   };
   readonly loads: string[] = [];
+  readonly channelOrders: ChannelOrder[] = [];
   readonly listeners = new Set<PlaybackAdapterListener>();
   readonly dispose = vi.fn();
 
@@ -98,6 +100,10 @@ class FakeAdapter implements PlaybackAdapter {
 
   setVolume(volume: number): void {
     void volume;
+  }
+
+  setChannelOrder(channelOrder: ChannelOrder): void {
+    this.channelOrders.push(channelOrder);
   }
 
   getChannelLevels() {
@@ -166,6 +172,26 @@ describe('PlayerController async ownership', () => {
       });
     });
     expect(adapter.loads).toEqual(['one']);
+    controller.dispose();
+  });
+
+  it('applies a persisted channel order when creating the adapter and updates it live', async () => {
+    const adapter = new FakeAdapter();
+    const controller = new PlayerController(
+      catalog,
+      dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
+    );
+    controller.setChannelOrder('BAC');
+    controller.playSelected();
+
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot().status).toBe('playing'),
+    );
+    expect(adapter.channelOrders).toEqual(['BAC']);
+
+    controller.setChannelOrder('ACB');
+    expect(adapter.channelOrders).toEqual(['BAC', 'ACB']);
+    expect(controller.getSnapshot().preferences.channelOrder).toBe('ACB');
     controller.dispose();
   });
 

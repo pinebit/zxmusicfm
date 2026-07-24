@@ -1,3 +1,5 @@
+import type { ChannelOrder } from './contracts.ts';
+
 export const PLAYER_STORAGE_KEY = 'zxmusicfm.player.v1';
 const PREVIOUS_PLAYER_STORAGE_KEY = ['zx', 'spectrum', 'fm.player.v1'].join(
   '-',
@@ -12,6 +14,7 @@ export type PlayerPreferences = {
   readonly positionSeconds: number;
   readonly volume: number;
   readonly shuffle: boolean;
+  readonly channelOrder: ChannelOrder;
 };
 
 export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
@@ -20,6 +23,7 @@ export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
   positionSeconds: 0,
   volume: 0.8,
   shuffle: false,
+  channelOrder: 'ABC',
 };
 
 type TrackDuration = {
@@ -78,6 +82,12 @@ export function parsePlayerPreferences(
       typeof value.shuffle === 'boolean'
         ? value.shuffle
         : DEFAULT_PLAYER_PREFERENCES.shuffle,
+    channelOrder:
+      value.channelOrder === 'ABC' ||
+      value.channelOrder === 'ACB' ||
+      value.channelOrder === 'BAC'
+        ? value.channelOrder
+        : DEFAULT_PLAYER_PREFERENCES.channelOrder,
   };
 }
 
