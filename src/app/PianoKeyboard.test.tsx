@@ -93,7 +93,7 @@ describe('PianoKeyboard', () => {
       screen.getByRole('button', {
         name: 'Stereo channel order ABC; change to ACB',
       }),
-    ).toHaveTextContent('ABC');
+    ).toHaveTextContent('A·B·C');
   });
 
   it('splits shared notes by channel and ignores out-of-range activity', () => {

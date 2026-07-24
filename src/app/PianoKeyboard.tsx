@@ -315,7 +315,7 @@ export function PianoKeyboard({
           title={`Stereo channel order: ${channelOrder}`}
           onClick={() => onChannelOrderChange(nextChannelOrder)}
         >
-          {channelOrder}
+          <span aria-hidden="true">{channelOrder.split('').join('·')}</span>
         </button>
         <div
           className="piano-channel-toggles"

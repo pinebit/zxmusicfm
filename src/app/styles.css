@@ -113,6 +113,7 @@ h3 {
 .section-kicker {
   margin: 0 0 0.5rem;
   color: #c7c9cc;
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -687,6 +688,16 @@ h3 {
     #15171a;
   border: 1px solid #363a40;
   border-radius: 0.4rem;
+}
+
+.waveform-hover-marker {
+  position: absolute;
+  inset: 1px auto 1px 0;
+  z-index: 2;
+  width: 1px;
+  pointer-events: none;
+  background: var(--amber);
+  opacity: 0;
 }
 
 .waveform-range {
@@ -1734,7 +1745,8 @@ h3 {
   }
 
   .meter-needle,
-  .on-air-lamp {
+  .on-air-lamp,
+  .waveform-hover-marker {
     background: CanvasText;
   }
 

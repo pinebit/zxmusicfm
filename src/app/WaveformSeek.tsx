@@ -33,6 +33,8 @@ export function WaveformSeek({
   onCommit,
 }: WaveformSeekProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rangeRef = useRef<HTMLInputElement>(null);
+  const hoverMarkerRef = useRef<HTMLSpanElement>(null);
   const pointerActive = useRef(false);
   const previewRef = useRef<number | undefined>(undefined);
   const [preview, setPreview] = useState<number>();
@@ -111,6 +113,24 @@ export function WaveformSeek({
     return () => resizeObserver.disconnect();
   }, [displayedPosition, duration, showPosition, visualWaveform]);
 
+  const positionHoverMarker = (clientX: number) => {
+    const range = rangeRef.current;
+    const marker = hoverMarkerRef.current;
+    if (disabled || range === null || marker === null) return;
+    const bounds = range.getBoundingClientRect();
+    const x = Math.min(
+      Math.max(0, bounds.width - 1),
+      Math.max(0, clientX - bounds.left),
+    );
+    marker.style.transform = `translateX(${x}px)`;
+    marker.style.opacity = '1';
+  };
+
+  const hideHoverMarker = () => {
+    const marker = hoverMarkerRef.current;
+    if (marker !== null) marker.style.opacity = '0';
+  };
+
   return (
     <div className="waveform-control">
       {visualWaveform === undefined ? (
@@ -124,7 +144,15 @@ export function WaveformSeek({
           aria-hidden="true"
         />
       )}
+      {visualWaveform === undefined ? null : (
+        <span
+          ref={hoverMarkerRef}
+          className="waveform-hover-marker"
+          aria-hidden="true"
+        />
+      )}
       <input
+        ref={rangeRef}
         className={
           visualWaveform === undefined ? 'seek-fallback' : 'waveform-range'
         }
@@ -136,6 +164,17 @@ export function WaveformSeek({
         disabled={disabled}
         aria-label={label}
         aria-valuetext={`${formatTime(displayedPosition)} of ${formatTime(duration)}`}
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse') {
+            positionHoverMarker(event.clientX);
+          }
+        }}
+        onPointerMove={(event) => {
+          if (event.pointerType === 'mouse') {
+            positionHoverMarker(event.clientX);
+          }
+        }}
+        onPointerLeave={hideHoverMarker}
         onPointerDown={() => {
           pointerActive.current = true;
           previewRef.current = position;
