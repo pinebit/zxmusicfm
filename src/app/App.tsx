@@ -464,9 +464,7 @@ function PlayerApplication({
                         </time>
                       </div>
                       <WaveformSeek
-                        adapter={
-                          selected ? controller.getAdapter() : undefined
-                        }
+                        adapter={selected ? controller.getAdapter() : undefined}
                         playing={playing}
                         waveform={
                           waveforms.status === 'ready'

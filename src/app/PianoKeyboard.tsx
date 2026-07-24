@@ -13,13 +13,12 @@ export const PIANO_MAX_MIDI = 108; // C8
 export const PIANO_RELEASE_MS = 220;
 
 const CHANNELS = ['A', 'B', 'C'] as const;
-const CHANNELS_BY_ORDER: Readonly<
-  Record<ChannelOrder, readonly ChannelId[]>
-> = {
-  ABC: ['A', 'B', 'C'],
-  ACB: ['A', 'C', 'B'],
-  BAC: ['B', 'A', 'C'],
-};
+const CHANNELS_BY_ORDER: Readonly<Record<ChannelOrder, readonly ChannelId[]>> =
+  {
+    ABC: ['A', 'B', 'C'],
+    ACB: ['A', 'C', 'B'],
+    BAC: ['B', 'A', 'C'],
+  };
 const PIANO_ATTACK_MS = 45;
 const MINIMUM_VISIBLE_ENERGY = 0.02;
 const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
@@ -354,9 +353,7 @@ export function PianoKeyboard({
                   <span
                     aria-hidden="true"
                     style={{
-                      background: enabled
-                        ? channelPalette[channel]
-                        : '#111315',
+                      background: enabled ? channelPalette[channel] : '#111315',
                       borderColor: channelPalette[channel],
                       color: enabled ? '#17191b' : channelPalette[channel],
                     }}

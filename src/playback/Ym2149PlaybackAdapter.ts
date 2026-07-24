@@ -81,8 +81,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private channelMixGains:
     Readonly<Record<ChannelId, readonly [GainNode, GainNode]>> | undefined;
   private channelAnalysers:
-    | Readonly<Record<ChannelId, AnalyserNode>>
-    | undefined;
+    Readonly<Record<ChannelId, AnalyserNode>> | undefined;
   private readonly oscilloscopeSamples: OscilloscopeSamples = {
     A: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
     B: new Float32Array(OSCILLOSCOPE_FFT_SIZE),

@@ -121,12 +121,13 @@ test('fits the acceptance widths and stacks only when space requires it', async 
       ),
     ).toBeLessThan(3);
     if (width === 320) {
-      const identity = page.locator('.track-identity-text').first();
-      await expect(identity).toHaveCSS('overflow', 'hidden');
-      await expect(identity).toHaveCSS('text-overflow', 'ellipsis');
-      await expect(identity).toHaveCSS('white-space', 'nowrap');
+      const identity = page.locator('.track-identity').first();
+      const title = identity.getByRole('heading');
+      await expect(title).toHaveCSS('overflow', 'hidden');
+      await expect(title).toHaveCSS('text-overflow', 'ellipsis');
+      await expect(title).toHaveCSS('white-space', 'nowrap');
       const identityBox = await identity.boundingBox();
-      const titleBox = await identity.getByRole('heading').boundingBox();
+      const titleBox = await title.boundingBox();
       expect(identityBox).not.toBeNull();
       expect(titleBox).not.toBeNull();
       if (identityBox !== null && titleBox !== null) {

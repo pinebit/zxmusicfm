@@ -19,8 +19,7 @@
   --shadow: 0 1.35rem 3.5rem rgb(0 0 0 / 32%);
   --hardware-surface: linear-gradient(180deg, #42474e, #2b2f34);
   --hardware-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 12%),
-    0 0.18rem 0.3rem rgb(0 0 0 / 30%);
+    inset 0 1px 0 rgb(255 255 255 / 12%), 0 0.18rem 0.3rem rgb(0 0 0 / 30%);
 }
 
 * {
@@ -1212,12 +1211,12 @@ h3 {
 .deck-controls {
   --deck-control-width: clamp(3.1rem, 6vw, 3.8rem);
   --deck-control-zone-height: clamp(3.25rem, 5vw, 4.25rem);
-  --transport-control-width: clamp(2.5rem, 5vw, 3.15rem);
+  --transport-control-width: clamp(2.25rem, 5vw, 3.15rem);
 
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  column-gap: clamp(0.8rem, 2vw, 1.4rem);
+  column-gap: clamp(0.6rem, 1.5vw, 1.1rem);
   margin: 0.35rem 0.35rem 0.4rem;
   padding: 0.65rem clamp(0.5rem, 1.4vw, 0.85rem) 0.55rem;
   background: #0c0e10;
@@ -1622,6 +1621,14 @@ h3 {
 
   .meter-bank {
     gap: clamp(0.25rem, 2vw, 0.65rem);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .deck-controls {
+    --transport-control-width: 2.2rem;
+
+    column-gap: 0.4rem;
   }
 }
 

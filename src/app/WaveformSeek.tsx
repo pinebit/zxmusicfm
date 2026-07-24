@@ -7,10 +7,8 @@ import { channelPalette } from './channelPalette.ts';
 import { formatTime } from './formatTime.ts';
 
 type WaveformSeekProps = {
-  readonly adapter?: Pick<
-    PlaybackAdapter,
-    'getSnapshot' | 'getOscilloscopeSamples'
-  >;
+  readonly adapter?:
+    Pick<PlaybackAdapter, 'getSnapshot' | 'getOscilloscopeSamples'> | undefined;
   readonly playing?: boolean;
   readonly waveform: DecodedWaveform | undefined;
   readonly duration: number;
@@ -165,10 +163,7 @@ export function WaveformSeek({
           if (samples !== undefined) {
             const sampleCount = Math.min(256, samples.length);
             const latestStart = samples.length - sampleCount;
-            const triggerSearchStart = Math.max(
-              1,
-              latestStart - sampleCount,
-            );
+            const triggerSearchStart = Math.max(1, latestStart - sampleCount);
             let sampleStart = latestStart;
             for (
               let sample = triggerSearchStart;

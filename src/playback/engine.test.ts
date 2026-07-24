@@ -95,6 +95,12 @@ function createTestAudioContext(): {
       channelCountMode: 'max',
       channelInterpretation: 'speakers',
     })),
+    createAnalyser: vi.fn(() => ({
+      ...audioNode(),
+      fftSize: 2_048,
+      smoothingTimeConstant: 0.8,
+      getFloatTimeDomainData: vi.fn(),
+    })),
     createChannelMerger: vi.fn(() => audioNode()),
     createBuffer: vi.fn((channels: number, length: number) => {
       const data = Array.from(

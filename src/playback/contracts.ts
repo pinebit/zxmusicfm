@@ -25,7 +25,9 @@ export type ChannelVoice = {
 // generator. A null channel is silent, noise-only, or has no finite frequency.
 export type ChannelVoices = Readonly<Record<ChannelId, ChannelVoice | null>>;
 
-export type OscilloscopeSamples = Readonly<Record<ChannelId, Float32Array>>;
+export type OscilloscopeSamples = Readonly<
+  Record<ChannelId, Float32Array<ArrayBuffer>>
+>;
 
 export type RuntimeTrack = {
   readonly id: string;
