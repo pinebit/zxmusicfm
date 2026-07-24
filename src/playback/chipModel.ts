@@ -36,14 +36,20 @@ const ayCandidates: readonly MagnitudeCandidate[] = ymMagnitudes.flatMap(
   },
 );
 
-function mapAyMagnitude(magnitude: number): number {
+// Fourteen candidates share a `ym` magnitude with a different `ay` result, so
+// the first match wins and the candidate order is part of the mapping. Never
+// reorder this list or relax the strict `<` comparison to chase a binary search;
+// both change the AY amplitude of real chip levels.
+function nearestAyMagnitude(magnitude: number): number {
   let nearest = ayCandidates[0];
   if (nearest === undefined) {
     return 0;
   }
   let nearestDistance = Math.abs(magnitude - nearest.ym);
 
-  for (const candidate of ayCandidates.slice(1)) {
+  for (let index = 1; index < ayCandidates.length; index += 1) {
+    const candidate = ayCandidates[index];
+    if (candidate === undefined) continue;
     const distance = Math.abs(magnitude - candidate.ym);
     if (distance < nearestDistance) {
       nearest = candidate;
@@ -51,6 +57,30 @@ function mapAyMagnitude(magnitude: number): number {
     }
   }
   return nearest.ay;
+}
+
+// Live playback only ever presents the chip's own discrete levels, so the scan
+// resolves the same few dozen magnitudes over and over — a second of
+// three-channel audio is 132,300 calls. Memoize what actually arrives rather
+// than the candidate table itself: the engine hands back `Float32Array` samples,
+// whose values are not bit-identical to these double-precision levels.
+//
+// The offline render interpolates between samples, so it can present unbounded
+// distinct magnitudes. Cap the table so that path degrades to a plain scan
+// instead of growing without limit; live playback settles well inside the cap.
+const AY_MAGNITUDE_CACHE_LIMIT = 1_024;
+const resolvedAyMagnitudes = new Map<number, number>();
+
+function mapAyMagnitude(magnitude: number): number {
+  const resolved = resolvedAyMagnitudes.get(magnitude);
+  if (resolved !== undefined) {
+    return resolved;
+  }
+  const mapped = nearestAyMagnitude(magnitude);
+  if (resolvedAyMagnitudes.size < AY_MAGNITUDE_CACHE_LIMIT) {
+    resolvedAyMagnitudes.set(magnitude, mapped);
+  }
+  return mapped;
 }
 
 export function applyChipAmplitudeModel(

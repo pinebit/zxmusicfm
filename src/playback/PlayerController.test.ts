@@ -136,7 +136,7 @@ function dependencies(
     sha256: string,
     signal: AbortSignal,
     label: string,
-  ) => Promise<Uint8Array>,
+  ) => Promise<Uint8Array<ArrayBuffer>>,
 ) {
   const context = {
     state: 'running',
@@ -196,26 +196,32 @@ describe('PlayerController async ownership', () => {
   });
 
   it('ignores a stale failure after a rapid newer selection succeeds', async () => {
-    const first = deferred<Uint8Array>();
+    const first = deferred<Uint8Array<ArrayBuffer>>();
     const adapter = new FakeAdapter();
+    const requested: string[] = [];
     const controller = new PlayerController(
       catalog,
-      dependencies(adapter, (url) =>
-        url.includes('/one.')
+      dependencies(adapter, (url) => {
+        requested.push(url);
+        return url.includes('/one.')
           ? first.promise
-          : Promise.resolve(new Uint8Array([2])),
-      ),
+          : Promise.resolve(new Uint8Array([2]));
+      }),
     );
 
+    // Wait until the first request is genuinely in flight, so superseding it
+    // exercises stale-failure handling rather than cancelling before the fetch.
     controller.play('one');
-    await flush();
+    await vi.waitFor(() =>
+      expect(requested.some((url) => url.includes('/one.'))).toBe(true),
+    );
     controller.play('two');
-    await flush();
-    await flush();
-    expect(controller.getSnapshot()).toMatchObject({
-      status: 'playing',
-      selectedTrackId: 'two',
-    });
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot()).toMatchObject({
+        status: 'playing',
+        selectedTrackId: 'two',
+      }),
+    );
 
     first.reject(new Error('late request failure'));
     await flush();
@@ -228,8 +234,171 @@ describe('PlayerController async ownership', () => {
     controller.dispose();
   });
 
+  it('ignores a stale completion after a rapid newer selection succeeds', async () => {
+    const first = deferred<Uint8Array<ArrayBuffer>>();
+    const adapter = new FakeAdapter();
+    const requested: string[] = [];
+    const controller = new PlayerController(
+      catalog,
+      dependencies(adapter, (url) => {
+        requested.push(url);
+        return url.includes('/one.')
+          ? first.promise
+          : Promise.resolve(new Uint8Array([2]));
+      }),
+    );
+
+    controller.play('one');
+    await vi.waitFor(() =>
+      expect(requested.some((url) => url.includes('/one.'))).toBe(true),
+    );
+    controller.play('two');
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot()).toMatchObject({
+        status: 'playing',
+        selectedTrackId: 'two',
+      }),
+    );
+
+    // A late success must not load over the newer track or move its position.
+    first.resolve(new Uint8Array([1]));
+    await flush();
+    await flush();
+    expect(controller.getSnapshot()).toMatchObject({
+      status: 'playing',
+      selectedTrackId: 'two',
+      error: null,
+    });
+    expect(adapter.loads).toEqual(['two']);
+    controller.dispose();
+  });
+
+  it('creates one adapter and one audio context for rapid selections', async () => {
+    const created: FakeAdapter[] = [];
+    const contexts: AudioContext[] = [];
+    const engineImport = deferred<null>();
+    const controller = new PlayerController(catalog, {
+      storage: { getItem: () => null, setItem: () => undefined },
+      fetchTrack: () => Promise.resolve(new Uint8Array([1])),
+      requestPermission: () => {
+        const context = {
+          state: 'running',
+          close: vi.fn(),
+        } as unknown as AudioContext;
+        contexts.push(context);
+        return { context, ready: Promise.resolve() };
+      },
+      createAdapter: async () => {
+        // Stand in for the dynamic engine import, holding both selections
+        // inside adapter creation at the same time.
+        await engineImport.promise;
+        const adapter = new FakeAdapter();
+        created.push(adapter);
+        return adapter;
+      },
+    });
+
+    controller.play('one');
+    controller.play('two');
+    engineImport.resolve(null);
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot().status).toBe('playing'),
+    );
+
+    expect(created).toHaveLength(1);
+    expect(contexts).toHaveLength(1);
+    controller.dispose();
+  });
+
+  it('plays again after an activate, dispose, activate remount cycle', async () => {
+    const adapter = new FakeAdapter();
+    const controller = new PlayerController(
+      catalog,
+      dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
+    );
+
+    // React remounts effects without rebuilding the memoized controller.
+    controller.activate()();
+    const stop = controller.activate();
+
+    controller.play('one');
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot()).toMatchObject({
+        status: 'playing',
+        selectedTrackId: 'one',
+      }),
+    );
+    stop();
+  });
+
+  it('coalesces scrubbed volume writes but persists discrete ones immediately', () => {
+    const writes: string[] = [];
+    const adapter = new FakeAdapter();
+    const controller = new PlayerController(catalog, {
+      ...dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
+      storage: {
+        getItem: () => null,
+        setItem: (_key, value) => writes.push(value),
+      },
+    });
+
+    // A pointer drag publishes a value per move; those must not each hit storage.
+    const beforeScrub = writes.length;
+    for (let step = 1; step <= 20; step += 1) {
+      controller.setVolume(step / 20, true);
+    }
+    expect(writes.length).toBe(beforeScrub);
+    expect(controller.getSnapshot().preferences.volume).toBe(1);
+
+    // A keypress, or the commit at the end of a drag, has to survive an
+    // immediate reload without waiting for a timer or for `pagehide`.
+    controller.setVolume(0.35);
+    expect(writes.length).toBe(beforeScrub + 1);
+    expect(JSON.parse(writes[writes.length - 1] ?? '{}')).toMatchObject({
+      volume: 0.35,
+    });
+
+    controller.dispose();
+  });
+
+  it('flushes a pending scrubbed volume write on teardown', () => {
+    const writes: string[] = [];
+    const adapter = new FakeAdapter();
+    const controller = new PlayerController(catalog, {
+      ...dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
+      storage: {
+        getItem: () => null,
+        setItem: (_key, value) => writes.push(value),
+      },
+    });
+
+    controller.setVolume(0.5, true);
+    const beforeTeardown = writes.length;
+    controller.dispose();
+    expect(writes.length).toBe(beforeTeardown + 1);
+    expect(JSON.parse(writes[writes.length - 1] ?? '{}')).toMatchObject({
+      volume: 0.5,
+    });
+  });
+
+  it('does not write preferences on teardown when nothing is pending', () => {
+    const writes: string[] = [];
+    const adapter = new FakeAdapter();
+    const controller = new PlayerController(catalog, {
+      ...dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
+      storage: {
+        getItem: () => null,
+        setItem: (_key, value) => writes.push(value),
+      },
+    });
+
+    const beforeTeardown = writes.length;
+    controller.dispose();
+    expect(writes.length).toBe(beforeTeardown);
+  });
+
   it('disposes the adapter and ignores completion during an active load', async () => {
-    const request = deferred<Uint8Array>();
+    const request = deferred<Uint8Array<ArrayBuffer>>();
     const adapter = new FakeAdapter();
     const controller = new PlayerController(
       catalog,

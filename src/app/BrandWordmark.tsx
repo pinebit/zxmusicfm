@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { usePrefersReducedMotion } from './usePrefersReducedMotion.ts';
+
 // The "ZX-MUSIC.FM" wordmark rendered as an LED dot-matrix display: every
 // letter is drawn from individual dots on a 5x7 grid, one rounded square per
 // lit dot.
@@ -59,15 +61,11 @@ function pickNext(previous: number | null): number {
 
 export function BrandWordmark() {
   const [bouncing, setBouncing] = useState<number | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (reducedMotion) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-
-    const clearTimer = () => {
-      if (timer !== undefined) clearTimeout(timer);
-      timer = undefined;
-    };
 
     const scheduleBounce = () => {
       const rest = 1500 + Math.random() * 2500;
@@ -80,19 +78,11 @@ export function BrandWordmark() {
       }, rest);
     };
 
-    const restart = () => {
-      clearTimer();
-      setBouncing(null);
-      if (!media.matches) scheduleBounce();
-    };
-
-    restart();
-    media.addEventListener('change', restart);
+    scheduleBounce();
     return () => {
-      clearTimer();
-      media.removeEventListener('change', restart);
+      if (timer !== undefined) clearTimeout(timer);
     };
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <svg
@@ -104,7 +94,9 @@ export function BrandWordmark() {
       {LETTERS.map((letter, index) => (
         <g
           key={index}
-          className={`brand-letter${bouncing === index ? ' is-bouncing' : ''}`}
+          className={`brand-letter${
+            bouncing === index && !reducedMotion ? ' is-bouncing' : ''
+          }`}
         >
           {letter.dots.map((dot, dotIndex) => (
             <rect

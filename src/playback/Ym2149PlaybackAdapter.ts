@@ -16,13 +16,12 @@ import {
   createEnginePlayer,
   createEnginePlayerAtSample,
   ENGINE_RENDER_CHUNK,
-  ENGINE_SAMPLE_RATE,
   type EnginePlayer,
   generateEngineChannels,
   getEngineChannelVoices,
   initializeYm2149,
-  OFFLINE_SAMPLE_RATE,
 } from './engine.ts';
+import { ENGINE_SAMPLE_RATE, OFFLINE_SAMPLE_RATE } from './sampleRates.ts';
 
 const EMPTY_LEVELS: ChannelLevels = { A: 0, B: 0, C: 0 };
 const EMPTY_VOICES: ChannelVoices = { A: null, B: null, C: null };
@@ -111,6 +110,10 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private channelOrder: ChannelOrder = 'ABC';
   private loadGeneration = 0;
   private disposed = false;
+  // Source-sample position of `player`. Rewinding costs a full render from zero,
+  // so pause/stop/seek only record where playback should resume and `play`
+  // reconciles this against `positionSeconds` exactly once.
+  private playerSample = 0;
 
   constructor(permittedAudioContext?: AudioContext) {
     this.audioContext = permittedAudioContext;
@@ -146,6 +149,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
         );
       }
       this.player = player;
+      this.playerSample = 0;
       this.status = 'ready';
       this.publish();
     } catch (error) {
@@ -167,7 +171,6 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       return;
     }
     if (this.status === 'ended') {
-      this.replacePlayerAt(0, false);
       this.positionSeconds = 0;
     }
 
@@ -181,14 +184,20 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       );
     }
 
+    // The only place the engine is rewound. Doing it here rather than in
+    // pause/stop/seek keeps those instant and collapses a pause-then-seek, or a
+    // pause-then-different-track, into no reconstruction at all.
+    const startSample = Math.round(this.positionSeconds * ENGINE_SAMPLE_RATE);
+    if (this.playerSample !== startSample) {
+      this.replacePlayerAtSample(startSample);
+    }
+
     this.player.play();
     this.status = 'playing';
     this.anchorPositionSeconds = this.positionSeconds;
     this.anchorContextTime = context.currentTime + START_LATENCY_SECONDS;
     this.nextScheduleTime = this.anchorContextTime;
-    this.scheduledNativeSample = Math.round(
-      this.positionSeconds * ENGINE_SAMPLE_RATE,
-    );
+    this.scheduledNativeSample = startSample;
     this.scheduleBuffers();
     this.scheduler = globalThis.setInterval(() => {
       this.scheduleBuffers();
@@ -202,7 +211,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     }
     const position = this.livePosition();
     this.stopScheduling();
-    this.replacePlayerAt(position, false);
+    this.player?.pause();
     this.positionSeconds = position;
     this.status = 'paused';
     this.levelTimeline = [];
@@ -215,7 +224,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       return;
     }
     this.stopScheduling();
-    this.replacePlayerAt(0, false);
+    this.player.pause();
     this.positionSeconds = 0;
     this.status = 'ready';
     this.levelTimeline = [];
@@ -231,7 +240,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     const wasPlaying = isPlayingStatus(this.status);
     const position = clamp(positionSeconds, 0, this.durationSeconds);
     this.stopScheduling();
-    this.replacePlayerAt(position, false);
+    this.player.pause();
     this.positionSeconds = position;
     this.levelTimeline = [];
     this.voiceTimeline = [];
@@ -242,9 +251,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       this.status = 'paused';
       await this.play();
       return;
-    } else if (this.status === 'paused') {
-      this.status = 'paused';
-    } else {
+    } else if (this.status !== 'paused') {
       this.status = 'ready';
     }
     this.publish();
@@ -272,11 +279,16 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       if (next === undefined || next.time > now) break;
       this.levelTimeline.shift();
     }
-    const current = this.levelTimeline[0]?.levels ?? EMPTY_LEVELS;
+    const current = this.levelTimeline[0];
+    // A chunk queued ahead of the playhead is not audible yet, so report rest
+    // until it is — the same gate `getChannelVoices` applies.
+    if (current === undefined || current.time > now) {
+      return EMPTY_LEVELS;
+    }
     return {
-      A: current.A * this.volume,
-      B: current.B * this.volume,
-      C: current.C * this.volume,
+      A: current.levels.A * this.volume,
+      B: current.levels.B * this.volume,
+      C: current.levels.C * this.volume,
     };
   }
 
@@ -330,7 +342,27 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
 
     let sourceStart = 0;
     let outputIndex = 0;
+    let generated: Float32Array = new Float32Array(0);
     let previous: readonly [number, number, number] | undefined;
+
+    // Declared once for the whole render rather than per output sample; a
+    // three-minute track interpolates over eight million of them.
+    const read = (absoluteSample: number, channel: number): number => {
+      if (absoluteSample === sourceStart - 1 && previous !== undefined) {
+        return previous[channel] ?? 0;
+      }
+      return generated[(absoluteSample - sourceStart) * 3 + channel] ?? 0;
+    };
+    const interpolate = (
+      channel: number,
+      low: number,
+      high: number,
+      fraction: number,
+    ): number => {
+      const lowValue = read(low, channel);
+      return lowValue + (read(high, channel) - lowValue) * fraction;
+    };
+
     try {
       while (sourceStart < nativeLength + 1) {
         signal.throwIfAborted();
@@ -338,7 +370,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
           ENGINE_RENDER_CHUNK,
           nativeLength + 1 - sourceStart,
         );
-        const generated = generateEngineChannels(player, count).channels;
+        generated = generateEngineChannels(player, count).channels;
         const sourceEnd = sourceStart + count;
 
         while (outputIndex < outputLength) {
@@ -350,19 +382,18 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
             break;
           }
           const fraction = sourcePosition - low;
-          const read = (absoluteSample: number, channel: number): number => {
-            if (absoluteSample === sourceStart - 1 && previous !== undefined) {
-              return previous[channel] ?? 0;
-            }
-            return generated[(absoluteSample - sourceStart) * 3 + channel] ?? 0;
-          };
-          const interpolate = (channel: number): number => {
-            const lowValue = read(low, channel);
-            return lowValue + (read(high, channel) - lowValue) * fraction;
-          };
-          const a = applyChipAmplitudeModel(interpolate(0), track.chipType);
-          const b = applyChipAmplitudeModel(interpolate(1), track.chipType);
-          const c = applyChipAmplitudeModel(interpolate(2), track.chipType);
+          const a = applyChipAmplitudeModel(
+            interpolate(0, low, high, fraction),
+            track.chipType,
+          );
+          const b = applyChipAmplitudeModel(
+            interpolate(1, low, high, fraction),
+            track.chipType,
+          );
+          const c = applyChipAmplitudeModel(
+            interpolate(2, low, high, fraction),
+            track.chipType,
+          );
           channelA[outputIndex] = a;
           channelB[outputIndex] = b;
           channelC[outputIndex] = c;
@@ -444,8 +475,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
 
   private ensureAudioContext(): AudioContext {
     const context =
-      this.audioContext ??
-      new AudioContext({ sampleRate: OFFLINE_SAMPLE_RATE });
+      this.audioContext ?? new AudioContext({ sampleRate: ENGINE_SAMPLE_RATE });
     this.audioContext = context;
     if (this.gainNode === undefined) {
       this.buildAudioGraph(context);
@@ -692,6 +722,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       source.start(this.nextScheduleTime);
       this.scheduledSources.add(source);
       this.scheduledNativeSample += count;
+      this.playerSample = this.scheduledNativeSample;
       this.nextScheduleTime += count / ENGINE_SAMPLE_RATE;
     }
   }
@@ -723,24 +754,27 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.scheduledSources.clear();
   }
 
-  private replacePlayerAt(positionSeconds: number, playing: boolean): void {
+  // The upstream native seek does not reconstruct tone/noise/envelope phase, so
+  // a position change means a fresh engine rendered deterministically from zero
+  // to the target sample. That cost grows with the target, which is why callers
+  // defer it to `play`.
+  private replacePlayerAtSample(nativeSample: number): void {
     const track = this.track;
     if (track === undefined) {
       return;
     }
-    const nativeSample = Math.round(positionSeconds * ENGINE_SAMPLE_RATE);
     const replacement = createEnginePlayerAtSample(track.bytes, nativeSample);
-    if (!playing) {
-      replacement.pause();
-    }
+    replacement.pause();
     const previous = this.player;
     this.player = replacement;
+    this.playerSample = nativeSample;
     previous?.free();
   }
 
   private releasePlayer(): void {
     this.player?.free();
     this.player = undefined;
+    this.playerSample = 0;
   }
 
   private publish(): void {

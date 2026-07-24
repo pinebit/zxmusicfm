@@ -4,10 +4,9 @@ import initializeWasm, {
 } from '../../vendor/ym2149/ym2149_wasm.js';
 
 import type { ChannelVoices } from './contracts.ts';
+import { ENGINE_SAMPLE_RATE } from './sampleRates.ts';
 
-export const ENGINE_SAMPLE_RATE = 44_100;
-export const OFFLINE_SAMPLE_RATE = 48_000;
-export const ENGINE_RENDER_CHUNK = 44_100;
+export const ENGINE_RENDER_CHUNK = ENGINE_SAMPLE_RATE;
 
 export type EnginePlayer = InstanceType<typeof Ym2149Player>;
 

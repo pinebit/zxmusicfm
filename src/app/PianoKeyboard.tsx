@@ -7,6 +7,7 @@ import type {
   PlaybackAdapter,
 } from '../playback/contracts.ts';
 import { channelPalette } from './channelPalette.ts';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion.ts';
 
 export const PIANO_MIN_MIDI = 21; // A0
 export const PIANO_MAX_MIDI = 108; // C8
@@ -20,6 +21,9 @@ const CHANNELS_BY_ORDER: Readonly<Record<ChannelOrder, readonly ChannelId[]>> =
     BAC: ['B', 'A', 'C'],
   };
 const PIANO_ATTACK_MS = 45;
+// Cadence used when motion is reduced. Energy advances on elapsed time, so a
+// coarse step lights and clears keys outright instead of fading them.
+const REDUCED_MOTION_STEP_MS = 250;
 const MINIMUM_VISIBLE_ENERGY = 0.02;
 const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
 const WHITE_KEY_COUNT = 52;
@@ -155,10 +159,14 @@ export function PianoKeyboard({
   const visualVoices = useRef(new Map<string, VisualVoice>());
   const previousSignature = useRef('');
 
+  const reducedMotion = usePrefersReducedMotion();
+
   useEffect(() => {
-    let frame = 0;
+    let handle: number | undefined;
+    let cancelled = false;
     let previousTime: number | undefined;
     const update = (now: number) => {
+      if (cancelled) return;
       const visuallyPlaying = playing && document.visibilityState !== 'hidden';
       const voices = visuallyPlaying
         ? (adapter?.getChannelVoices() ?? EMPTY_VOICES)
@@ -276,12 +284,26 @@ export function PianoKeyboard({
         previousSignature.current = signature;
       }
 
-      if (playing) frame = requestAnimationFrame(update);
+      if (playing) schedule();
     };
 
-    frame = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(frame);
-  }, [adapter, enabledChannels, playing]);
+    function schedule(): void {
+      if (cancelled) return;
+      handle = reducedMotion
+        ? window.setTimeout(() => {
+            update(performance.now());
+          }, REDUCED_MOTION_STEP_MS)
+        : requestAnimationFrame(update);
+    }
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (handle === undefined) return;
+      if (reducedMotion) window.clearTimeout(handle);
+      else cancelAnimationFrame(handle);
+    };
+  }, [adapter, enabledChannels, playing, reducedMotion]);
 
   const toggleChannel = (channel: ChannelId) => {
     setEnabledChannels((current) => {

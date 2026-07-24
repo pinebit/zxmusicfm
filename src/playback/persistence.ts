@@ -1,9 +1,11 @@
 import type { ChannelOrder } from './contracts.ts';
 
 export const PLAYER_STORAGE_KEY = 'zxmusicfm.player.v1';
-const PREVIOUS_PLAYER_STORAGE_KEY = ['zx', 'spectrum', 'fm.player.v1'].join(
-  '-',
-);
+// Key used before the site was renamed. `loadPlayerPreferences` migrates it once
+// and deletes it, so a returning listener keeps their volume, channel order, and
+// resume position. Safe to delete this and the migration together once the old
+// key can no longer be in any live browser profile.
+const PREVIOUS_PLAYER_STORAGE_KEY = 'zx-spectrum-fm.player.v1';
 
 type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'> &
   Partial<Pick<Storage, 'removeItem'>>;

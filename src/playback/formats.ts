@@ -170,7 +170,7 @@ export function selectAySubsong(
   return selected;
 }
 
-/** Parse the uncompressed AY Emulator PSG stream accepted by the MVP. */
+/** Parse the uncompressed AY Emulator PSG stream the pipeline accepts. */
 export function parsePsg(bytes: Uint8Array): ParsedPsg {
   if (bytes.length < PSG_HEADER_LENGTH || !hasMagic(bytes, 'PSG', 0)) {
     fail('PSG input is missing the PSG signature and 0x1A marker.');
@@ -462,7 +462,5 @@ export function prepareYmRuntime(
     };
   }
 
-  fail(
-    'Unsupported YM input; the Phase 2 proof accepts YM3 and compliant YM6.',
-  );
+  fail('Unsupported YM input; only YM3 and compliant YM6 are accepted.');
 }

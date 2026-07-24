@@ -28,8 +28,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+    // Browser journeys run against the production build, not the dev server, so
+    // they exercise the real bundle, the hashed generated assets, and the module
+    // graph that ships. `npm run build` keeps content validation and engine
+    // verification in front of it.
+    command:
+      'npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
     port: 4173,
+    // The build re-derives and validates every track before Vite runs.
+    timeout: 600_000,
     reuseExistingServer: process.env.CI === undefined,
   },
 });

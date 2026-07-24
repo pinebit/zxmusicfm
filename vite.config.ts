@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
                   tag: 'meta',
                   attrs: {
                     property: 'og:image',
-                    content: new URL('og-preview.png', canonicalUrl).href,
+                    content: new URL('og-preview.jpg', canonicalUrl).href,
                   },
                   injectTo: 'head',
                 },
@@ -54,7 +54,10 @@ export default defineConfig(({ mode }) => {
       },
     ],
     build: {
-      sourcemap: true,
+      // Emitted but not linked from the bundles, so browsers never fetch them and
+      // no `sourceMappingURL` points at project sources from public output. Load
+      // them deliberately in devtools when a production trace needs decoding.
+      sourcemap: 'hidden',
     },
     test: {
       environment: 'jsdom',

@@ -34,14 +34,14 @@
     {
       "id": "imp-assorty2",
       "order": 2,
-      "title": "Assory II",
+      "title": "Assorty II",
       "author": "IMP",
       "sourceUrl": "https://zxart.ee/eng/authors/i/imp1/assorty2/",
       "subsong": 1,
       "sourceFormat": "STC",
       "runtimeFormat": "YM6",
-      "runtimeSha256": "81b19a665a2bdebb969b49e0f773b806cd19e32470fdc4f1e36d57a4366914f8",
-      "runtimeByteLength": 136281,
+      "runtimeSha256": "8301a59429f2460a209f28b6fb9719bf2c939cbffbbe038533af7724b37b479a",
+      "runtimeByteLength": 136282,
       "durationSeconds": 170.22,
       "durationSource": "source",
       "chipType": "AY",
@@ -50,7 +50,7 @@
       "channelLayout": "ACB",
       "waveformByteLength": 12288,
       "year": 1994,
-      "runtimeUrl": "/generated/tracks/imp-assorty2.81b19a665a2bdebb969b49e0f773b806cd19e32470fdc4f1e36d57a4366914f8.ym",
+      "runtimeUrl": "/generated/tracks/imp-assorty2.8301a59429f2460a209f28b6fb9719bf2c939cbffbbe038533af7724b37b479a.ym",
       "waveformByteOffset": 12304
     },
     {

@@ -48,13 +48,16 @@ type CatalogAction =
   | { type: 'failure' };
 type CatalogLoader = (signal: AbortSignal) => Promise<GeneratedCatalog>;
 type AppProps = { readonly catalogLoader?: CatalogLoader };
-type WaveformState =
+// Stamped with the attempt that produced it, so a retry shows "loading" again by
+// deriving during render instead of resetting state from inside the fetch effect.
+type WaveformState = { readonly attempt: number } & (
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | {
       readonly status: 'ready';
       readonly tracks: ReadonlyMap<string, DecodedWaveform>;
-    };
+    }
+);
 
 const initialState: CatalogState = { status: 'loading' };
 const mobilePortraitQuery =
@@ -140,10 +143,15 @@ function PlayerApplication({
     controller.getSnapshot,
     controller.getSnapshot,
   );
-  const [waveforms, setWaveforms] = useState<WaveformState>({
+  const [loadedWaveforms, setLoadedWaveforms] = useState<WaveformState>({
     status: 'loading',
+    attempt: 0,
   });
   const [waveformAttempt, setWaveformAttempt] = useState(0);
+  const waveforms: WaveformState =
+    loadedWaveforms.attempt === waveformAttempt
+      ? loadedWaveforms
+      : { status: 'loading', attempt: waveformAttempt };
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [mobilePortrait, setMobilePortrait] = useState(
     () => window.matchMedia(mobilePortraitQuery).matches,
@@ -229,7 +237,7 @@ function PlayerApplication({
 
   useEffect(() => {
     const abort = new AbortController();
-    setWaveforms({ status: 'loading' });
+    const attempt = waveformAttempt;
     const manifest = catalog.waveforms;
     void fetchVerifiedBytes(
       manifest.url,
@@ -240,16 +248,19 @@ function PlayerApplication({
     ).then(
       (bytes) => {
         try {
-          setWaveforms({
+          setLoadedWaveforms({
             status: 'ready',
             tracks: decodeWaveformPack(bytes, catalog),
+            attempt,
           });
         } catch {
-          setWaveforms({ status: 'error' });
+          setLoadedWaveforms({ status: 'error', attempt });
         }
       },
       () => {
-        if (!abort.signal.aborted) setWaveforms({ status: 'error' });
+        if (!abort.signal.aborted) {
+          setLoadedWaveforms({ status: 'error', attempt });
+        }
       },
     );
     return () => abort.abort();
@@ -287,7 +298,6 @@ function PlayerApplication({
     closeDeckMaximized,
     controller,
     deckMaximized,
-    onDeckMaximizedChange,
     snapshot.selectedTrackId,
     snapshot.status,
   ]);
@@ -650,7 +660,9 @@ function PlayerApplication({
               <VolumeKnob
                 value={snapshot.preferences.volume * 100}
                 disabled={!hasTracks}
-                onChange={(value) => controller.setVolume(value / 100)}
+                onChange={(value, scrubbing) => {
+                  controller.setVolume(value / 100, scrubbing);
+                }}
               />
             </div>
           </div>

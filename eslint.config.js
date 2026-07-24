@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -19,6 +20,13 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
+  // Hook rules are the only automated guard on effect dependencies, and a stale
+  // or over-broad dependency array here means a torn-down animation loop or a
+  // controller that never restarts.
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    extends: [reactHooks.configs.flat['recommended-latest']],
+  },
   {
     languageOptions: {
       globals: {

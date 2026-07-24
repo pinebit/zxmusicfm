@@ -5,7 +5,10 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 temporary_root="$(mktemp -d)"
 engine_checkout="$temporary_root/ym2149-rs"
 bindgen_output="$temporary_root/pkg"
-revision="b3096aac0dcab6dd1d82c0209f579761943aadc6"
+# Read the pin from its single source so this script cannot drift from the
+# provenance schema, the content pipeline, or engine:verify.
+revision="$(node --input-type=module --eval \
+  "import { ENGINE_COMMIT } from '$project_root/src/playback/enginePin.ts'; process.stdout.write(ENGINE_COMMIT);")"
 
 cleanup() {
   rm -rf "$temporary_root"

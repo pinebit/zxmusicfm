@@ -43,6 +43,12 @@ type ControllerDependencies = {
 
 const POSITION_UPDATE_MS = 250;
 const CHECKPOINT_MS = 5_000;
+// Continuous controls (the volume knob) publish on every pointer move, so their
+// preference write is coalesced instead of hitting storage per event.
+const PREFERENCE_SAVE_DELAY_MS = 400;
+// `previous` only ever walks back a handful of entries; the cap stops an
+// unattended session from accumulating one string per auto-advanced track.
+const MAX_HISTORY_ENTRIES = 50;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
@@ -70,6 +76,7 @@ function shuffled(values: readonly string[], random: () => number): string[] {
 }
 
 export class PlayerController {
+  private readonly catalog: GeneratedCatalog;
   private snapshot: PlayerControllerSnapshot;
   private readonly listeners = new Set<ControllerListener>();
   private readonly tracksById: ReadonlyMap<string, CatalogTrack>;
@@ -81,20 +88,26 @@ export class PlayerController {
     context: AudioContext,
   ) => Promise<PlaybackAdapter>;
   private adapter: PlaybackAdapter | undefined;
+  private adapterPromise: Promise<PlaybackAdapter> | undefined;
   private adapterUnsubscribe: (() => void) | undefined;
+  // One permitted context for the whole controller. Rapid selections must not
+  // each mint their own, and whichever owner ends up holding it closes it.
+  private permission: AudioPermission | undefined;
   private loadedTrackId: string | undefined;
   private activeLoad: AbortController | undefined;
   private generation = 0;
   private disposed = false;
   private ticker: number | undefined;
+  private preferenceSaveTimer: number | undefined;
   private lastCheckpointAt = 0;
   private shuffleQueue: string[] = [];
   private history: string[] = [];
 
   constructor(
-    private readonly catalog: GeneratedCatalog,
+    catalog: GeneratedCatalog,
     dependencies: ControllerDependencies = {},
   ) {
+    this.catalog = catalog;
     this.tracksById = new Map(catalog.tracks.map((track) => [track.id, track]));
     this.storage = dependencies.storage ?? localStorage;
     this.random = dependencies.random ?? Math.random;
@@ -128,8 +141,13 @@ export class PlayerController {
    * Start the position ticker and Media Session handlers, returning a disposer.
    * Kept out of the constructor so a controller built during render (e.g. in a
    * discarded `useMemo` result) never leaks a timer or global handlers.
+   *
+   * Re-entrant on purpose: React remounts an effect without rebuilding a
+   * `useMemo` value, so a disposed controller has to come back to life rather
+   * than sit permanently inert with a live ticker.
    */
   activate = (): (() => void) => {
+    this.disposed = false;
     this.installMediaSession();
     this.startTicker();
     return () => this.dispose();
@@ -164,9 +182,12 @@ export class PlayerController {
   }
 
   play(trackId: string, requestedPosition?: number): void {
-    const permission =
-      this.adapter === undefined ? this.requestPermission() : undefined;
-    void this.selectAndPlay(trackId, requestedPosition, permission, true);
+    void this.selectAndPlay(
+      trackId,
+      requestedPosition,
+      this.acquirePermission(),
+      true,
+    );
   }
 
   pause(): void {
@@ -234,16 +255,14 @@ export class PlayerController {
   }
 
   previous(): void {
-    const previousTrackId = this.history.pop();
-    const selected = this.snapshot.selectedTrackId;
-    if (previousTrackId !== undefined) {
-      const permission =
-        this.adapter === undefined ? this.requestPermission() : undefined;
-      void this.selectAndPlay(previousTrackId, 0, permission, false);
-    } else if (selected !== null) {
-      const permission =
-        this.adapter === undefined ? this.requestPermission() : undefined;
-      void this.selectAndPlay(selected, 0, permission, false);
+    const previousTrackId = this.history.pop() ?? this.snapshot.selectedTrackId;
+    if (previousTrackId !== null) {
+      void this.selectAndPlay(
+        previousTrackId,
+        0,
+        this.acquirePermission(),
+        false,
+      );
     }
   }
 
@@ -252,13 +271,18 @@ export class PlayerController {
     this.setPreferences({ ...this.snapshot.preferences, shuffle: enabled });
   }
 
-  setVolume(volume: number): void {
+  /**
+   * `scrubbing` marks a value from a continuous gesture. The gain change always
+   * applies immediately; only the storage write is coalesced, and only while
+   * scrubbing, so a discrete change survives an immediate reload.
+   */
+  setVolume(volume: number, scrubbing = false): void {
     const nextVolume = clamp(Number.isFinite(volume) ? volume : 0, 0, 1);
     this.adapter?.setVolume(nextVolume);
-    this.setPreferences({
-      ...this.snapshot.preferences,
-      volume: nextVolume,
-    });
+    this.setPreferences(
+      { ...this.snapshot.preferences, volume: nextVolume },
+      scrubbing,
+    );
   }
 
   setChannelOrder(channelOrder: ChannelOrder): void {
@@ -283,11 +307,41 @@ export class PlayerController {
     this.activeLoad?.abort();
     this.activeLoad = undefined;
     if (this.ticker !== undefined) window.clearInterval(this.ticker);
-    this.adapterUnsubscribe?.();
-    this.adapter?.dispose();
-    this.adapter = undefined;
+    this.ticker = undefined;
+    this.flushPreferenceSave();
+    this.releaseAudio();
     this.clearMediaSession();
     this.listeners.clear();
+  }
+
+  /** Must run synchronously inside the gesture that permits audio. */
+  private acquirePermission(): AudioPermission | undefined {
+    if (this.adapter !== undefined) return undefined;
+    this.permission ??= this.requestPermission();
+    return this.permission;
+  }
+
+  /**
+   * Tear down the audio side, leaving exactly one owner responsible for closing
+   * the permitted context: the adapter once it has adopted it, this controller
+   * until then.
+   */
+  private releaseAudio(): void {
+    const adapter = this.adapter;
+    const permission = this.permission;
+    this.adapterUnsubscribe?.();
+    this.adapterUnsubscribe = undefined;
+    this.adapter = undefined;
+    this.adapterPromise = undefined;
+    this.permission = undefined;
+    this.loadedTrackId = undefined;
+    if (adapter !== undefined) {
+      adapter.dispose();
+      return;
+    }
+    if (permission !== undefined && permission.context.state !== 'closed') {
+      void permission.context.close();
+    }
   }
 
   private async selectAndPlay(
@@ -304,7 +358,7 @@ export class PlayerController {
       recordHistory &&
       this.snapshot.selectedTrackId !== null
     ) {
-      this.history.push(this.snapshot.selectedTrackId);
+      this.pushHistory(this.snapshot.selectedTrackId);
     }
     if (changedTrack && this.snapshot.preferences.shuffle) {
       this.shuffleQueue = this.shuffleQueue.filter((id) => id !== trackId);
@@ -324,15 +378,13 @@ export class PlayerController {
     const generation = this.beginLoad(track, requested);
     try {
       if (permission !== undefined) await permission.ready;
-      if (!this.isCurrent(generation)) {
-        if (permission !== undefined && permission.context.state !== 'closed') {
-          await permission.context.close();
-        }
-        return;
-      }
+      // The permitted context is shared, so a superseded selection leaves it
+      // open for the newer one; `releaseAudio` is the only thing that closes it.
+      if (!this.isCurrent(generation)) return;
       const adapter = await this.ensureAdapter(permission);
       if (!this.isCurrent(generation)) return;
 
+      let loadedFromScratch = false;
       if (changedTrack || this.loadedTrackId !== track.id) {
         const load = this.activeLoad;
         if (load === undefined) return;
@@ -356,10 +408,16 @@ export class PlayerController {
         await adapter.load(runtime, load.signal);
         if (!this.isCurrent(generation)) return;
         this.loadedTrackId = track.id;
+        loadedFromScratch = true;
       }
 
-      await adapter.seek(requested >= track.durationSeconds ? 0 : requested);
-      if (!this.isCurrent(generation)) return;
+      // A freshly loaded engine already sits at zero, so seeking there would
+      // rebuild it for nothing.
+      const target = requested >= track.durationSeconds ? 0 : requested;
+      if (!loadedFromScratch || target !== 0) {
+        await adapter.seek(target);
+        if (!this.isCurrent(generation)) return;
+      }
       this.update({ status: 'ready', positionSeconds: requested, error: null });
       await adapter.play();
       if (!this.isCurrent(generation)) return;
@@ -368,13 +426,7 @@ export class PlayerController {
       this.updateMediaMetadata(track);
     } catch (error) {
       if (isAudioPermissionError(error)) {
-        if (permission !== undefined && permission.context.state !== 'closed') {
-          void permission.context.close();
-        }
-        this.adapterUnsubscribe?.();
-        this.adapter?.dispose();
-        this.adapter = undefined;
-        this.loadedTrackId = undefined;
+        this.releaseAudio();
       }
       this.fail(error, 'play', track, requested, generation);
     }
@@ -397,7 +449,7 @@ export class PlayerController {
       preferences,
       error: null,
     };
-    savePlayerPreferences(this.storage, preferences);
+    this.savePreferences();
     this.publish();
     return this.generation;
   }
@@ -412,18 +464,35 @@ export class PlayerController {
         'NotAllowedError',
       );
     }
-    const adapter = await this.createAdapter(permission.context);
-    if (this.disposed) {
-      adapter.dispose();
-      throw new Error('Player controller has been disposed.');
+    // `createAdapter` dynamically imports the engine module, so two rapid
+    // selections both arrive here before the first resolves. Sharing the
+    // in-flight promise keeps one AudioContext and one engine instance rather
+    // than orphaning whichever adapter loses the assignment race.
+    this.adapterPromise ??= this.createSoleAdapter(permission);
+    return await this.adapterPromise;
+  }
+
+  private async createSoleAdapter(
+    permission: AudioPermission,
+  ): Promise<PlaybackAdapter> {
+    try {
+      const adapter = await this.createAdapter(permission.context);
+      if (this.disposed) {
+        adapter.dispose();
+        throw new Error('Player controller has been disposed.');
+      }
+      adapter.setVolume(this.snapshot.preferences.volume);
+      adapter.setChannelOrder(this.snapshot.preferences.channelOrder);
+      this.adapterUnsubscribe = adapter.subscribe((next) => {
+        this.handleAdapterSnapshot(next);
+      });
+      this.adapter = adapter;
+      return adapter;
+    } catch (error) {
+      // Leave no memoized rejection behind, so a retry can build a new adapter.
+      this.adapterPromise = undefined;
+      throw error;
     }
-    adapter.setVolume(this.snapshot.preferences.volume);
-    adapter.setChannelOrder(this.snapshot.preferences.channelOrder);
-    this.adapterUnsubscribe = adapter.subscribe((next) => {
-      this.handleAdapterSnapshot(next);
-    });
-    this.adapter = adapter;
-    return adapter;
   }
 
   private handleAdapterSnapshot(next: PlaybackAdapterSnapshot): void {
@@ -463,11 +532,14 @@ export class PlayerController {
 
   private selectFromSequence(trackId: string): void {
     if (this.snapshot.selectedTrackId !== null) {
-      this.history.push(this.snapshot.selectedTrackId);
+      this.pushHistory(this.snapshot.selectedTrackId);
     }
-    const permission =
-      this.adapter === undefined ? this.requestPermission() : undefined;
-    void this.selectAndPlay(trackId, 0, permission, false);
+    void this.selectAndPlay(trackId, 0, this.acquirePermission(), false);
+  }
+
+  private pushHistory(trackId: string): void {
+    this.history.push(trackId);
+    if (this.history.length > MAX_HISTORY_ENTRIES) this.history.shift();
   }
 
   private fail(
@@ -509,9 +581,13 @@ export class PlayerController {
     this.publish();
   }
 
-  private setPreferences(preferences: PlayerPreferences): void {
+  private setPreferences(
+    preferences: PlayerPreferences,
+    coalesceSave = false,
+  ): void {
     this.snapshot = { ...this.snapshot, preferences };
-    savePlayerPreferences(this.storage, preferences);
+    if (coalesceSave) this.schedulePreferenceSave();
+    else this.savePreferences();
     this.publish();
   }
 
@@ -521,11 +597,42 @@ export class PlayerController {
       positionSeconds,
     };
     this.snapshot = { ...this.snapshot, positionSeconds, preferences };
-    savePlayerPreferences(this.storage, preferences);
+    this.savePreferences();
     if (publish) this.publish();
   }
 
+  private schedulePreferenceSave(): void {
+    if (this.preferenceSaveTimer !== undefined) return;
+    this.preferenceSaveTimer = window.setTimeout(() => {
+      this.preferenceSaveTimer = undefined;
+      savePlayerPreferences(this.storage, this.snapshot.preferences);
+    }, PREFERENCE_SAVE_DELAY_MS);
+  }
+
+  /** Writes current preferences, superseding any coalesced write. */
+  private savePreferences(): void {
+    this.cancelPreferenceSave();
+    savePlayerPreferences(this.storage, this.snapshot.preferences);
+  }
+
+  /**
+   * Writes only if a coalesced save is still pending, so tearing the controller
+   * down never invents a preference write of its own.
+   */
+  private flushPreferenceSave(): void {
+    if (this.preferenceSaveTimer === undefined) return;
+    this.cancelPreferenceSave();
+    savePlayerPreferences(this.storage, this.snapshot.preferences);
+  }
+
+  private cancelPreferenceSave(): void {
+    if (this.preferenceSaveTimer === undefined) return;
+    window.clearTimeout(this.preferenceSaveTimer);
+    this.preferenceSaveTimer = undefined;
+  }
+
   private startTicker(): void {
+    if (this.ticker !== undefined) window.clearInterval(this.ticker);
     this.ticker = window.setInterval(() => {
       if (this.snapshot.status !== 'playing' || this.adapter === undefined)
         return;

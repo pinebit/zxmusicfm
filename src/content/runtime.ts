@@ -15,8 +15,10 @@ function bytesToHex(bytes: Uint8Array): string {
   );
 }
 
+// Takes an `ArrayBuffer`-backed view so the payload can be hashed in place
+// instead of being copied to satisfy `BufferSource`.
 export async function verifyBytes(
-  bytes: Uint8Array,
+  bytes: Uint8Array<ArrayBuffer>,
   expectedLength: number,
   expectedSha256: string,
   label: string,
@@ -27,9 +29,7 @@ export async function verifyBytes(
     );
   }
   const digest = bytesToHex(
-    new Uint8Array(
-      await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes).buffer),
-    ),
+    new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
   );
   if (digest !== expectedSha256) {
     throw new Error(`${label} integrity check failed.`);
@@ -42,7 +42,7 @@ export async function fetchVerifiedBytes(
   expectedSha256: string,
   signal: AbortSignal,
   label: string,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const response = await fetch(url, { signal });
   if (!response.ok) {
     throw new Error(`${label} request failed with status ${response.status}.`);

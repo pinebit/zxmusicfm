@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+import { ENGINE_COMMIT } from '../playback/enginePin.ts';
+import {
+  WAVEFORM_BUCKET_COUNT,
+  WAVEFORM_BYTES_PER_TRACK,
+  WAVEFORM_CHANNEL_COUNT,
+} from '../playback/waveform.ts';
+
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/u);
 const slugSchema = z
   .string()
@@ -113,7 +120,7 @@ export const generatedProvenanceSchema = z.strictObject({
   preparationTool: z.literal('zxmusicfm-content-v1'),
   engine: z.strictObject({
     name: z.literal('ym2149-rs'),
-    commit: z.literal('b3096aac0dcab6dd1d82c0209f579761943aadc6'),
+    commit: z.literal(ENGINE_COMMIT),
   }),
 });
 
@@ -124,8 +131,8 @@ const waveformManifestSchema = z.strictObject({
   sha256: sha256Schema,
   byteLength: z.number().int().positive(),
   formatVersion: z.literal(1),
-  bucketCount: z.literal(2048),
-  channelCount: z.literal(3),
+  bucketCount: z.literal(WAVEFORM_BUCKET_COUNT),
+  channelCount: z.literal(WAVEFORM_CHANNEL_COUNT),
 });
 
 const generatedTrackSchema = z
@@ -152,7 +159,7 @@ const generatedTrackSchema = z
     frameRateHz: z.number().int().min(1).max(65_535),
     channelLayout: channelLayoutSchema,
     waveformByteOffset: z.number().int().nonnegative(),
-    waveformByteLength: z.literal(12_288),
+    waveformByteLength: z.literal(WAVEFORM_BYTES_PER_TRACK),
     year: z.number().int().min(1970).max(9999).optional(),
     notes: plainTextSchema.max(2_000).optional(),
   })

@@ -21,14 +21,15 @@ import {
   type TrackSidecar,
 } from '../../src/content/schemas.ts';
 import type { RuntimeTrack } from '../../src/playback/contracts.ts';
+import { ENGINE_COMMIT } from '../../src/playback/enginePin.ts';
 import {
   createEnginePlayer,
   createEnginePlayerAtSample,
-  ENGINE_SAMPLE_RATE,
   fastForwardEngine,
   generateEngineChannels,
   initializeYm2149,
 } from '../../src/playback/engine.ts';
+import { ENGINE_SAMPLE_RATE } from '../../src/playback/sampleRates.ts';
 import {
   createYm6,
   parsePsg,
@@ -54,7 +55,6 @@ import {
 const waveformMagic = Buffer.from('ZXWF', 'ascii');
 const waveformHeaderLength = 16;
 const waveformEncoding = 1;
-const engineCommit = 'b3096aac0dcab6dd1d82c0209f579761943aadc6';
 const comparisonTolerance = 0.000_001;
 
 export type ValidationResult = {
@@ -623,7 +623,7 @@ async function prepareTrack(
     waveformSha256: sha256(waveform),
     trackerConversion,
     preparationTool: 'zxmusicfm-content-v1',
-    engine: { name: 'ym2149-rs', commit: engineCommit },
+    engine: { name: 'ym2149-rs', commit: ENGINE_COMMIT },
   };
   const catalog: PreparedTrack['catalog'] = {
     id: input.sidecar.id,
@@ -642,7 +642,7 @@ async function prepareTrack(
     chipClockHz,
     frameRateHz,
     channelLayout,
-    waveformByteLength: 12_288,
+    waveformByteLength: WAVEFORM_BYTES_PER_TRACK,
     ...(input.sidecar.year === undefined ? {} : { year: input.sidecar.year }),
     ...(input.sidecar.notes === undefined
       ? {}
@@ -845,7 +845,6 @@ async function assertExactFile(
 }
 
 export async function validateContent(root: string): Promise<ValidationResult> {
-  const inputs = await discoverTrackInputs(root);
   const expected = await prepareContent(root);
   const catalogPath = path.join(root, 'public', 'generated', 'catalog.json');
   await assertExactFile(
@@ -901,7 +900,7 @@ export async function validateContent(root: string): Promise<ValidationResult> {
   }
 
   return {
-    trackCount: inputs.length,
+    trackCount: expected.tracks.length,
     catalogPath,
     waveformPath,
   };

@@ -54,21 +54,61 @@ function isBlockedIpv4(address: string): boolean {
   );
 }
 
-function isBlockedAddress(address: string): boolean {
+/** Expands any accepted IPv6 form to its sixteen bytes. */
+function ipv6Bytes(address: string): Uint8Array | undefined {
+  const [head = '', tail, extra] = address.split('::');
+  if (extra !== undefined) return undefined;
+  const readGroups = (value: string): number[] | undefined => {
+    if (value === '') return [];
+    const groups: number[] = [];
+    for (const group of value.split(':')) {
+      if (!/^[0-9a-f]{1,4}$/u.test(group)) return undefined;
+      groups.push(Number.parseInt(group, 16));
+    }
+    return groups;
+  };
+  const leading = readGroups(head);
+  const trailing = tail === undefined ? [] : readGroups(tail);
+  if (leading === undefined || trailing === undefined) return undefined;
+  const missing = 8 - leading.length - trailing.length;
+  if (tail === undefined ? missing !== 0 : missing < 0) return undefined;
+  const groups = [...leading, ...Array<number>(missing).fill(0), ...trailing];
+  const bytes = new Uint8Array(16);
+  groups.forEach((group, index) => {
+    bytes[index * 2] = (group >> 8) & 0xff;
+    bytes[index * 2 + 1] = group & 0xff;
+  });
+  return bytes;
+}
+
+/**
+ * Exported for tests. Fails closed: anything not recognised as a routable
+ * public address is blocked.
+ */
+export function isBlockedAddress(address: string): boolean {
   if (net.isIPv4(address)) return isBlockedIpv4(address);
   if (!net.isIPv6(address)) return true;
-  const normalized = address.toLowerCase();
-  if (normalized.startsWith('::ffff:')) {
-    return isBlockedIpv4(normalized.slice('::ffff:'.length));
-  }
+  // Compare on the expanded bytes rather than on text. `::1` and
+  // `0:0:0:0:0:0:0:1` are the same address, and `2001:db8::` and `2001:0db8::`
+  // are the same prefix; a `startsWith` check on the compressed form only
+  // happens to work for the shapes `dns.lookup` returns today.
+  const bytes = ipv6Bytes(address.toLowerCase().split('%')[0] ?? '');
+  if (bytes === undefined) return true;
+  const [first = 0, second = 0] = bytes;
+  // `::`, `::1`, and the rest of the reserved low range.
+  if (bytes.subarray(0, 15).every((byte) => byte === 0)) return true;
+  // IPv4-mapped (`::ffff:0:0/96`) and IPv4-compatible (`::/96`) forms are never
+  // legitimate AAAA answers for a public archive, so reject them outright rather
+  // than trying to re-derive the embedded IPv4.
+  if (bytes.subarray(0, 10).every((byte) => byte === 0)) return true;
   return (
-    normalized === '::' ||
-    normalized === '::1' ||
-    normalized.startsWith('fc') ||
-    normalized.startsWith('fd') ||
-    /^fe[89ab]/u.test(normalized) ||
-    normalized.startsWith('ff') ||
-    normalized.startsWith('2001:db8:')
+    (first & 0xfe) === 0xfc || // fc00::/7 unique local
+    (first === 0xfe && (second & 0xc0) === 0x80) || // fe80::/10 link local
+    first === 0xff || // ff00::/8 multicast
+    (first === 0x20 &&
+      second === 0x01 &&
+      bytes[2] === 0x0d &&
+      bytes[3] === 0xb8) // 2001:db8::/32
   );
 }
 
@@ -255,6 +295,8 @@ export async function downloadRemoteFile(
       }
       url = validateUrl(new URL(response.location, url).toString(), hop + 1);
     }
+    // Unreachable: the final iteration either returns or throws. Kept because
+    // control-flow analysis cannot see that, and the function returns a value.
     throw new Error('redirect limit exceeded');
   } finally {
     clearTimeout(timeout);

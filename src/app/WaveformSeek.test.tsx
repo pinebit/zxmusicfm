@@ -17,6 +17,72 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function stubDrawingContext(): {
+  readonly clearRect: ReturnType<typeof vi.fn>;
+} {
+  const clearRect = vi.fn();
+  const context = {
+    beginPath: vi.fn(),
+    clearRect,
+    clip: vi.fn(),
+    drawImage: vi.fn(),
+    fillRect: vi.fn(),
+    lineTo: vi.fn(),
+    moveTo: vi.fn(),
+    rect: vi.fn(),
+    restore: vi.fn(),
+    save: vi.fn(),
+    stroke: vi.fn(),
+    strokeRect: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
+  return { clearRect };
+}
+
+function stubReducedMotion(reduce: boolean): void {
+  const noop = (): void => undefined;
+  vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
+    matches: reduce && query.includes('prefers-reduced-motion'),
+    media: query,
+    onchange: null,
+    addEventListener: noop,
+    removeEventListener: noop,
+    addListener: noop,
+    removeListener: noop,
+    dispatchEvent: () => false,
+  }));
+}
+
+function countingResizeObserver(): { readonly count: () => number } {
+  let constructed = 0;
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor() {
+        constructed += 1;
+      }
+
+      observe = vi.fn();
+      disconnect = vi.fn();
+      unobserve = vi.fn();
+    },
+  );
+  return { count: () => constructed };
+}
+
+const playingAdapter = {
+  getSnapshot: () => ({
+    status: 'playing' as const,
+    positionSeconds: 1,
+    durationSeconds: 120,
+  }),
+  getOscilloscopeSamples: () => ({
+    A: new Float32Array(1_024),
+    B: new Float32Array(1_024),
+    C: new Float32Array(1_024),
+  }),
+};
+
 describe('WaveformSeek', () => {
   it('positions a seek marker under a hovering mouse', () => {
     const context = {
@@ -154,5 +220,70 @@ describe('WaveformSeek', () => {
 
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('keeps one resize observer and one animation loop across position updates', () => {
+    stubDrawingContext();
+    const observers = countingResizeObserver();
+    stubReducedMotion(false);
+    const frames = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockReturnValue(1);
+
+    const view = (positionSeconds: number) => (
+      <WaveformSeek
+        adapter={playingAdapter}
+        playing
+        waveform={waveform}
+        duration={120}
+        position={positionSeconds}
+        showPosition
+        disabled={false}
+        label="Seek test track"
+        onCommit={vi.fn()}
+      />
+    );
+    const { rerender } = render(view(1));
+    expect(observers.count()).toBe(1);
+    const framesAfterMount = frames.mock.calls.length;
+
+    // The controller publishes a coarse position four times a second. That must
+    // not rebuild the observer or restart the loop.
+    rerender(view(1.25));
+    rerender(view(1.5));
+    rerender(view(1.75));
+
+    expect(observers.count()).toBe(1);
+    expect(frames.mock.calls.length).toBe(framesAfterMount);
+  });
+
+  it('stops the animation loop but keeps redrawing under reduced motion', () => {
+    const { clearRect } = stubDrawingContext();
+    countingResizeObserver();
+    stubReducedMotion(true);
+    const frames = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockReturnValue(1);
+
+    const view = (positionSeconds: number) => (
+      <WaveformSeek
+        adapter={playingAdapter}
+        playing
+        waveform={waveform}
+        duration={120}
+        position={positionSeconds}
+        showPosition
+        disabled={false}
+        label="Seek test track"
+        onCommit={vi.fn()}
+      />
+    );
+    const { rerender } = render(view(1));
+    expect(frames).not.toHaveBeenCalled();
+
+    const drawsAfterMount = clearRect.mock.calls.length;
+    rerender(view(2));
+    expect(clearRect.mock.calls.length).toBeGreaterThan(drawsAfterMount);
+    expect(frames).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,11 @@
 import type { RuntimeTrack } from './contracts.ts';
 import {
   createEnginePlayer,
-  ENGINE_SAMPLE_RATE,
   generateEngineChannels,
   initializeYm2149,
 } from './engine.ts';
 import { createYm6, type RegisterFrame, type Ym6Options } from './formats.ts';
+import { ENGINE_SAMPLE_RATE } from './sampleRates.ts';
 
 const AY_FRAME_RATE = 50;
 const AY_CHIP_CLOCK = 2_000_000;

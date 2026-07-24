@@ -1,18 +1,19 @@
 import { readFile } from 'node:fs/promises';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { applyChipAmplitudeModel } from './chipModel.ts';
 import type { RuntimeTrack } from './contracts.ts';
 import {
   createEnginePlayer,
   createEnginePlayerAtSample,
-  ENGINE_SAMPLE_RATE,
   type EnginePlayer,
   frequencyToMidiNote,
   generateEngineChannels,
   getEngineChannelVoices,
   initializeYm2149,
 } from './engine.ts';
+import { ENGINE_SAMPLE_RATE } from './sampleRates.ts';
+import { createTestAudioContext } from '../test/audioContext.ts';
 import { createYm6, parsePsg, parseYm6, selectAySubsong } from './formats.ts';
 import {
   captureSyntheticAyAsYm6,
@@ -36,94 +37,6 @@ function maximumDifference(left: Float32Array, right: Float32Array): number {
 
 async function fixtureBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await readFile(path));
-}
-
-function createTestAudioContext(): {
-  readonly context: AudioContext;
-  readonly gainValues: () => number[];
-  setCurrentTime(value: number): void;
-} {
-  let currentTime = 0;
-  const gains: { gain: AudioParam }[] = [];
-  const audioNode = () => ({ connect: vi.fn() });
-  const audioParam = (initialValue: number) => {
-    const parameter = {
-      value: initialValue,
-      cancelScheduledValues: vi.fn(),
-      setValueAtTime: vi.fn((value: number) => {
-        parameter.value = value;
-        return parameter;
-      }),
-      linearRampToValueAtTime: vi.fn((value: number) => {
-        parameter.value = value;
-        return parameter;
-      }),
-    };
-    return parameter as unknown as AudioParam;
-  };
-  const context = {
-    state: 'running',
-    destination: audioNode(),
-    get currentTime() {
-      return currentTime;
-    },
-    resume: vi.fn(() => Promise.resolve()),
-    close: vi.fn(() => Promise.resolve()),
-    createGain: vi.fn(() => {
-      const gain = { ...audioNode(), gain: audioParam(1) };
-      gains.push(gain);
-      return gain;
-    }),
-    createBiquadFilter: vi.fn(() => ({
-      ...audioNode(),
-      type: 'lowpass',
-      frequency: { value: 0 },
-      Q: { value: 0 },
-      gain: { value: 0 },
-    })),
-    createDynamicsCompressor: vi.fn(() => ({
-      ...audioNode(),
-      threshold: { value: 0 },
-      knee: { value: 0 },
-      ratio: { value: 0 },
-      attack: { value: 0 },
-      release: { value: 0 },
-    })),
-    createChannelSplitter: vi.fn(() => ({
-      ...audioNode(),
-      channelCount: 2,
-      channelCountMode: 'max',
-      channelInterpretation: 'speakers',
-    })),
-    createAnalyser: vi.fn(() => ({
-      ...audioNode(),
-      fftSize: 2_048,
-      smoothingTimeConstant: 0.8,
-      getFloatTimeDomainData: vi.fn(),
-    })),
-    createChannelMerger: vi.fn(() => audioNode()),
-    createBuffer: vi.fn((channels: number, length: number) => {
-      const data = Array.from(
-        { length: channels },
-        () => new Float32Array(length),
-      );
-      return { getChannelData: (channel: number) => data[channel] };
-    }),
-    createBufferSource: vi.fn(() => ({
-      ...audioNode(),
-      buffer: null,
-      addEventListener: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn(),
-    })),
-  } as unknown as AudioContext;
-  return {
-    context,
-    gainValues: () => gains.map(({ gain }) => gain.value),
-    setCurrentTime(value: number) {
-      currentTime = value;
-    },
-  };
 }
 
 beforeAll(async () => {

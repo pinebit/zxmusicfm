@@ -5,6 +5,7 @@ import type {
   ChannelOrder,
   PlaybackAdapter,
 } from '../playback/contracts.ts';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion.ts';
 
 type ChannelMetersProps = {
   readonly adapter: PlaybackAdapter | undefined;
@@ -14,6 +15,9 @@ type ChannelMetersProps = {
 
 // Below this smoothed level a needle is visually at rest, so the loop can stop.
 const SETTLED_LEVEL = 0.0005;
+// Cadence used when motion is reduced. The smoothing is elapsed-time based, so a
+// coarse step also removes the needle easing rather than merely slowing it.
+const REDUCED_MOTION_STEP_MS = 250;
 const CHANNELS_BY_ORDER: Readonly<Record<ChannelOrder, readonly ChannelId[]>> =
   {
     ABC: ['A', 'B', 'C'],
@@ -44,11 +48,15 @@ export function ChannelMeters({
     C: 0,
   });
 
+  const reducedMotion = usePrefersReducedMotion();
+
   useEffect(() => {
-    let frame = 0;
+    let handle: number | undefined;
+    let cancelled = false;
     let previousTime = performance.now();
     const smoothed = smoothedRef.current;
     const update = (now: number) => {
+      if (cancelled) return;
       const elapsed = Math.max(0, now - previousTime);
       previousTime = now;
       const levels =
@@ -78,17 +86,31 @@ export function ChannelMeters({
       }
       // Keep animating while sound is playing or needles are still releasing;
       // otherwise stop until playback resumes (this effect re-runs on `playing`).
-      if (playing || settling) {
-        frame = requestAnimationFrame(update);
-      }
+      if (playing || settling) schedule();
     };
-    frame = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(frame);
-  }, [adapter, playing]);
+
+    function schedule(): void {
+      if (cancelled) return;
+      handle = reducedMotion
+        ? window.setTimeout(() => {
+            update(performance.now());
+          }, REDUCED_MOTION_STEP_MS)
+        : requestAnimationFrame(update);
+    }
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (handle === undefined) return;
+      if (reducedMotion) window.clearTimeout(handle);
+      else cancelAnimationFrame(handle);
+    };
+  }, [adapter, playing, reducedMotion]);
 
   return (
     <div
       className="meter-bank"
+      role="group"
       aria-label="Live AY channel levels arranged by stereo position"
     >
       {CHANNELS_BY_ORDER[channelOrder].map((channel, index) => (

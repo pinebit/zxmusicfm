@@ -13,6 +13,9 @@ export type TrackerFormat = (typeof TRACKER_FORMATS)[number];
 export type TrackerExtension = '.pt3' | '.stc' | '.asc' | '.stp' | '.ftc';
 
 const dockerImage = `zxmusicfm-zxtune:${ZXTUNE_COMMIT.slice(0, 12)}`;
+// ZXTune is not chatty, but a failing run reports through stderr and the default
+// 1 MiB pipe buffer would turn a diagnosable error into ENOBUFS.
+const converterOutputLimit = 8 * 1024 * 1024;
 function resolveDockerfile(): string {
   try {
     return fileURLToPath(new URL('./zxtune/Dockerfile', import.meta.url));
@@ -103,10 +106,11 @@ async function runConverter(
   argumentsList: readonly string[],
 ): Promise<void> {
   try {
-    await execFileAsync('docker', [
-      ...containerArguments(work),
-      ...argumentsList,
-    ]);
+    await execFileAsync(
+      'docker',
+      [...containerArguments(work), ...argumentsList],
+      { maxBuffer: converterOutputLimit },
+    );
   } catch (error) {
     const detail =
       typeof error === 'object' && error !== null && 'stderr' in error
@@ -142,14 +146,29 @@ export async function convertTrackerToPsg(
       'file.overwrite=1',
       `/work/${sourceName}`,
     ]);
-    const index = (await readFile(path.join(work, 'index.csv'), 'utf8'))
+    const rows = (await readFile(path.join(work, 'index.csv'), 'utf8'))
       .trim()
-      .split(/\r?\n/u);
-    const detected = index.at(-1);
+      .split(/\r?\n/u)
+      .map((row) => row.trim())
+      .filter((row) => row !== '');
+    const detected = rows.at(-1);
     const expected = expectedFormat(extension);
     if (detected !== expected) {
       throw new Error(
         `Tracker extension ${extension} does not match ZXTune type ${detected ?? '<undetected>'}; expected ${expected}.`,
+      );
+    }
+    // A container holding several modules yields several rows, and only the last
+    // one was matched above. Reject when another row names a different supported
+    // type, because the conversion below would not correspond to it.
+    const conflicting = rows.filter(
+      (row): row is TrackerFormat =>
+        row !== expected &&
+        (TRACKER_FORMATS as readonly string[]).includes(row),
+    );
+    if (conflicting.length > 0) {
+      throw new Error(
+        `ZXTune detected additional module types (${conflicting.join(', ')}) alongside ${expected}; only single-module tracker sources are accepted.`,
       );
     }
 

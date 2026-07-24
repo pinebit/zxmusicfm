@@ -3,7 +3,12 @@ import { useRef, type CSSProperties } from 'react';
 type VolumeKnobProps = {
   readonly value: number;
   readonly disabled: boolean;
-  readonly onChange: (value: number) => void;
+  /**
+   * `scrubbing` marks the continuous stream of values a pointer drag produces, as
+   * opposed to a discrete keyboard commit. Persistence is coalesced only for the
+   * former; a keypress has to survive an immediate reload.
+   */
+  readonly onChange: (value: number, scrubbing: boolean) => void;
 };
 
 function clamp(value: number): number {
@@ -54,13 +59,13 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
           };
           if (event.key === 'Home' || event.key === 'End') {
             event.preventDefault();
-            onChange(event.key === 'Home' ? 0 : 100);
+            onChange(event.key === 'Home' ? 0 : 100, false);
             return;
           }
           const change = changes[event.key];
           if (change !== undefined) {
             event.preventDefault();
-            onChange(clamp(percent + change));
+            onChange(clamp(percent + change), false);
           }
         }}
         onPointerDown={(event) => {
@@ -78,12 +83,15 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
           if (start?.pointerId !== event.pointerId) return;
           const delta =
             (event.clientX - start.x - (event.clientY - start.y)) / 1.5;
-          onChange(clamp(start.value + delta));
+          onChange(clamp(start.value + delta), true);
         }}
         onPointerUp={(event) => {
-          if (gesture.current?.pointerId === event.pointerId) {
+          const start = gesture.current;
+          if (start?.pointerId === event.pointerId) {
             gesture.current = undefined;
             event.currentTarget.releasePointerCapture(event.pointerId);
+            // Commit the value the drag settled on, so it persists immediately.
+            onChange(percent, false);
           }
         }}
         onPointerCancel={() => {

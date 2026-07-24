@@ -18,5 +18,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
+      # `build` runs content validation, engine verification, and typecheck before
+      # Vite, so a separate typecheck step would only repeat work.
       - run: npm run build
