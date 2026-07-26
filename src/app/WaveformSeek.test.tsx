@@ -26,14 +26,14 @@ function stubDrawingContext(): {
     clearRect,
     clip: vi.fn(),
     drawImage: vi.fn(),
+    fill: vi.fn(),
     fillRect: vi.fn(),
     lineTo: vi.fn(),
     moveTo: vi.fn(),
-    rect: vi.fn(),
     restore: vi.fn(),
+    roundRect: vi.fn(),
     save: vi.fn(),
     stroke: vi.fn(),
-    strokeRect: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
   return { clearRect };

@@ -32,6 +32,11 @@ const waveformPalette = {
 
 const CHANNELS = ['A', 'B', 'C'] as const;
 
+// Matches `.waveform-canvas`'s border-radius (0.4rem at the default 16px root)
+// in styles.css, so the lens reads as flush with the canvas's own rounded
+// corners when it sits at the left or right extreme.
+const LENS_CORNER_RADIUS_CSS_PX = 6.4;
+
 // The subset of the 2D context that lane drawing needs, so the same routine can
 // target the visible canvas or an offscreen cache.
 type LaneContext = Pick<
@@ -211,18 +216,24 @@ export function WaveformSeek({
       const lensY = 0;
       const lensLaneHeight = lensSize / CHANNELS.length;
       const oscilloscopeSamples = adapter?.getOscilloscopeSamples?.();
+      const lensRadius = Math.min(
+        lensSize / 2,
+        LENS_CORNER_RADIUS_CSS_PX * ratio,
+      );
 
       context.save();
       context.globalAlpha = 1;
       context.shadowColor = 'rgb(0 0 0 / 55%)';
       context.shadowBlur = ratio * 4;
       context.fillStyle = waveformPalette.lensBackground;
-      context.fillRect(lensX, lensY, lensSize, lensSize);
+      context.beginPath();
+      context.roundRect(lensX, lensY, lensSize, lensSize, lensRadius);
+      context.fill();
       context.restore();
 
       context.save();
       context.beginPath();
-      context.rect(lensX, lensY, lensSize, lensSize);
+      context.roundRect(lensX, lensY, lensSize, lensSize, lensRadius);
       context.clip();
 
       for (const [index, channel] of CHANNELS.entries()) {
@@ -296,12 +307,15 @@ export function WaveformSeek({
       context.globalAlpha = 1;
       context.strokeStyle = waveformPalette.lensBorder;
       context.lineWidth = Math.max(1, ratio);
-      context.strokeRect(
+      context.beginPath();
+      context.roundRect(
         lensX + ratio * 0.5,
         lensY + ratio * 0.5,
         lensSize - ratio,
         lensSize - ratio,
+        Math.max(0, lensRadius - ratio * 0.5),
       );
+      context.stroke();
     },
     [adapter, duration, showPosition, visualWaveform],
   );

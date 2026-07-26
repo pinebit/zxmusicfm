@@ -22,6 +22,7 @@ import type {
   PlayerControllerSnapshot,
   PlayerError,
 } from '../playback/PlayerController.ts';
+import { AboutDialog } from './AboutDialog.tsx';
 import { BrandWordmark } from './BrandWordmark.tsx';
 import { ChannelMeters } from './ChannelMeters.tsx';
 import {
@@ -32,7 +33,6 @@ import {
   PreviousIcon,
   RestoreIcon,
 } from './ControlIcons.tsx';
-import { CreditsDialog } from './CreditsDialog.tsx';
 import { formatTime } from './formatTime.ts';
 import { PianoKeyboard } from './PianoKeyboard.tsx';
 import { VolumeKnob } from './VolumeKnob.tsx';
@@ -62,6 +62,7 @@ type WaveformState = { readonly attempt: number } & (
 const initialState: CatalogState = { status: 'loading' };
 const mobilePortraitQuery =
   '(max-width: 1024px) and (orientation: portrait) and (hover: none) and (pointer: coarse)';
+const SHARE_URL = 'https://zxmusicfm.vercel.app';
 
 function catalogReducer(
   _state: CatalogState,
@@ -152,11 +153,12 @@ function PlayerApplication({
     loadedWaveforms.attempt === waveformAttempt
       ? loadedWaveforms
       : { status: 'loading', attempt: waveformAttempt };
-  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
   const [mobilePortrait, setMobilePortrait] = useState(
     () => window.matchMedia(mobilePortraitQuery).matches,
   );
-  const creditsTrigger = useRef<HTMLButtonElement>(null);
+  const aboutTrigger = useRef<HTMLButtonElement>(null);
   const deckMaximizeTrigger = useRef<HTMLButtonElement>(null);
   const playerLayout = useRef<HTMLDivElement>(null);
   const deckControls = useRef<HTMLDivElement>(null);
@@ -351,9 +353,32 @@ function PlayerApplication({
     snapshot.durationSeconds > 0
       ? snapshot.positionSeconds / snapshot.durationSeconds
       : 0;
-  const closeCredits = useCallback(() => {
-    setCreditsOpen(false);
-    window.setTimeout(() => creditsTrigger.current?.focus(), 0);
+  const closeAbout = useCallback(() => {
+    setAboutOpen(false);
+    window.setTimeout(() => aboutTrigger.current?.focus(), 0);
+  }, []);
+  const shareApp = useCallback(() => {
+    const shareData = { title: 'ZX-MUSIC.FM', url: SHARE_URL };
+    if (typeof navigator.share === 'function') {
+      navigator.share(shareData).catch(() => undefined);
+      return;
+    }
+    const clipboard = (
+      navigator as unknown as { readonly clipboard?: Clipboard }
+    ).clipboard;
+    if (typeof clipboard?.writeText === 'function') {
+      clipboard
+        .writeText(SHARE_URL)
+        .then(() => {
+          setShareStatus('copied');
+          window.setTimeout(() => setShareStatus('idle'), 2000);
+        })
+        .catch(() =>
+          window.prompt('Copy this link to share ZX-MUSIC.FM:', SHARE_URL),
+        );
+      return;
+    }
+    window.prompt('Copy this link to share ZX-MUSIC.FM:', SHARE_URL);
   }, []);
 
   return (
@@ -362,8 +387,8 @@ function PlayerApplication({
         <section className="notice-panel" role="alert">
           <strong>Playback is not supported in this browser.</strong>
           <span>
-            You can still browse the catalog and credits. Try a current Chrome,
-            Firefox, Safari, or Edge release to listen.
+            You can still browse the catalog and About info. Try a current
+            Chrome, Firefox, Safari, or Edge release to listen.
           </span>
         </section>
       ) : null}
@@ -670,21 +695,7 @@ function PlayerApplication({
       </div>
 
       <footer className="site-footer">
-        <nav aria-label="Project, credits, and support">
-          <a
-            href="https://zxart.ee/eng/music/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            ZX-Art music
-          </a>
-          <button
-            ref={creditsTrigger}
-            type="button"
-            onClick={() => setCreditsOpen(true)}
-          >
-            About
-          </button>
+        <nav aria-label="Project, sharing, and support">
           <a
             href="https://buymeacoffee.com/pinebit"
             target="_blank"
@@ -692,9 +703,21 @@ function PlayerApplication({
           >
             Buy me a coffee
           </a>
+          <span aria-hidden="true">&middot;</span>
+          <button type="button" aria-live="polite" onClick={shareApp}>
+            {shareStatus === 'copied' ? 'Copied!' : 'Share'}
+          </button>
+          <span aria-hidden="true">&middot;</span>
+          <button
+            ref={aboutTrigger}
+            type="button"
+            onClick={() => setAboutOpen(true)}
+          >
+            About
+          </button>
         </nav>
       </footer>
-      <CreditsDialog open={creditsOpen} onClose={closeCredits} />
+      <AboutDialog open={aboutOpen} onClose={closeAbout} />
     </>
   );
 }

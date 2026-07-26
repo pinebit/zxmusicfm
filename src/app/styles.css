@@ -288,8 +288,7 @@ h3 {
 }
 
 .panel-heading,
-.meter-heading,
-.dialog-heading {
+.meter-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -1409,33 +1408,125 @@ h3 {
   color: #d0d2d5;
 }
 
-.credits-dialog {
-  width: min(46rem, calc(100% - 1.5rem));
-  max-height: min(48rem, calc(100vh - 2rem));
-  overflow-y: auto;
-  padding: clamp(1rem, 3vw, 1.8rem);
-  color: var(--cream);
-  background: linear-gradient(158deg, #24282d, #1a1d20 55%, #131518);
-  border: 1px solid var(--line);
-  border-radius: 0.8rem;
-  box-shadow: 0 2rem 6rem rgb(0 0 0 / 65%);
+.about-dialog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
-.credits-dialog::backdrop {
+.about-dialog {
+  width: min(46rem, calc(100% - 1.5rem));
+  max-height: min(46rem, calc(100dvh - 2rem));
+  padding: 0;
+  overflow: hidden;
+  color: var(--cream);
+  background:
+    radial-gradient(
+      circle at 0.8rem 0.8rem,
+      #74787c 0 0.06rem,
+      #070809 0.08rem 0.18rem,
+      transparent 0.2rem
+    ),
+    radial-gradient(
+      circle at calc(100% - 0.8rem) 0.8rem,
+      #74787c 0 0.06rem,
+      #070809 0.08rem 0.18rem,
+      transparent 0.2rem
+    ),
+    radial-gradient(
+      circle at 0.8rem calc(100% - 0.8rem),
+      #74787c 0 0.06rem,
+      #070809 0.08rem 0.18rem,
+      transparent 0.2rem
+    ),
+    radial-gradient(
+      circle at calc(100% - 0.8rem) calc(100% - 0.8rem),
+      #74787c 0 0.06rem,
+      #070809 0.08rem 0.18rem,
+      transparent 0.2rem
+    ),
+    linear-gradient(160deg, #26282a 0%, #111315 45%, #08090a 100%);
+  border: 2px solid #070809;
+  border-top-color: #55595d;
+  border-radius: 0.55rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    inset 0 -0.35rem 0.8rem rgb(0 0 0 / 48%),
+    0 2rem 6rem rgb(0 0 0 / 65%);
+  animation: about-seat 160ms ease-out;
+}
+
+.about-dialog::backdrop {
   background: rgb(5 6 7 / 78%);
   backdrop-filter: blur(3px);
+  animation: about-scrim-in 160ms ease-out;
 }
 
-.credits-dialog section {
-  padding: 1.15rem 0 0.35rem;
+.about-masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem) clamp(1.1rem, 3vw, 1.6rem) 1rem;
+  border-bottom: 1px solid #3d4146;
 }
 
-.credits-dialog section + section {
+.about-masthead .section-kicker {
+  margin-bottom: 0.4rem;
+}
+
+.about-dialog h2 {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 7%);
+}
+
+.about-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  color: var(--cream);
+  background: var(--hardware-surface);
+  border: 1px solid #555b62;
+  border-radius: 50%;
+  box-shadow: var(--hardware-shadow);
+  font-size: 1.35rem;
+  line-height: 1;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    filter 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.about-close:hover {
+  color: var(--amber);
+  filter: brightness(1.12);
+}
+
+.about-close:active {
+  background: #23272c;
+  box-shadow: inset 0 0.12rem 0.2rem rgb(0 0 0 / 38%);
+}
+
+.about-body {
+  overflow-y: auto;
+  padding: clamp(1rem, 3vw, 1.6rem);
+}
+
+.about-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+  gap: 0.5rem 1.25rem;
+  padding: 1.05rem 0;
+}
+
+.about-row + .about-row {
   border-top: 1px solid #33373c;
 }
 
-.credits-dialog h3 {
-  margin-bottom: 0.55rem;
+.about-row h3 {
+  margin: 0;
+  padding-top: 0.15rem;
   color: var(--amber);
   font-family: 'Inter Variable', ui-sans-serif, sans-serif;
   font-size: 0.7rem;
@@ -1444,85 +1535,54 @@ h3 {
   text-transform: uppercase;
 }
 
-.credits-dialog section p {
-  margin-bottom: 0;
+.about-row-body p {
+  margin: 0;
   color: #d0d2d5;
   line-height: 1.65;
 }
 
-.credits-dialog code {
-  padding: 0.05rem 0.32rem;
-  overflow-wrap: anywhere;
-  color: var(--cyan);
-  background: rgb(103 219 229 / 8%);
-  border: 1px solid #2f3a3c;
-  border-radius: 0.25rem;
-  font-size: 0.72rem;
+.about-row-body p + .about-notice-list {
+  margin-top: 0.6rem;
 }
 
-.project-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.8rem 0 0;
+.about-notice-group + .about-notice-group {
+  margin-top: 1rem;
 }
 
-.project-meta div {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  padding: 0.35rem 0.7rem;
-  background: rgb(255 255 255 / 4%);
-  border: 1px solid #3a3e44;
-  border-radius: 0.4rem;
-}
-
-.project-meta dt {
+.about-notice-group h4 {
+  margin: 0 0 0.5rem;
   color: #9da2a8;
-  font-size: 0.68rem;
+  font-family: 'Inter Variable', ui-sans-serif, sans-serif;
+  font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.project-meta dd {
-  margin: 0;
-  color: #d0d2d5;
-}
-
-.dialog-heading {
-  align-items: center;
-  margin-bottom: 0;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #3d4146;
-}
-
-.icon-button {
-  width: 2.75rem;
-  height: 2.75rem;
-  color: var(--cream);
-  background: #15171a;
-  border: 1px solid #656a71;
-  border-radius: 50%;
-  font-size: 1.5rem;
-}
-
-.credit-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.about-notice-list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.credit-list li {
-  padding: 0.32rem 0.7rem;
-  color: #d0d2d5;
-  background: rgb(255 255 255 / 4%);
-  border: 1px solid #3a3e44;
-  border-radius: 0.4rem;
+.about-notice-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.42rem 0;
   font-size: 0.82rem;
+}
+
+.about-notice-list li + li {
+  border-top: 1px solid #2a2d31;
+}
+
+.about-notice-list li span {
+  flex: 0 0 auto;
+  color: #8d9298;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .visually-hidden {
@@ -1540,6 +1600,26 @@ h3 {
 @keyframes rotate {
   to {
     transform: rotate(1turn);
+  }
+}
+
+@keyframes about-seat {
+  from {
+    transform: translateY(0.4rem) scale(0.985);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes about-scrim-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 
@@ -1782,6 +1862,29 @@ h3 {
   }
 }
 
+@media (max-width: 640px) {
+  .about-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+}
+
+@media (max-height: 30rem) {
+  .about-masthead {
+    padding: 0.6rem 1rem;
+  }
+
+  .about-masthead .section-kicker {
+    display: none;
+  }
+
+  .about-close {
+    width: 2.1rem;
+    height: 2.1rem;
+    font-size: 1.1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1806,7 +1909,7 @@ h3 {
 
   .track-panel,
   .meter-panel,
-  .credits-dialog,
+  .about-dialog,
   .page-error,
   .notice-panel {
     border: 2px solid CanvasText;

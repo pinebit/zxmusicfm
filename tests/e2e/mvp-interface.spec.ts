@@ -21,7 +21,7 @@ test('has no serious or critical accessibility findings', async ({ page }) => {
   expect(blocking).toEqual([]);
 });
 
-test('traps and restores focus for credits and licenses', async ({ page }) => {
+test('traps and restores focus for the About dialog', async ({ page }) => {
   await page.goto('/');
   const trigger = page.getByRole('button', { name: 'About' });
   await trigger.click();
@@ -32,8 +32,11 @@ test('traps and restores focus for credits and licenses', async ({ page }) => {
   ).toHaveAttribute('href', 'https://github.com/pinebit');
   await expect(dialog.getByText(packageMetadata.version)).toBeVisible();
   await expect(
-    dialog.getByRole('link', { name: 'GitHub repository' }),
+    dialog.getByRole('link', { name: 'GitHub', exact: true }),
   ).toHaveAttribute('href', 'https://github.com/pinebit/zxmusicfm');
+  await expect(
+    dialog.getByRole('link', { name: 'ZX-Art', exact: true }),
+  ).toHaveAttribute('href', 'https://zxart.ee/eng/music/');
   await expect(dialog.getByRole('heading', { name: 'Music' })).toHaveCount(0);
   await expect(
     dialog.getByRole('link', { name: 'Original source' }),
@@ -41,6 +44,23 @@ test('traps and restores focus for credits and licenses', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();
+});
+
+test('orders footer links and shares the app link without crashing', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const nav = page.getByRole('navigation', {
+    name: 'Project, sharing, and support',
+  });
+  const items = nav.locator('a, button');
+  await expect(items).toHaveText(['Buy me a coffee', 'Share', 'About']);
+
+  const pageErrors: Error[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error));
+  await nav.getByRole('button', { name: 'Share' }).click();
+  await expect(page.getByRole('button', { name: 'About' })).toBeVisible();
+  expect(pageErrors).toEqual([]);
 });
 
 test('uses the conventional seek fallback and preserves playback when waveforms fail', async ({
