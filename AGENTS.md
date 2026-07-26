@@ -29,7 +29,7 @@ Studio exists because the vendored engine snaps tone edges to the output sample 
 Both modes exist as parallel graphs feeding one volume node, and both renderers stay loaded so a switch only reconciles the one becoming active. Consequences worth knowing before touching either:
 
 - **Vanilla is a fixed reference, not a fallback.** Do not retune its chain, its gain structure, or its amplitude model to make studio look better. It is the thing listeners A/B against.
-- **Studio has no aliasing to hide.** Filters justified as "taming harshness" only throw away real harmonics there. `CHANNEL_SMOOTHING_HZ` was 9 kHz on that mistaken reasoning and left studio 3 to 7.6 dB darker than vanilla; it is 14 kHz because that measures within about 2 dB of vanilla from 2 kHz to 20 kHz.
+- **Studio has no aliasing to hide.** Filters justified as "taming harshness" only throw away real harmonics there. `CHANNEL_SMOOTHING_HZ` was 9 kHz on that mistaken reasoning and left studio 3 to 7.6 dB darker than vanilla; it is 14 kHz because that measures within about 2 dB of vanilla from 2 kHz to 20 kHz. The bass shelf that followed spends a little of that margin deliberately: studio now sits about 2.3 dB below vanilla at 4 kHz, as the other end of a tilt, not as band limiting.
 - **The two modes must stay loudness-matched**, or the toggle compares level instead of tone and the louder one always wins. See `STUDIO_MAKEUP_DB`.
 
 ## Repository workflow
@@ -165,7 +165,7 @@ This applies to the engine only. `chipSynth.ts` seeks by replaying register writ
 
 **The saturator's input trim is bounded by the WaveShaper curve's domain.** A `WaveShaperNode` curve is defined over ±1 and **hard-clamps** past it, which is clipping, not saturation. The hottest per-channel peak reaching the saturator across the whole catalog is 1.26 after DC blocking and smoothing, so `SATURATION_INPUT_TRIM` keeps that inside the curve and `saturationMakeupGain` restores unity for small signals. Raising `CHANNEL_SMOOTHING_HZ` raises that peak — re-measure before changing either. An early draft used a trim of 2.5 on the assumption that per-channel peaks were near 0.28; that would have hard-clipped every loud passage.
 
-**`STUDIO_MAKEUP_DB` is a measurement, not a taste setting.** It must be derived from K-weighted loudness of both modes' **complete static chains**, not their dry mixes: vanilla's +4 dB bass shelf and studio's presence dip are worth about 1.5 dB between them, and omitting them understates the requirement. Re-derive it after any change to either chain's EQ or to the synth's band limiting, or the toggle silently becomes a level comparison.
+**`STUDIO_MAKEUP_DB` is a measurement, not a taste setting.** It must be derived from K-weighted loudness at the **output of both complete chains**, not from their dry mixes and not from a pre-limiter tap: a dry comparison misses the two EQ curves, and a pre-limiter one misses that the limiter absorbs roughly 60% of any make-up change, so 0.1 dB off the constant moves the output about 0.04 dB. Sweep it against a measurement; do not solve for it. Re-derive after any change to either chain's EQ or to the synth's band limiting, or the toggle silently becomes a level comparison.
 
 **Meter and voice timelines are stamped with audible time.** Buffers are scheduled up to 300 ms ahead, so reading the engine or the newest queued chunk directly would run the meters, keyboard, and oscilloscope ahead of the sound. Both `getChannelLevels` and `getChannelVoices` must keep their `time <= now` gate.
 

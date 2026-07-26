@@ -45,7 +45,15 @@ const SATURATION_CURVE_POINTS = 1_024;
 const STUDIO_PAN = 0.8;
 
 const STUDIO_BASS_SHELF_HZ = 180;
-const STUDIO_BASS_SHELF_DB = 2.5;
+// Matched to vanilla's shelf, as a deliberate tilt toward weight rather than a
+// correction: at 2.5 dB studio was not short of bass at the output. Measured
+// over the catalog through both complete chains, it sat within 0.4 dB of
+// vanilla below 250 Hz, because the make-up exceeds the band-limited
+// renderer's broadband deficit by about as much as the smaller shelf gave away.
+// At 4 dB, with the make-up re-derived, studio moves from +0.4 to +1.2 dB
+// against vanilla at 63 Hz and from -0.4 to +0.3 dB at 125 Hz, while 250 Hz up
+// drops about 0.4 dB — a tilt of roughly 1.3 dB at constant loudness.
+const STUDIO_BASS_SHELF_DB = 4;
 // Square waves pile up energy where the ear is most sensitive.
 const PRESENCE_DIP_HZ = 3_000;
 const PRESENCE_DIP_Q = 0.9;
@@ -70,17 +78,25 @@ const STUDIO_LIMITER_THRESHOLD_DB = -1.5;
  * The engine's aliasing is itself energy, so the same track measures louder
  * through the vanilla path than through the band-limited one.
  *
- * Derived by measuring K-weighted loudness of all 24 tracks through both modes'
- * complete static chains — including vanilla's +4 dB bass shelf and studio's
- * presence dip, which a dry-mix comparison misses and which are worth 1.5 dB
- * between them. The requirement is 4.0 to 8.3 dB, mean 7.0, median 7.1; this
- * figure holds 22 of the 24 within 1.3 dB. `dreamer-hi` is the outlier at 4.0,
- * needing least because it is noise-heavy and noise aliases alike either way.
+ * Derived by measuring K-weighted loudness at the output of both modes'
+ * complete chains — every filter, both sends and the limiter — over the whole
+ * catalog, since a dry-mix comparison misses vanilla's bass shelf and studio's
+ * presence dip, and a pre-limiter one misses how much the limiter gives back.
+ * At 6.6 dB studio lands 0.40 dB above vanilla on average, spanning -0.4 to
+ * +1.4 dB per track. `imp-assorty6` and `ksa-action-epilogue` sit at the top
+ * and `asc-antp` at the bottom.
+ *
+ * Sweep this value rather than solving for it: the limiter absorbs roughly 60%
+ * of any change, so 0.1 dB off the make-up moves the output about 0.04 dB.
+ *
+ * It was 7 dB while the studio bass shelf was +2.5 dB, and 6.6 puts the mode-to-
+ * mode difference back where 7 held it, so that shelf change reads as tone and
+ * not as level.
  *
  * Applied before the limiter, never after, so the make-up cannot push the output
  * past full scale.
  */
-const STUDIO_MAKEUP_DB = 7;
+const STUDIO_MAKEUP_DB = 6.6;
 
 /**
  * One switchable presentation of the three chip channels. Both chains are fed
