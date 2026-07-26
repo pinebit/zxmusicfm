@@ -24,7 +24,8 @@ Two things follow from that and explain most of the design:
 - Do not create or modify an external Vercel project without separate explicit authorization.
 - Use `apply_patch` for hand-edited text and source files. Formatting tools may perform mechanical rewrites.
 - Do not hand-edit generated catalogs, waveform packs, playback files, hashes, or provenance. Change authoritative inputs or tooling and regenerate them.
-- Do not add analytics, tracking, advertising, cookies, telemetry, a service worker, PWA behavior, or remote runtime assets.
+- Do not add advertising, cookies, a service worker, PWA behavior, or remote runtime assets.
+- Vercel Web Analytics (`@vercel/analytics/react`, the default `<Analytics />` component with no `mode` or `debug` override) is the one permitted exception, added as an explicit product decision. It is page-view/web-vitals telemetry only: do not call `track()` for custom events, clicks, or other UI interactions. Its script and beacon requests are served through the deployment's own origin by Vercel's edge network, so `'self'` in the existing CSP already covers them — do not relax `script-src` or `connect-src` for a third-party analytics domain. Do not add any other analytics or tracking provider without a similar explicit decision recorded here.
 
 ## Toolchain and commands
 

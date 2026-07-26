@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App.tsx';
@@ -9,4 +10,9 @@ if (!(rootElement instanceof HTMLElement)) {
   throw new Error('Missing #root application mount point.');
 }
 
-createRoot(rootElement).render(<App />);
+createRoot(rootElement).render(
+  <>
+    <App />
+    <Analytics />
+  </>,
+);
