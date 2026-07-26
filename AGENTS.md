@@ -234,6 +234,15 @@ npm run content:remove -- --id <slug> --yes
 
 Track title and author are embedded in the generated YM6 metadata, so changing either rewrites the runtime bytes, its SHA-256, its public filename, `provenance.json`, and `catalog.json`. Waveform payloads do not depend on metadata, so the waveform pack hash stays put. Expect exactly that set of files to change and confirm no `.content-stage-*` directory survives the run.
 
+### Resolving zxart.ee source URLs
+
+A zxart.ee track page (e.g. `https://zxart.ee/eng/authors/z/ziutek/shock7/`) is an Angular SPA; the module download link is not present in the plain HTML. Resolve it through zxart's public API instead of scraping the rendered page:
+
+1. Fetch the page HTML anyway and read the `og:audio` meta tag, e.g. `https://music.zxart.ee/music/81553_Ziutek_Shock7.ogg`. The leading number (`81553`) is the `zxMusicId`.
+2. Query `https://zxart.ee/api/export:zxMusic/limit:10/filter:zxMusicId=<id>` with a non-empty `User-Agent` (required or the API bans the IP on sight). The response's `responseData.zxMusic[0]` has `title`, `authorIds`, `year`, `type` (tracker/chip format), `compo`, and `originalUrl` — the real, directly downloadable file URL to pass as `--url` to `content:import`. Keep the zxart page URL itself as `--source-url`; it is the catalog's attribution field, not the download source.
+3. `type` names the format zxart assigns, which does not always match the file extension `content:import` expects: `COP`/`VTX`/other non-tracker types cannot be imported at all (only PT3/STC/ASC/STP/FTC via Docker, or AY/YM/PSG directly). A `.pt3` extension is not sufficient on its own either — ZXTune inspects the file and rejects a source whose _detected_ type is `TS` (dual-chip TurboSound), which the pipeline does not model; `content:import` fails with a clear "extension does not match ZXTune type" error in that case, before writing anything.
+4. `chipType` (AY vs YM) and `channelLayout` (ABC vs ACB) are not derivable from the zxart API; they encode the curator's knowledge of the intended hardware and the tracker's channel convention. In the current catalog, `channelLayout` tracks the source format (STC and ASC convert to ACB; PT3, AY, PSG, STP, and FTC convert to ABC) and `chipType` tracks the author's established convention elsewhere in the catalog (e.g. every Ziutek track is YM, every Klav track is AY) — check existing tracks by the same author before guessing, and note the guess explicitly when there is no precedent, since it audibly changes the amplitude model.
+
 ## Playback engine and generated artifacts
 
 - `ENGINE_COMMIT` in `src/playback/enginePin.ts` is the only place the pinned revision is written. The provenance schema, the content pipeline, `rebuild-engine.sh`, and `engine:verify` all read it, and `engine:verify` asserts `vendor/ym2149/manifest.json` records the same revision. Change it only alongside an explicit engine decision recorded here. The pin is currently `b3096aac0dcab6dd1d82c0209f579761943aadc6` (ym2149-rs v0.9.1).

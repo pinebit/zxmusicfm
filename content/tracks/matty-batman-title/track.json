@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "matty-batman-title",
+  "order": 32,
+  "title": "Batman The Movie",
+  "author": "Matty",
+  "sourceUrl": "https://zxart.ee/eng/authors/m/matthew-cannon/batman-the-movie---title-ay-1/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 1989
+}

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:ASC_-_ANTP.asc",
+  "sourceFormat": "ASC",
+  "sourceSha256": "8188392a83027d3582870c783a55d186595f99657838ca6d614f6d07795ab508",
+  "sourceByteLength": 6803,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "1f67380935a72c6ba73dcd29a0f2066f3901a2800aace7fc4b9f24fe379436a2",
+  "runtimeByteLength": 190532,
+  "frameCount": 11902,
+  "durationSeconds": 238.04,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "22d74f2c94351a7fe3f68ba8b3f4d922d9b6f196b0c77dd93389acc57e7c99f4",
+  "measuredLoudnessLufs": -9.67,
+  "normalizationGainDb": 0.67,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "ASC",
+    "sourceSha256": "8188392a83027d3582870c783a55d186595f99657838ca6d614f6d07795ab508",
+    "psgSha256": "23034d754538cd1086efc1fc158e1ce3a7b2529dba27de46483d80f906e113ba",
+    "psgByteLength": 135190
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

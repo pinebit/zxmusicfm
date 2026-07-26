@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ziutek-shock3",
+  "order": 26,
+  "title": "Shock3",
+  "author": "Ziutek",
+  "sourceUrl": "https://zxart.ee/eng/authors/z/ziutek/shock3/",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1992
+}

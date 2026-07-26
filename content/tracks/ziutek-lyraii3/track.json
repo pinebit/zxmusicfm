@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ziutek-lyraii3",
+  "order": 27,
+  "title": "Lyra II part 3",
+  "author": "Ziutek",
+  "sourceUrl": "https://zxart.ee/eng/authors/z/ziutek/lyraii3/",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1991
+}

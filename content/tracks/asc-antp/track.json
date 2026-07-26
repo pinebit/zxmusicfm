@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "asc-antp",
+  "order": 33,
+  "title": "ANTP",
+  "author": "ASC",
+  "sourceUrl": "https://zxart.ee/eng/authors/a/asc/antp/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB"
+}

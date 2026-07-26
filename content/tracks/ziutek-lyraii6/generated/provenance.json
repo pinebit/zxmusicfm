@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:Ziutek_-_LyraII6_(1991).stc",
+  "sourceFormat": "STC",
+  "sourceSha256": "f7a62b3da54204eec9dfc05d5346fe76c5ab2ef53d9f9b1663504050d9f5277f",
+  "sourceByteLength": 1664,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeMode": "convert",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "d5aa6b39e7d649727ccec1bd6e637b5819046fc663c97976f377b92d5a241c2f",
+  "runtimeByteLength": 55393,
+  "frameCount": 3455,
+  "durationSeconds": 69.1,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "ad14ed84268babd3942a08d3b0e056db8ec11678f445d5748330c7c6b6450578",
+  "measuredLoudnessLufs": -10.97,
+  "normalizationGainDb": 1.97,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "sourceFormat": "STC",
+    "sourceSha256": "f7a62b3da54204eec9dfc05d5346fe76c5ab2ef53d9f9b1663504050d9f5277f",
+    "psgSha256": "fe67e2b0407953a33c7c1ce667bad4860d1dec285f7eaea388ffecdb4101eb5d",
+    "psgByteLength": 29464
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+  }
+}

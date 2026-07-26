@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "imp-vibrations-outro",
+  "order": 31,
+  "title": "Vibrations Outro",
+  "author": "IMP",
+  "sourceUrl": "https://zxart.ee/eng/authors/i/imp1/vibrations-outro/",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1996
+}
