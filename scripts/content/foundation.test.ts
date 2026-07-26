@@ -5,6 +5,10 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  generatedCatalogSchema,
+  generatedProvenanceSchema,
+} from '../../src/content/schemas.ts';
+import {
   detectSupportedSource,
   generateFoundationContent,
   validateContent,
@@ -50,6 +54,86 @@ describe('foundation content generation', () => {
   it('validates the generated real catalog and provenance', async () => {
     await expect(validateContent(process.cwd())).resolves.toBeDefined();
   }, 120_000);
+
+  it('derives a bounded loudness match for every committed track', async () => {
+    const catalog = generatedCatalogSchema.parse(
+      JSON.parse(
+        await readFile(
+          path.join(process.cwd(), 'public', 'generated', 'catalog.json'),
+          'utf8',
+        ),
+      ) as unknown,
+    );
+
+    for (const track of catalog.tracks) {
+      // Rounded to two decimals so the value is stable under the byte comparison
+      // `validateContent` performs, and clamped so a pathological measurement
+      // cannot ship a gain that swamps the volume knob.
+      expect(track.normalizationGainDb).toBe(
+        Math.round(track.normalizationGainDb * 100) / 100,
+      );
+      expect(Math.abs(track.normalizationGainDb)).toBeLessThanOrEqual(6);
+
+      const provenance = generatedProvenanceSchema.parse(
+        JSON.parse(
+          await readFile(
+            path.join(
+              process.cwd(),
+              'content',
+              'tracks',
+              track.id,
+              'generated',
+              'provenance.json',
+            ),
+            'utf8',
+          ),
+        ) as unknown,
+      );
+      // The catalog carries the gain the browser applies; provenance also keeps
+      // the measurement it came from, so a retune can be reasoned about later.
+      expect(provenance.normalizationGainDb).toBe(track.normalizationGainDb);
+      expect(provenance.measuredLoudnessLufs).toBeLessThan(0);
+    }
+  }, 30_000);
+
+  it('derives each gain as the distance from the loudness target', async () => {
+    // Pins the target and the clamp. Asserting the derivation rather than the
+    // spread of the current catalog, whose contents are a curatorial choice.
+    const target = -9;
+    const catalog = generatedCatalogSchema.parse(
+      JSON.parse(
+        await readFile(
+          path.join(process.cwd(), 'public', 'generated', 'catalog.json'),
+          'utf8',
+        ),
+      ) as unknown,
+    );
+
+    for (const track of catalog.tracks) {
+      const provenance = generatedProvenanceSchema.parse(
+        JSON.parse(
+          await readFile(
+            path.join(
+              process.cwd(),
+              'content',
+              'tracks',
+              track.id,
+              'generated',
+              'provenance.json',
+            ),
+            'utf8',
+          ),
+        ) as unknown,
+      );
+      const expected = Math.max(
+        -6,
+        Math.min(6, target - provenance.measuredLoudnessLufs),
+      );
+      // Within a rounding step: the gain is derived from the unrounded
+      // measurement, while provenance stores the rounded one.
+      expect(track.normalizationGainDb).toBeCloseTo(expected, 1);
+    }
+  }, 30_000);
 });
 
 describe('tracker source routing', () => {

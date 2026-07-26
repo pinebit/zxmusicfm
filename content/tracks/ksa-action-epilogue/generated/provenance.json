@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "Action_2.stp",
+  "originalFileName": "source.stp",
   "sourceFormat": "STP",
   "sourceSha256": "d96ef70a9ace550458bf1095e7cd28d926ef5161f9ebadf48845b9e1ffd7c08c",
   "sourceByteLength": 4972,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "fadb10058f2c043510f2d040344d12483ad8d14df3fd14647f3ccd649f3d58ee",
+  "measuredLoudnessLufs": -5.91,
+  "normalizationGainDb": -3.09,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

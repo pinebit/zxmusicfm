@@ -48,6 +48,7 @@ const catalogWithTrack: GeneratedCatalog = {
       chipClockHz: 1_773_400,
       frameRateHz: 50,
       channelLayout: 'ABC',
+      normalizationGainDb: 0,
       waveformByteOffset: 32,
       waveformByteLength: 12_288,
     },
@@ -251,6 +252,73 @@ describe('App', () => {
         name: 'Enter distraction-free mode',
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it('exposes the studio sound toggle as a pressed control by default', async () => {
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const toggle = await screen.findByRole('button', { name: 'Studio sound' });
+    // New listeners get the produced presentation; vanilla is the opt-in.
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toBeEnabled();
+  });
+
+  it('switches the studio toggle to vanilla and back', async () => {
+    const user = userEvent.setup();
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const toggle = await screen.findByRole('button', { name: 'Studio sound' });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    // State is announced through aria-pressed, not the label, so the accessible
+    // name has to stay put while the tooltip follows the state.
+    expect(toggle).toHaveAccessibleName('Studio sound');
+    expect(toggle).toHaveAttribute(
+      'title',
+      'Studio sound off - playing the raw chip',
+    );
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toHaveAttribute(
+      'title',
+      'Studio sound on - switch to the raw chip',
+    );
+  });
+
+  it('restores a stored vanilla mode', async () => {
+    localStorage.setItem(
+      PLAYER_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        selectedTrackId: 'solitude',
+        positionSeconds: 0,
+        volume: 0.8,
+        shuffle: false,
+        mode: 'vanilla',
+      }),
+    );
+
+    try {
+      render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+      expect(
+        await screen.findByRole('button', { name: 'Studio sound' }),
+      ).toHaveAttribute('aria-pressed', 'false');
+    } finally {
+      localStorage.removeItem(PLAYER_STORAGE_KEY);
+    }
+  });
+
+  it('explains why shuffle is unavailable on a single-track catalog', async () => {
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const shuffle = await screen.findByRole('button', { name: 'Shuffle' });
+    expect(shuffle).toBeDisabled();
+    expect(shuffle).toHaveAttribute(
+      'title',
+      'Shuffle needs at least two tracks',
+    );
   });
 
   it('renders playback progress beneath the ON AIR text', async () => {

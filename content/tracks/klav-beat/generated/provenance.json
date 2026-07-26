@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "BEAT.asc",
+  "originalFileName": "source.asc",
   "sourceFormat": "ASC",
   "sourceSha256": "430fbb335ba11877e8ecd85775e1f3c9426904004a7749b888a22eef9109b30a",
   "sourceByteLength": 2988,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "5437d1a114cc8ea99fc7ad189ef202db59304f0d2e2c8050eb7f31f90d44ed01",
+  "measuredLoudnessLufs": -11.88,
+  "normalizationGainDb": 2.88,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

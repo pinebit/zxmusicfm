@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "Commando.ay",
+  "originalFileName": "source.ay",
   "sourceFormat": "AY",
   "sourceSha256": "51e49d0413be6c557ef5e2696cfc051dfcd0931bbbfba8029c90ebf69dd6d629",
   "sourceByteLength": 3205,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "dab47f5ff010155a012d1e2fdcf18d7e54e0fb64223266b39f120016c904bd83",
+  "measuredLoudnessLufs": -6.51,
+  "normalizationGainDb": -2.49,
   "trackerConversion": null,
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {

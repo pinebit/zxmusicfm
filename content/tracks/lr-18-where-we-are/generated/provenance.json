@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "WHEREWER.ftc",
+  "originalFileName": "source.ftc",
   "sourceFormat": "FTC",
   "sourceSha256": "eb65484ce3d2dbab2ed51506c9706c822b2f88e40d02c88da0533ad7dd6a184b",
   "sourceByteLength": 6359,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "b174c6eccd2a001e32dfde5e8bd87bc6847cb4a49d6d16fbdcb3f8804af0133c",
+  "measuredLoudnessLufs": -11.13,
+  "normalizationGainDb": 2.13,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

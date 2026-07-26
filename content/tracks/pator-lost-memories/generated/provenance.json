@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "filename:Pator_-_Lost_Memories_(2021)_(Lost_Party_2021,_2).pt3",
+  "originalFileName": "source.pt3",
   "sourceFormat": "PT3",
   "sourceSha256": "abc61836ea7f357e7c3e24744c52becea07a28bdd6ea1d0e27a76f1e6512f84d",
   "sourceByteLength": 9822,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "9831a7f5ba6a8b9c1d56aeb79bba01503de782b4cf2a110221a7e474260054ff",
+  "measuredLoudnessLufs": -6.38,
+  "normalizationGainDb": -2.62,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

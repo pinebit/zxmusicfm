@@ -1138,24 +1138,30 @@ h3 {
 }
 
 .deck-options {
-  display: grid;
+  display: flex;
   min-height: var(--deck-control-zone-height);
   align-items: center;
-  justify-items: start;
   justify-content: flex-start;
+  gap: clamp(0.22rem, 0.6vw, 0.4rem);
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+/* Two toggles share a 1fr column, so they give up width before overflowing it. */
+.deck-options .deck-toggle {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .deck-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.28rem;
   width: var(--deck-control-width);
   height: clamp(1.9rem, 3vw, 2.2rem);
-  padding-inline: clamp(0.2rem, 1vw, 1rem);
+  padding-inline: clamp(0.16rem, 0.7vw, 0.62rem);
   color: #e7ddc1;
   background: var(--hardware-surface);
   border: 1px solid #555b62;
@@ -1167,24 +1173,30 @@ h3 {
     box-shadow 120ms ease;
 }
 
+/* A short thin vertical strip beside the glyph, not a full-height bar. Narrower
+   than a square pilot lamp, which is what lets the buttons give back width. Too
+   narrow to carry a 1px border and still show its fill, so the outline is a
+   shadow. */
 .deck-led {
   flex: 0 0 auto;
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.22rem;
+  height: 0.6rem;
   background: #17120a;
-  border: 1px solid #161719;
+  border: 0;
   border-radius: 0;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 8%),
-    0 0 0 1px #030404;
-  transition: background 120ms ease;
+  box-shadow: 0 0 0 1px #030404;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .deck-toggle[aria-pressed='true'] .deck-led {
   background: var(--amber);
+  /* Blooms as well as changes hue, so lit and unlit differ in brightness rather
+     than colour alone. */
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 28%),
-    0 0 0 1px #111315;
+    0 0 0 1px #111315,
+    0 0 0.3rem var(--amber);
 }
 
 .deck-toggle-icon {
@@ -1208,7 +1220,9 @@ h3 {
 }
 
 .deck-controls {
-  --deck-control-width: clamp(3.1rem, 6vw, 3.8rem);
+  /* Narrowed with the strip LED: the widest content is now the 1.05rem glyph
+     plus a 0.22rem strip and a 0.28rem gap. */
+  --deck-control-width: clamp(2.55rem, 4.8vw, 3rem);
   --deck-control-zone-height: clamp(3.25rem, 5vw, 4.25rem);
   --transport-control-width: clamp(2.25rem, 5vw, 3.15rem);
 
@@ -1856,7 +1870,7 @@ h3 {
   }
 
   .deck-controls {
-    --deck-control-width: clamp(2.8rem, 12vw, 3.1rem);
+    --deck-control-width: clamp(2.4rem, 10vw, 2.7rem);
 
     padding-inline: 0;
   }
@@ -1936,6 +1950,13 @@ h3 {
   }
 
   .piano-key.is-active {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  /* A 0.22rem strip cannot show a system colour legibly, so forced colours put
+     the pressed state on the button, matching the active piano key. */
+  .deck-toggle[aria-pressed='true'] {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }

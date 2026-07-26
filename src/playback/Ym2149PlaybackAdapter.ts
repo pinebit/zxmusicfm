@@ -1,24 +1,36 @@
+import {
+  buildStudioChain,
+  buildVanillaChain,
+  CHANNELS,
+  MIX_HEADROOM,
+  mixTransitionEnd,
+  type ModeChain,
+  OSCILLOSCOPE_FFT_SIZE,
+} from './audioGraph.ts';
 import { applyChipAmplitudeModel } from './chipModel.ts';
-import type {
-  ChannelId,
-  ChannelLevels,
-  ChannelOrder,
-  ChannelVoices,
-  OfflineRender,
-  OscilloscopeSamples,
-  PlaybackAdapter,
-  PlaybackAdapterListener,
-  PlaybackAdapterSnapshot,
-  PlaybackStatus,
-  RuntimeTrack,
+import {
+  type ChipSource,
+  createEngineChipSource,
+  createSynthChipSource,
+} from './chipSource.ts';
+import {
+  type ChannelLevels,
+  type ChannelOrder,
+  type ChannelVoices,
+  type OfflineRender,
+  type OscilloscopeSamples,
+  type PlaybackAdapter,
+  type PlaybackAdapterListener,
+  type PlaybackAdapterSnapshot,
+  type PlaybackMode,
+  playbackModes,
+  type PlaybackStatus,
+  type RuntimeTrack,
 } from './contracts.ts';
 import {
   createEnginePlayer,
-  createEnginePlayerAtSample,
   ENGINE_RENDER_CHUNK,
-  type EnginePlayer,
   generateEngineChannels,
-  getEngineChannelVoices,
   initializeYm2149,
 } from './engine.ts';
 import { ENGINE_SAMPLE_RATE, OFFLINE_SAMPLE_RATE } from './sampleRates.ts';
@@ -29,20 +41,13 @@ const SCHEDULE_CHUNK_SAMPLES = 4_410;
 const SCHEDULE_AHEAD_SECONDS = 0.3;
 const SCHEDULER_INTERVAL_MS = 50;
 const START_LATENCY_SECONDS = 0.02;
-const CENTER_GAIN = Math.SQRT1_2;
-const MIX_HEADROOM = 0.5;
-const CHANNELS = ['A', 'B', 'C'] as const;
-const OSCILLOSCOPE_FFT_SIZE = 1_024;
-
-// Master post-processing chain applied to the stereo mix, in order:
-// sub-sonic high-pass → bass low-shelf → safety limiter → high-frequency
-// low-pass, then the volume gain node. Tuned for the YM/AY square-wave sound.
-const SUBSONIC_HZ = 25; // high-pass: block DC / subsonic energy
-const FILTER_Q = Math.SQRT1_2; // Butterworth (flat) response for HP/LP
-const BASS_SHELF_HZ = 180; // low-shelf corner
-const BASS_SHELF_DB = 4; // low-shelf boost
-const LIMITER_THRESHOLD_DB = -1; // catch peaks the boost pushes past 0 dBFS
-const SMOOTHING_HZ = 15_000; // low-pass: tame harsh highs / aliasing
+// A mode switch renders both sources for one chunk and crossfades between the
+// two chains, so the listener hears a morph rather than a splice. Without the
+// overlap the retiring chain's buffers simply stop, and the DC step that leaves
+// in its high-pass is an audible thump.
+const CROSSFADE_SAMPLES = SCHEDULE_CHUNK_SAMPLES;
+const CROSSFADE_SECONDS = CROSSFADE_SAMPLES / ENGINE_SAMPLE_RATE;
+const DEFAULT_MODE: PlaybackMode = 'studio';
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
@@ -69,23 +74,28 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private positionSeconds = 0;
   private durationSeconds = 0;
   private track: RuntimeTrack | undefined;
-  private player: EnginePlayer | undefined;
   private listeners = new Set<PlaybackAdapterListener>();
   private audioContext: AudioContext | undefined;
   private gainNode: GainNode | undefined;
-  // Head of the master post-processing chain, after the channel router. The
-  // chain runs to `gainNode` and is built once in `buildAudioGraph`.
-  private masterInput: AudioNode | undefined;
-  private channelInput: AudioNode | undefined;
-  private channelMixGains:
-    Readonly<Record<ChannelId, readonly [GainNode, GainNode]>> | undefined;
-  private channelAnalysers:
-    Readonly<Record<ChannelId, AnalyserNode>> | undefined;
+  // Build-time loudness match. Each chain applies it ahead of its own limiter,
+  // so a track that needs lifting is caught rather than clipped.
+  private normalizationGainDb = 0;
+  // Chains are built on first use: a listener who stays in vanilla never pays
+  // for the studio convolver, and vice versa.
+  private chains: Partial<Record<PlaybackMode, ModeChain>> = {};
+  private mode: PlaybackMode = DEFAULT_MODE;
   private readonly oscilloscopeSamples: OscilloscopeSamples = {
     A: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
     B: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
     C: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
   };
+  // Both renderers stay loaded so a mode switch only has to reconcile the one
+  // becoming active. Each tracks its own source-sample position.
+  private sources: Partial<Record<PlaybackMode, ChipSource>> = {};
+  // The mode being faded out, rendered alongside the active one until its
+  // source-sample deadline passes.
+  private retiring:
+    { readonly mode: PlaybackMode; readonly untilSample: number } | undefined;
   private scheduledSources = new Set<AudioBufferSourceNode>();
   private scheduler: ReturnType<typeof globalThis.setInterval> | undefined;
   private nextScheduleTime = 0;
@@ -100,7 +110,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     readonly levels: ChannelLevels;
   }[] = [];
   // Pitch changes are recorded at source-frame resolution and stamped with
-  // their audible AudioContext time. Reading the engine directly would expose
+  // their audible AudioContext time. Reading the renderer directly would expose
   // the buffers scheduled up to 300 ms ahead.
   private voiceTimeline: {
     readonly time: number;
@@ -110,10 +120,6 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   private channelOrder: ChannelOrder = 'ABC';
   private loadGeneration = 0;
   private disposed = false;
-  // Source-sample position of `player`. Rewinding costs a full render from zero,
-  // so pause/stop/seek only record where playback should resume and `play`
-  // reconciles this against `positionSeconds` exactly once.
-  private playerSample = 0;
 
   constructor(permittedAudioContext?: AudioContext) {
     this.audioContext = permittedAudioContext;
@@ -124,13 +130,15 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     assertFiniteTrack(track);
     const generation = ++this.loadGeneration;
     this.stopScheduling();
-    this.releasePlayer();
+    this.releaseSources();
     this.track = track;
     this.durationSeconds = track.durationSeconds;
     this.positionSeconds = 0;
     this.status = 'loading';
     this.levelTimeline = [];
     this.voiceTimeline = [];
+    this.normalizationGainDb = track.normalizationGainDb ?? 0;
+    this.updateNormalization();
     this.publish();
 
     try {
@@ -141,15 +149,17 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
         return;
       }
 
-      const player = createEnginePlayer(track.bytes);
-      if (player.channelCount() !== 3) {
-        player.free();
+      const { source, channelCount } = createEngineChipSource(track.bytes);
+      if (channelCount !== 3) {
+        source.free();
         throw new Error(
           `Track ${track.id} did not expose exactly A/B/C channels.`,
         );
       }
-      this.player = player;
-      this.playerSample = 0;
+      this.sources = {
+        vanilla: source,
+        studio: createSynthChipSource(track),
+      };
       this.status = 'ready';
       this.publish();
     } catch (error) {
@@ -163,8 +173,9 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
 
   async play(): Promise<void> {
     this.assertNotDisposed();
+    const source = this.sources[this.mode];
     if (
-      this.player === undefined ||
+      source === undefined ||
       this.track === undefined ||
       !['ready', 'paused', 'ended'].includes(this.status)
     ) {
@@ -184,15 +195,16 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       );
     }
 
-    // The only place the engine is rewound. Doing it here rather than in
+    // The only place a renderer is rewound. Doing it here rather than in
     // pause/stop/seek keeps those instant and collapses a pause-then-seek, or a
     // pause-then-different-track, into no reconstruction at all.
     const startSample = Math.round(this.positionSeconds * ENGINE_SAMPLE_RATE);
-    if (this.playerSample !== startSample) {
-      this.replacePlayerAtSample(startSample);
+    if (source.sample !== startSample) {
+      source.seekToSample(startSample);
     }
 
-    this.player.play();
+    source.play();
+    this.retiring = undefined;
     this.status = 'playing';
     this.anchorPositionSeconds = this.positionSeconds;
     this.anchorContextTime = context.currentTime + START_LATENCY_SECONDS;
@@ -211,7 +223,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     }
     const position = this.livePosition();
     this.stopScheduling();
-    this.player?.pause();
+    this.pauseSources();
     this.positionSeconds = position;
     this.status = 'paused';
     this.levelTimeline = [];
@@ -220,11 +232,11 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   }
 
   stop(): void {
-    if (this.player === undefined) {
+    if (this.sources[this.mode] === undefined) {
       return;
     }
     this.stopScheduling();
-    this.player.pause();
+    this.pauseSources();
     this.positionSeconds = 0;
     this.status = 'ready';
     this.levelTimeline = [];
@@ -234,13 +246,13 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
 
   async seek(positionSeconds: number): Promise<void> {
     this.assertNotDisposed();
-    if (this.player === undefined || this.track === undefined) {
+    if (this.sources[this.mode] === undefined || this.track === undefined) {
       return;
     }
     const wasPlaying = isPlayingStatus(this.status);
     const position = clamp(positionSeconds, 0, this.durationSeconds);
     this.stopScheduling();
-    this.player.pause();
+    this.pauseSources();
     this.positionSeconds = position;
     this.levelTimeline = [];
     this.voiceTimeline = [];
@@ -268,6 +280,54 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.updateChannelMix();
   }
 
+  /**
+   * Switches renderer and processing chain together. While playing, the retiring
+   * mode keeps rendering for one chunk so the two chains crossfade; the audio
+   * already queued always finishes on the chain that produced it.
+   */
+  setMode(mode: PlaybackMode): void {
+    if (this.mode === mode) return;
+    const previous = this.mode;
+    this.mode = mode;
+
+    const context = this.audioContext;
+    if (context === undefined || this.gainNode === undefined) {
+      // No graph yet: `play` builds the right chain and reconciles the source.
+      return;
+    }
+    const incoming = this.ensureChain(mode);
+    const outgoing = this.chains[previous];
+
+    if (!isPlayingStatus(this.status)) {
+      incoming.input.gain.value = 1;
+      if (outgoing !== undefined) outgoing.input.gain.value = 0;
+      this.retiring = undefined;
+      return;
+    }
+
+    const source = this.sources[mode];
+    const at = Math.max(context.currentTime, this.nextScheduleTime);
+    const end = at + CROSSFADE_SECONDS;
+    const ramp = (parameter: AudioParam, target: number) => {
+      parameter.cancelScheduledValues(context.currentTime);
+      parameter.setValueAtTime(parameter.value, at);
+      parameter.linearRampToValueAtTime(target, end);
+    };
+    ramp(incoming.input.gain, 1);
+    if (outgoing !== undefined) ramp(outgoing.input.gain, 0);
+
+    if (source !== undefined) {
+      if (source.sample !== this.scheduledNativeSample) {
+        source.seekToSample(this.scheduledNativeSample);
+      }
+      source.play();
+    }
+    this.retiring = {
+      mode: previous,
+      untilSample: this.scheduledNativeSample + CROSSFADE_SAMPLES,
+    };
+  }
+
   getChannelLevels(): ChannelLevels {
     if (!isPlayingStatus(this.status) || this.audioContext === undefined) {
       return EMPTY_LEVELS;
@@ -285,10 +345,13 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     if (current === undefined || current.time > now) {
       return EMPTY_LEVELS;
     }
+    // Includes the loudness match, so the needles do not disagree with what is
+    // heard by up to three decibels from one track to the next.
+    const scale = this.volume * this.normalizationLinear();
     return {
-      A: current.levels.A * this.volume,
-      B: current.levels.B * this.volume,
-      C: current.levels.C * this.volume,
+      A: current.levels.A * scale,
+      B: current.levels.B * scale,
+      C: current.levels.C * scale,
     };
   }
 
@@ -309,7 +372,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   }
 
   getOscilloscopeSamples(): OscilloscopeSamples {
-    const analysers = this.channelAnalysers;
+    const analysers = this.chains[this.mode]?.analysers;
     if (analysers !== undefined) {
       for (const channel of CHANNELS) {
         analysers[channel].getFloatTimeDomainData(
@@ -320,6 +383,11 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     return this.oscilloscopeSamples;
   }
 
+  /**
+   * The dry engine render that feeds the committed waveform peaks. Deliberately
+   * unaffected by playback mode: the waveform lanes describe the track, not the
+   * current presentation of it.
+   */
   async renderOffline(
     track: RuntimeTrack,
     signal: AbortSignal,
@@ -447,15 +515,12 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     this.disposed = true;
     this.loadGeneration += 1;
     this.stopScheduling();
-    this.releasePlayer();
+    this.releaseSources();
     this.listeners.clear();
     const context = this.audioContext;
     this.audioContext = undefined;
     this.gainNode = undefined;
-    this.masterInput = undefined;
-    this.channelInput = undefined;
-    this.channelMixGains = undefined;
-    this.channelAnalysers = undefined;
+    this.chains = {};
     if (context !== undefined && context.state !== 'closed') {
       void context.close();
     }
@@ -483,74 +548,38 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     return context;
   }
 
-  // Builds the fixed output graph once: three discrete chip channels → stereo
-  // routing → highpass → bass → limiter → smoothing → gain(volume) →
-  // destination. Keeping routing gains outside scheduled buffers lets channel
-  // order changes take effect while those buffers are already playing.
+  /**
+   * Builds the volume node the chains share, then the chain for the active mode.
+   * Keeping the routing gains outside the scheduled buffers lets channel order
+   * and mode changes take effect while those buffers are already playing.
+   */
   private buildAudioGraph(context: AudioContext): void {
     const gain = context.createGain();
     gain.connect(context.destination);
     this.gainNode = gain;
     this.updateGain();
+    this.ensureChain(this.mode).input.gain.value = 1;
+  }
 
-    const highpass = context.createBiquadFilter();
-    highpass.type = 'highpass';
-    highpass.frequency.value = SUBSONIC_HZ;
-    highpass.Q.value = FILTER_Q;
-
-    const bass = context.createBiquadFilter();
-    bass.type = 'lowshelf';
-    bass.frequency.value = BASS_SHELF_HZ;
-    bass.gain.value = BASS_SHELF_DB;
-
-    const limiter = context.createDynamicsCompressor();
-    limiter.threshold.value = LIMITER_THRESHOLD_DB;
-    limiter.knee.value = 0;
-    limiter.ratio.value = 20;
-    limiter.attack.value = 0.003;
-    limiter.release.value = 0.1;
-
-    const smoothing = context.createBiquadFilter();
-    smoothing.type = 'lowpass';
-    smoothing.frequency.value = SMOOTHING_HZ;
-    smoothing.Q.value = FILTER_Q;
-
-    highpass.connect(bass);
-    bass.connect(limiter);
-    limiter.connect(smoothing);
-    smoothing.connect(gain);
-    this.masterInput = highpass;
-
-    const splitter = context.createChannelSplitter(3);
-    splitter.channelCount = 3;
-    splitter.channelCountMode = 'explicit';
-    splitter.channelInterpretation = 'discrete';
-    const merger = context.createChannelMerger(2);
-    merger.connect(highpass);
-    const channelAnalysers = Object.fromEntries(
-      CHANNELS.map((channel, channelIndex) => {
-        const analyser = context.createAnalyser();
-        analyser.fftSize = OSCILLOSCOPE_FFT_SIZE;
-        analyser.smoothingTimeConstant = 0;
-        splitter.connect(analyser, channelIndex);
-        return [channel, analyser];
-      }),
-    ) as Record<ChannelId, AnalyserNode>;
-    const channelMixGains = Object.fromEntries(
-      CHANNELS.map((channel) => {
-        const left = context.createGain();
-        const right = context.createGain();
-        channelAnalysers[channel].connect(left);
-        channelAnalysers[channel].connect(right);
-        left.connect(merger, 0, 0);
-        right.connect(merger, 0, 1);
-        return [channel, [left, right] as const];
-      }),
-    ) as Record<ChannelId, readonly [GainNode, GainNode]>;
-    this.channelInput = splitter;
-    this.channelMixGains = channelMixGains;
-    this.channelAnalysers = channelAnalysers;
-    this.updateChannelMix();
+  private ensureChain(mode: PlaybackMode): ModeChain {
+    const existing = this.chains[mode];
+    if (existing !== undefined) return existing;
+    const context = this.audioContext;
+    const gain = this.gainNode;
+    if (context === undefined || gain === undefined) {
+      throw new Error('The audio graph has not been built yet.');
+    }
+    const chain =
+      mode === 'vanilla'
+        ? buildVanillaChain(context, gain)
+        : buildStudioChain(context, gain);
+    // A chain built while another is active must start silent, or its first
+    // buffer arrives at full level partway through a crossfade.
+    chain.input.gain.value = 0;
+    chain.setChannelOrder(this.channelOrder, undefined);
+    chain.setNormalization(this.normalizationLinear());
+    this.chains[mode] = chain;
+    return chain;
   }
 
   private updateGain(): void {
@@ -559,42 +588,25 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
     }
   }
 
+  private normalizationLinear(): number {
+    return 10 ** (this.normalizationGainDb / 20);
+  }
+
+  private updateNormalization(): void {
+    const gain = this.normalizationLinear();
+    for (const mode of playbackModes) {
+      this.chains[mode]?.setNormalization(gain);
+    }
+  }
+
   private updateChannelMix(): void {
-    const gains = this.channelMixGains;
-    if (gains === undefined) return;
-    const [leftChannel, centerChannel, rightChannel] = this.channelOrder;
     const context = this.audioContext;
     const transitionEnd =
-      context !== undefined && isPlayingStatus(this.status)
-        ? context.currentTime + 0.008
-        : undefined;
-    const setGain = (parameter: AudioParam, value: number) => {
-      if (context === undefined || transitionEnd === undefined) {
-        parameter.value = value;
-        return;
-      }
-      parameter.cancelScheduledValues(context.currentTime);
-      parameter.setValueAtTime(parameter.value, context.currentTime);
-      parameter.linearRampToValueAtTime(value, transitionEnd);
-    };
-    for (const channel of CHANNELS) {
-      const [left, right] = gains[channel];
-      setGain(
-        left.gain,
-        channel === leftChannel
-          ? MIX_HEADROOM
-          : channel === centerChannel
-            ? CENTER_GAIN * MIX_HEADROOM
-            : 0,
-      );
-      setGain(
-        right.gain,
-        channel === rightChannel
-          ? MIX_HEADROOM
-          : channel === centerChannel
-            ? CENTER_GAIN * MIX_HEADROOM
-            : 0,
-      );
+      context === undefined
+        ? undefined
+        : mixTransitionEnd(context, isPlayingStatus(this.status));
+    for (const mode of playbackModes) {
+      this.chains[mode]?.setChannelOrder(this.channelOrder, transitionEnd);
     }
   }
 
@@ -612,13 +624,13 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
 
   private scheduleBuffers(): void {
     const context = this.audioContext;
-    const gain = this.gainNode;
-    const player = this.player;
+    const chain = this.chains[this.mode];
+    const source = this.sources[this.mode];
     const track = this.track;
     if (
       context === undefined ||
-      gain === undefined ||
-      player === undefined ||
+      chain === undefined ||
+      source === undefined ||
       track === undefined ||
       !isPlayingStatus(this.status)
     ) {
@@ -630,7 +642,7 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       return;
     }
 
-    // Bound the timeline when getChannelLevels is not polling (e.g. hidden tab).
+    // Bound the timelines when getChannelLevels is not polling (e.g. hidden tab).
     const audibleCutoff = context.currentTime - 1;
     while (this.levelTimeline.length > 1) {
       const next = this.levelTimeline[1];
@@ -643,6 +655,10 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       this.voiceTimeline.shift();
     }
 
+    // The studio renderer indexes the DAC tables directly, so only the engine's
+    // output needs a chip level recovered from it. Resolved once per tick rather
+    // than per sample.
+    const recoverChipLevel = this.mode === 'vanilla';
     const nativeTotal = Math.round(this.durationSeconds * ENGINE_SAMPLE_RATE);
     while (
       this.nextScheduleTime < context.currentTime + SCHEDULE_AHEAD_SECONDS &&
@@ -670,27 +686,23 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
           count - generatedOffset,
           Math.max(1, nextFrameSample - absoluteSample),
         );
-        const generated = generateEngineChannels(player, segmentCount).channels;
+        const generated = source.render(segmentCount);
         this.voiceTimeline.push({
           time: this.nextScheduleTime + generatedOffset / ENGINE_SAMPLE_RATE,
-          voices: getEngineChannelVoices(player),
+          voices: source.getVoices(),
         });
 
         for (let sample = 0; sample < segmentCount; sample += 1) {
           const base = sample * 3;
           const outputIndex = generatedOffset + sample;
-          const a = applyChipAmplitudeModel(
-            generated[base] ?? 0,
-            track.chipType,
-          );
-          const b = applyChipAmplitudeModel(
-            generated[base + 1] ?? 0,
-            track.chipType,
-          );
-          const c = applyChipAmplitudeModel(
-            generated[base + 2] ?? 0,
-            track.chipType,
-          );
+          let a = generated[base] ?? 0;
+          let b = generated[base + 1] ?? 0;
+          let c = generated[base + 2] ?? 0;
+          if (recoverChipLevel) {
+            a = applyChipAmplitudeModel(a, track.chipType);
+            b = applyChipAmplitudeModel(b, track.chipType);
+            c = applyChipAmplitudeModel(c, track.chipType);
+          }
           squared.A += a * a;
           squared.B += b * b;
           squared.C += c * c;
@@ -709,27 +721,74 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
           C: Math.sqrt(squared.C / count),
         },
       });
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.connect(this.channelInput ?? this.masterInput ?? gain);
-      source.addEventListener(
-        'ended',
-        () => {
-          this.scheduledSources.delete(source);
-        },
-        { once: true },
-      );
-      source.start(this.nextScheduleTime);
-      this.scheduledSources.add(source);
+      this.startBuffer(context, buffer, chain);
+      this.scheduleRetiringChunk(context, count);
       this.scheduledNativeSample += count;
-      this.playerSample = this.scheduledNativeSample;
       this.nextScheduleTime += count / ENGINE_SAMPLE_RATE;
     }
   }
 
+  /** Keeps the outgoing mode audible across the crossfade window. */
+  private scheduleRetiringChunk(context: AudioContext, count: number): void {
+    const retiring = this.retiring;
+    if (retiring === undefined) return;
+    if (this.scheduledNativeSample >= retiring.untilSample) {
+      this.retiring = undefined;
+      return;
+    }
+    const chain = this.chains[retiring.mode];
+    const source = this.sources[retiring.mode];
+    const track = this.track;
+    if (chain === undefined || source === undefined || track === undefined) {
+      this.retiring = undefined;
+      return;
+    }
+
+    const generated = source.render(count);
+    const buffer = context.createBuffer(3, count, ENGINE_SAMPLE_RATE);
+    const outputA = buffer.getChannelData(0);
+    const outputB = buffer.getChannelData(1);
+    const outputC = buffer.getChannelData(2);
+    const recoverChipLevel = retiring.mode === 'vanilla';
+    for (let sample = 0; sample < count; sample += 1) {
+      const base = sample * 3;
+      let a = generated[base] ?? 0;
+      let b = generated[base + 1] ?? 0;
+      let c = generated[base + 2] ?? 0;
+      if (recoverChipLevel) {
+        a = applyChipAmplitudeModel(a, track.chipType);
+        b = applyChipAmplitudeModel(b, track.chipType);
+        c = applyChipAmplitudeModel(c, track.chipType);
+      }
+      outputA[sample] = a;
+      outputB[sample] = b;
+      outputC[sample] = c;
+    }
+    this.startBuffer(context, buffer, chain);
+  }
+
+  private startBuffer(
+    context: AudioContext,
+    buffer: AudioBuffer,
+    chain: ModeChain,
+  ): void {
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(chain.input);
+    source.addEventListener(
+      'ended',
+      () => {
+        this.scheduledSources.delete(source);
+      },
+      { once: true },
+    );
+    source.start(this.nextScheduleTime);
+    this.scheduledSources.add(source);
+  }
+
   private finishAtEnd(): void {
     this.stopScheduling(false);
-    this.player?.pause();
+    this.pauseSources();
     this.positionSeconds = this.durationSeconds;
     this.status = 'ended';
     this.levelTimeline = [];
@@ -752,29 +811,20 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
       }
     }
     this.scheduledSources.clear();
+    this.retiring = undefined;
   }
 
-  // The upstream native seek does not reconstruct tone/noise/envelope phase, so
-  // a position change means a fresh engine rendered deterministically from zero
-  // to the target sample. That cost grows with the target, which is why callers
-  // defer it to `play`.
-  private replacePlayerAtSample(nativeSample: number): void {
-    const track = this.track;
-    if (track === undefined) {
-      return;
+  private pauseSources(): void {
+    for (const mode of playbackModes) {
+      this.sources[mode]?.pause();
     }
-    const replacement = createEnginePlayerAtSample(track.bytes, nativeSample);
-    replacement.pause();
-    const previous = this.player;
-    this.player = replacement;
-    this.playerSample = nativeSample;
-    previous?.free();
   }
 
-  private releasePlayer(): void {
-    this.player?.free();
-    this.player = undefined;
-    this.playerSample = 0;
+  private releaseSources(): void {
+    for (const mode of playbackModes) {
+      this.sources[mode]?.free();
+    }
+    this.sources = {};
   }
 
   private publish(): void {

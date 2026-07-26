@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "Dreamer - HI!!! (1996).asc",
+  "originalFileName": "source.asc",
   "sourceFormat": "ASC",
   "sourceSha256": "4646d26babf700dbe0298b6a3438584af22240786ad943720d8f6e20584950f3",
   "sourceByteLength": 5534,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "1fec003179418622f055e499db0669d180c2c6a9c3056a9d67f41f26b71b82bb",
+  "measuredLoudnessLufs": -11.73,
+  "normalizationGainDb": 2.73,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

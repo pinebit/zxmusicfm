@@ -97,39 +97,45 @@ describe('pinned ym2149-rs engine', () => {
     const clock = createTestAudioContext();
     const adapter = new Ym2149PlaybackAdapter(clock.context);
     await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
+    // Vanilla routes through per-channel left/right gain pairs. Studio pans
+    // instead, so its routing is asserted separately below.
+    adapter.setMode('vanilla');
     await adapter.play();
 
-    expect(clock.gainValues()).toEqual([
-      1,
-      0.5,
-      0,
-      Math.SQRT1_2 * 0.5,
-      Math.SQRT1_2 * 0.5,
-      0,
-      0.5,
-    ]);
+    // The last six gains are the A/B/C left/right pairs; the chain-level volume,
+    // loudness and crossfade gains precede them.
+    const centre = Math.SQRT1_2 * 0.5;
+    const mixGains = () => clock.gainValues().slice(-6);
+
+    expect(mixGains()).toEqual([0.5, 0, centre, centre, 0, 0.5]);
 
     adapter.setChannelOrder('ACB');
-    expect(clock.gainValues()).toEqual([
-      1,
-      0.5,
-      0,
-      0,
-      0.5,
-      Math.SQRT1_2 * 0.5,
-      Math.SQRT1_2 * 0.5,
-    ]);
+    expect(mixGains()).toEqual([0.5, 0, 0, 0.5, centre, centre]);
 
     adapter.setChannelOrder('BAC');
-    expect(clock.gainValues()).toEqual([
-      1,
-      Math.SQRT1_2 * 0.5,
-      Math.SQRT1_2 * 0.5,
-      0.5,
-      0,
-      0,
-      0.5,
-    ]);
+    expect(mixGains()).toEqual([centre, centre, 0.5, 0, 0, 0.5]);
+    adapter.dispose();
+  });
+
+  it('keeps A/B/C identity through the studio chain for every stereo order', async () => {
+    const clock = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(clock.context);
+    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
+    await adapter.play();
+
+    // The chorus's fixed pair is built before the channel strips, so the last
+    // three panners are A/B/C. Not fully hard-panned: an equal-power pan at 0.8
+    // leaves some of each outer channel in the far ear, which is what keeps
+    // A/B/C panning comfortable on headphones.
+    const channelPans = () => clock.panValues().slice(-3);
+
+    expect(channelPans()).toEqual([-0.8, 0, 0.8]);
+
+    adapter.setChannelOrder('ACB');
+    expect(channelPans()).toEqual([-0.8, 0.8, 0]);
+
+    adapter.setChannelOrder('BAC');
+    expect(channelPans()).toEqual([0, -0.8, 0.8]);
     adapter.dispose();
   });
 

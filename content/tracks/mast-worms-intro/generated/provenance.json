@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "filename:Mast_-_Worms_intro_(1999).pt3",
+  "originalFileName": "source.pt3",
   "sourceFormat": "PT3",
   "sourceSha256": "15d2eece34e43e847b16ee14b570f5f30ba439949af3c5e1d0cb9990c755d2ef",
   "sourceByteLength": 3458,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "9aa231657a2ac14813648d23e24bd48a74cc40f0471b5ef9597c5261e9b64f3d",
+  "measuredLoudnessLufs": -10.61,
+  "normalizationGainDb": 1.61,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

@@ -3,7 +3,7 @@ import initializeWasm, {
   type InitInput,
 } from '../../vendor/ym2149/ym2149_wasm.js';
 
-import type { ChannelVoices } from './contracts.ts';
+import type { ChannelVoices, ChipChannelState } from './contracts.ts';
 import { ENGINE_SAMPLE_RATE } from './sampleRates.ts';
 
 export const ENGINE_RENDER_CHUNK = ENGINE_SAMPLE_RATE;
@@ -14,12 +14,6 @@ export type EngineChannels = {
   readonly mono: Float32Array;
   readonly channels: Float32Array;
   readonly channelCount: number;
-};
-
-type EngineChannelState = {
-  readonly frequency: number;
-  readonly amplitude: number;
-  readonly toneEnabled: boolean;
 };
 
 let initialization: Promise<void> | undefined;
@@ -62,9 +56,9 @@ export function generateEngineChannels(
   };
 }
 
-function isEngineChannelState(value: unknown): value is EngineChannelState {
+function isEngineChannelState(value: unknown): value is ChipChannelState {
   if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<Record<keyof EngineChannelState, unknown>>;
+  const candidate = value as Partial<Record<keyof ChipChannelState, unknown>>;
   return (
     typeof candidate.frequency === 'number' &&
     Number.isFinite(candidate.frequency) &&
@@ -79,27 +73,11 @@ export function frequencyToMidiNote(frequencyHz: number): number | null {
   return Math.round(69 + 12 * Math.log2(frequencyHz / 440));
 }
 
-export function getEngineChannelVoices(player: EnginePlayer): ChannelVoices {
-  // The generated binding exposes visualization state as `any`; narrow it at
-  // this application-owned boundary before the adapter consumes it.
-  const value: unknown = player.getChannelStates();
-  if (typeof value !== 'object' || value === null || !('channels' in value)) {
-    throw new Error('ym2149-rs returned invalid channel visualization state.');
-  }
-  const channels: unknown = value.channels;
-  if (!Array.isArray(channels) || channels.length < 3) {
-    throw new Error('ym2149-rs returned invalid channel visualization state.');
-  }
-  const channelStates: EngineChannelState[] = [];
-  for (const channel of channels.slice(0, 3) as unknown[]) {
-    if (!isEngineChannelState(channel)) {
-      throw new Error(
-        'ym2149-rs returned invalid channel visualization state.',
-      );
-    }
-    channelStates.push(channel);
-  }
-  const voice = (channel: EngineChannelState | undefined) => {
+/** Shared by both renderers so the piano visualiser gates voices identically. */
+export function toChannelVoices(
+  states: readonly ChipChannelState[],
+): ChannelVoices {
+  const voice = (channel: ChipChannelState | undefined) => {
     if (channel === undefined || !channel.toneEnabled || channel.amplitude <= 0)
       return null;
     const midiNote = frequencyToMidiNote(channel.frequency);
@@ -111,10 +89,33 @@ export function getEngineChannelVoices(player: EnginePlayer): ChannelVoices {
         };
   };
   return {
-    A: voice(channelStates[0]),
-    B: voice(channelStates[1]),
-    C: voice(channelStates[2]),
+    A: voice(states[0]),
+    B: voice(states[1]),
+    C: voice(states[2]),
   };
+}
+
+export function getEngineChannelVoices(player: EnginePlayer): ChannelVoices {
+  // The generated binding exposes visualization state as `any`; narrow it at
+  // this application-owned boundary before the adapter consumes it.
+  const value: unknown = player.getChannelStates();
+  if (typeof value !== 'object' || value === null || !('channels' in value)) {
+    throw new Error('ym2149-rs returned invalid channel visualization state.');
+  }
+  const channels: unknown = value.channels;
+  if (!Array.isArray(channels) || channels.length < 3) {
+    throw new Error('ym2149-rs returned invalid channel visualization state.');
+  }
+  const channelStates: ChipChannelState[] = [];
+  for (const channel of channels.slice(0, 3) as unknown[]) {
+    if (!isEngineChannelState(channel)) {
+      throw new Error(
+        'ym2149-rs returned invalid channel visualization state.',
+      );
+    }
+    channelStates.push(channel);
+  }
+  return toChannelVoices(channelStates);
 }
 
 export function fastForwardEngine(

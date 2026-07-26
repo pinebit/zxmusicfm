@@ -56,6 +56,11 @@ const sourceFormatSchema = z.enum([
 ]);
 const runtimeFormatSchema = z.enum(['YM2', 'YM3', 'YM3b', 'YM4', 'YM5', 'YM6']);
 
+// Clamped when derived, so a pathological measurement cannot ship a gain that
+// swamps the volume knob in either direction.
+const normalizationGainDbSchema = z.number().min(-6).max(6);
+const loudnessLufsSchema = z.number().min(-70).max(0);
+
 export const trackSidecarSchema = z.strictObject({
   schemaVersion: z.literal(1),
   id: slugSchema,
@@ -116,6 +121,8 @@ export const generatedProvenanceSchema = z.strictObject({
     })
     .nullable(),
   waveformSha256: sha256Schema,
+  measuredLoudnessLufs: loudnessLufsSchema,
+  normalizationGainDb: normalizationGainDbSchema,
   trackerConversion: trackerConversionSchema.nullable(),
   preparationTool: z.literal('zxmusicfm-content-v1'),
   engine: z.strictObject({
@@ -158,6 +165,7 @@ const generatedTrackSchema = z
     chipClockHz: z.number().int().min(1).max(4_294_967_295),
     frameRateHz: z.number().int().min(1).max(65_535),
     channelLayout: channelLayoutSchema,
+    normalizationGainDb: normalizationGainDbSchema,
     waveformByteOffset: z.number().int().nonnegative(),
     waveformByteLength: z.literal(WAVEFORM_BYTES_PER_TRACK),
     year: z.number().int().min(1970).max(9999).optional(),

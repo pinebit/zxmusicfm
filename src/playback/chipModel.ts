@@ -9,6 +9,14 @@ const ymRawLevels = [
 
 const ymMagnitudes = ymRawLevels.map((value) => value / 10_922);
 
+/**
+ * The two DAC tables as plain 32-entry magnitude arrays, indexed by the chip's
+ * own level. The engine path below has to recover a level from a rendered
+ * sample, but a renderer that owns the register state already knows it and can
+ * index these directly.
+ */
+export const YM_DAC_MAGNITUDES: readonly number[] = ymMagnitudes;
+
 // Peter Sovietov's measured AY table, used by Ayumi. AY has 16 effective
 // levels, represented as adjacent pairs on the YM engine's 32-step envelope.
 const ayMagnitudes = [
@@ -20,6 +28,8 @@ const ayMagnitudes = [
   0.492530708782, 0.492530708782, 0.635324635691, 0.635324635691,
   0.805584802014, 0.805584802014, 1, 1,
 ] as const;
+
+export const AY_DAC_MAGNITUDES: readonly number[] = ayMagnitudes;
 
 type MagnitudeCandidate = {
   readonly ym: number;

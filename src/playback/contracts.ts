@@ -14,6 +14,22 @@ export type ChannelId = 'A' | 'B' | 'C';
 
 export type ChannelOrder = 'ABC' | 'ACB' | 'BAC';
 
+/**
+ * `vanilla` is the pinned engine through the original master chain. `studio` is
+ * the band-limited renderer through the per-channel processing chain. Both are
+ * always available and switch on the fly.
+ */
+export type PlaybackMode = 'vanilla' | 'studio';
+
+export const playbackModes: readonly PlaybackMode[] = ['vanilla', 'studio'];
+
+/** Per-channel generator state shared by both renderers. */
+export type ChipChannelState = {
+  readonly frequency: number;
+  readonly amplitude: number;
+  readonly toneEnabled: boolean;
+};
+
 export type ChannelLevels = Readonly<Record<ChannelId, number>>;
 
 export type ChannelVoice = {
@@ -37,6 +53,12 @@ export type RuntimeTrack = {
   readonly chipClockHz: number;
   readonly frameRateHz: number;
   readonly channelLayout: 'ABC' | 'ACB';
+  /**
+   * Build-time measured gain that brings this track to the catalog's common
+   * loudness. Absent for the offline render, which measures loudness rather than
+   * consuming it.
+   */
+  readonly normalizationGainDb?: number;
 };
 
 export type OfflineRender = {
@@ -63,6 +85,7 @@ export type PlaybackAdapter = {
   seek(positionSeconds: number): Promise<void>;
   setVolume(volume: number): void;
   setChannelOrder(channelOrder: ChannelOrder): void;
+  setMode(mode: PlaybackMode): void;
   getChannelLevels(): ChannelLevels;
   getChannelVoices(): ChannelVoices;
   getOscilloscopeSamples?(): OscilloscopeSamples;

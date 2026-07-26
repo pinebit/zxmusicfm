@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "MmcM - Fragment dh-2018 (2018) (DiHalt 2018, 1).pt3",
+  "originalFileName": "source.pt3",
   "sourceFormat": "PT3",
   "sourceSha256": "49bbbb25c610d3a8b4251cb207b37ad75b43b1ec7554cc6d05b6463b37b35ebb",
   "sourceByteLength": 5912,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "ab6fce117620833a853c854640e395e538da2039c7cafc61e5f4db24e06beb37",
+  "measuredLoudnessLufs": -7.55,
+  "normalizationGainDb": -1.45,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

@@ -8,10 +8,16 @@ import { vi } from 'vitest';
 export function createTestAudioContext(): {
   readonly context: AudioContext;
   readonly gainValues: () => number[];
+  /** Pan positions in creation order, for the studio chain's routing. */
+  readonly panValues: () => number[];
+  /** How many convolvers exist, to prove mode chains are built lazily and once. */
+  readonly convolverCount: () => number;
   setCurrentTime(value: number): void;
 } {
   let currentTime = 0;
+  let convolvers = 0;
   const gains: { gain: AudioParam }[] = [];
+  const panners: { pan: AudioParam }[] = [];
   const audioNode = () => ({ connect: vi.fn() });
   const audioParam = (initialValue: number) => {
     const parameter = {
@@ -30,6 +36,7 @@ export function createTestAudioContext(): {
   };
   const context = {
     state: 'running',
+    sampleRate: 44_100,
     destination: audioNode(),
     get currentTime() {
       return currentTime;
@@ -69,12 +76,44 @@ export function createTestAudioContext(): {
       getFloatTimeDomainData: vi.fn(),
     })),
     createChannelMerger: vi.fn(() => audioNode()),
+    // Studio chain nodes. Only the properties the graph builder writes are
+    // modelled; nothing here renders audio.
+    createWaveShaper: vi.fn(() => ({
+      ...audioNode(),
+      curve: null,
+      oversample: 'none',
+    })),
+    createStereoPanner: vi.fn(() => {
+      const panner = { ...audioNode(), pan: audioParam(0) };
+      panners.push(panner);
+      return panner;
+    }),
+    createConvolver: vi.fn(() => {
+      convolvers += 1;
+      return { ...audioNode(), buffer: null, normalize: true };
+    }),
+    createDelay: vi.fn(() => ({
+      ...audioNode(),
+      delayTime: audioParam(0),
+    })),
+    createOscillator: vi.fn(() => ({
+      ...audioNode(),
+      type: 'sine',
+      frequency: audioParam(440),
+      start: vi.fn(),
+      stop: vi.fn(),
+    })),
     createBuffer: vi.fn((channels: number, length: number) => {
       const data = Array.from(
         { length: channels },
         () => new Float32Array(length),
       );
-      return { getChannelData: (channel: number) => data[channel] };
+      return {
+        length,
+        numberOfChannels: channels,
+        sampleRate: 44_100,
+        getChannelData: (channel: number) => data[channel],
+      };
     }),
     createBufferSource: vi.fn(() => ({
       ...audioNode(),
@@ -87,6 +126,8 @@ export function createTestAudioContext(): {
   return {
     context,
     gainValues: () => gains.map(({ gain }) => gain.value),
+    panValues: () => panners.map(({ pan }) => pan.value),
+    convolverCount: () => convolvers,
     setCurrentTime(value: number) {
       currentTime = value;
     },

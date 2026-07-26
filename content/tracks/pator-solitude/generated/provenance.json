@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "3b5e87b99641b79cba1bcbf8d5c9da99ef9240e85fdbfad89d749338f5c065fe",
+  "measuredLoudnessLufs": -6.91,
+  "normalizationGainDb": -2.09,
   "trackerConversion": null,
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "KentZak01-NEWYEAR.stc",
+  "originalFileName": "source.stc",
   "sourceFormat": "STC",
   "sourceSha256": "d76881fc8629de873d480e78a24604191dca936137ff67cae50fd9222fef0f85",
   "sourceByteLength": 2749,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "594ce55a3bd8a3beff8badfd9bfaca1f6ae91451262a574845942cd99e633f1e",
+  "measuredLoudnessLufs": -9.7,
+  "normalizationGainDb": 0.7,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

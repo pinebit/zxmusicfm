@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "Klav - Satisfaction 6 (1994).stc",
+  "originalFileName": "source.stc",
   "sourceFormat": "STC",
   "sourceSha256": "b3b868cc4c5f40f7261b6fd3b71e6bd236fa480128025588ccd9367f9ae952f1",
   "sourceByteLength": 3569,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "5ba8d1a12f40ba297dd3fb28ce067a6304cfc88a320937ef447b17d49f79fc27",
+  "measuredLoudnessLufs": -7.73,
+  "normalizationGainDb": -1.27,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

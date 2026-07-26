@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "Ziutek - Lyra II - part 4 (1991).stc",
+  "originalFileName": "source.stc",
   "sourceFormat": "STC",
   "sourceSha256": "3aef36899098df6c8dd96ee2d49ae9cfe4c14dd6c3c8c3d675bd6a553e893912",
   "sourceByteLength": 4268,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "0d24cb17abbef6a1b7d2e9eda4deb64f8ccdccdfed1a75d9844fe2c96008fffc",
+  "measuredLoudnessLufs": -11.52,
+  "normalizationGainDb": 2.52,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

@@ -29,6 +29,7 @@ import {
   generateEngineChannels,
   initializeYm2149,
 } from '../../src/playback/engine.ts';
+import { measureLoudnessLufs } from '../../src/playback/loudness.ts';
 import { ENGINE_SAMPLE_RATE } from '../../src/playback/sampleRates.ts';
 import {
   createYm6,
@@ -488,6 +489,45 @@ async function originalFileName(input: TrackInput): Promise<string> {
   }
 }
 
+// Set near the median of the measured catalog (-9.3 LUFS across the current 24
+// tracks, spanning -5.7 to -11.7) rather than at a broadcast reference. That
+// removes the track-to-track jump while leaving the site's overall level where
+// listeners already have it, and keeps every derived gain inside a few dB so the
+// clamp never has to bite. Dense square waves measure loud at a modest peak, so
+// a figure this high is expected here.
+const LOUDNESS_TARGET_LUFS = -9;
+const MAX_NORMALIZATION_GAIN_DB = 6;
+
+/**
+ * Measures the dry offline mix and derives the gain that brings it to the
+ * catalog's common loudness. Rounded to two decimals so the value written into
+ * provenance and the catalog is stable under byte comparison.
+ */
+function measureLoudness(
+  mix: Float32Array,
+  sampleRate: number,
+  trackId: string,
+): {
+  readonly measuredLoudnessLufs: number;
+  readonly normalizationGainDb: number;
+} {
+  const measured = measureLoudnessLufs(mix, sampleRate);
+  if (measured === null) {
+    throw new Error(
+      `${trackId}: rendered mix has no measurable loudness, which means it is silent.`,
+    );
+  }
+  const round = (value: number) => Math.round(value * 100) / 100;
+  const gain = Math.max(
+    -MAX_NORMALIZATION_GAIN_DB,
+    Math.min(MAX_NORMALIZATION_GAIN_DB, LOUDNESS_TARGET_LUFS - measured),
+  );
+  return {
+    measuredLoudnessLufs: round(measured),
+    normalizationGainDb: round(gain),
+  };
+}
+
 async function prepareTrack(
   root: string,
   input: TrackInput,
@@ -589,6 +629,11 @@ async function prepareTrack(
   );
   adapter.dispose();
   const waveform = encodeWaveformPayload(render);
+  const loudness = measureLoudness(
+    render.mix,
+    render.sampleRate,
+    input.sidecar.id,
+  );
   const runtimeHash = sha256(runtime);
   const durationOverride =
     durationSource === 'override' &&
@@ -621,6 +666,8 @@ async function prepareTrack(
     durationSource,
     durationOverride,
     waveformSha256: sha256(waveform),
+    measuredLoudnessLufs: loudness.measuredLoudnessLufs,
+    normalizationGainDb: loudness.normalizationGainDb,
     trackerConversion,
     preparationTool: 'zxmusicfm-content-v1',
     engine: { name: 'ym2149-rs', commit: ENGINE_COMMIT },
@@ -642,6 +689,7 @@ async function prepareTrack(
     chipClockHz,
     frameRateHz,
     channelLayout,
+    normalizationGainDb: loudness.normalizationGainDb,
     waveformByteLength: WAVEFORM_BYTES_PER_TRACK,
     ...(input.sidecar.year === undefined ? {} : { year: input.sidecar.year }),
     ...(input.sidecar.notes === undefined

@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "762988315df99fc4da76c18b24b2b7c2a51552f2578a3cdfcc8c07e98f2cba38",
+  "measuredLoudnessLufs": -9.64,
+  "normalizationGainDb": 0.64,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",

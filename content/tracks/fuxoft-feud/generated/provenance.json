@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "Feud(1).ay",
+  "originalFileName": "source.ay",
   "sourceFormat": "AY",
   "sourceSha256": "fdf0ca9fe6541d99284fda8b041fdc8e6453cab39f99b10aac3d314a7f967bfc",
   "sourceByteLength": 2216,
@@ -18,6 +18,8 @@
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "dc2bd4ec05a2b8f6927a73980af853edc4d0df04e99d89f609e9d81323911927",
+  "measuredLoudnessLufs": -6.96,
+  "normalizationGainDb": -2.04,
   "trackerConversion": null,
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {

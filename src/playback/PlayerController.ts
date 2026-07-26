@@ -5,6 +5,7 @@ import type {
   ChannelOrder,
   PlaybackAdapter,
   PlaybackAdapterSnapshot,
+  PlaybackMode,
   RuntimeTrack,
 } from './contracts.ts';
 import {
@@ -293,6 +294,12 @@ export class PlayerController {
     });
   }
 
+  setMode(mode: PlaybackMode): void {
+    if (this.snapshot.preferences.mode === mode) return;
+    this.adapter?.setMode(mode);
+    this.setPreferences({ ...this.snapshot.preferences, mode });
+  }
+
   persistNow(): void {
     const position =
       this.adapter?.getSnapshot().positionSeconds ??
@@ -404,6 +411,7 @@ export class PlayerController {
           chipClockHz: track.chipClockHz,
           frameRateHz: track.frameRateHz,
           channelLayout: track.channelLayout,
+          normalizationGainDb: track.normalizationGainDb,
         };
         await adapter.load(runtime, load.signal);
         if (!this.isCurrent(generation)) return;
@@ -483,6 +491,7 @@ export class PlayerController {
       }
       adapter.setVolume(this.snapshot.preferences.volume);
       adapter.setChannelOrder(this.snapshot.preferences.channelOrder);
+      adapter.setMode(this.snapshot.preferences.mode);
       this.adapterUnsubscribe = adapter.subscribe((next) => {
         this.handleAdapterSnapshot(next);
       });
