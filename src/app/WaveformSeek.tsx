@@ -29,8 +29,8 @@ const waveformPalette = {
 const CHANNELS = ['A', 'B', 'C'] as const;
 const BAR_PITCH_CSS_PX = 4;
 const BAR_WIDTH_CSS_PX = 2;
-const BAR_END_ALPHA_HEX = '66';
-const BAR_CENTER_ALPHA_HEX = 'e6';
+const BAR_END_ALPHA_HEX = '7a';
+const BAR_CENTER_ALPHA_HEX = 'f2';
 
 // The subset of the 2D context that lane drawing needs, so the same routine can
 // target the visible canvas or an offscreen cache.

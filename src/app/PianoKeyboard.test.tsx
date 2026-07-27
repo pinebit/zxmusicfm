@@ -48,6 +48,24 @@ describe('PianoKeyboard', () => {
     expect(pianoKeys.filter(({ black }) => black)).toHaveLength(36);
   });
 
+  it('uses distinct red, green, and blue keyboard channel controls', () => {
+    render(<PianoKeyboard adapter={undefined} playing={false} />);
+
+    for (const [channel, color] of [
+      ['A', '#f15b68'],
+      ['B', '#6bc77d'],
+      ['C', '#7fafe3'],
+    ] as const) {
+      const badge = screen
+        .getByRole('button', { name: `Channel ${channel} on keyboard` })
+        .querySelector('span');
+      expect(badge).toHaveStyle({
+        background: color,
+        borderColor: color,
+      });
+    }
+  });
+
   it('splits shared notes by channel and ignores out-of-range activity', () => {
     let nextFrame: FrameRequestCallback | undefined;
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {

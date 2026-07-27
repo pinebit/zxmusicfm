@@ -137,15 +137,15 @@ describe('WaveformSeek', () => {
 
     expect(createLinearGradient).toHaveBeenCalledTimes(3);
     expect(addColorStop.mock.calls).toEqual([
-      [0, '#dca6ad66'],
-      [0.5, '#dca6ade6'],
-      [1, '#dca6ad66'],
-      [0, '#dfcda266'],
-      [0.5, '#dfcda2e6'],
-      [1, '#dfcda266'],
-      [0, '#9fcbd066'],
-      [0.5, '#9fcbd0e6'],
-      [1, '#9fcbd066'],
+      [0, '#f15b687a'],
+      [0.5, '#f15b68f2'],
+      [1, '#f15b687a'],
+      [0, '#6bc77d7a'],
+      [0.5, '#6bc77df2'],
+      [1, '#6bc77d7a'],
+      [0, '#7fafe37a'],
+      [0.5, '#7fafe3f2'],
+      [1, '#7fafe37a'],
     ]);
   });
 
