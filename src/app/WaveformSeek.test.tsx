@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DecodedWaveform } from '../content/runtime.ts';
 import { WAVEFORM_BUCKET_COUNT } from '../playback/waveform.ts';
-import { WaveformSeek } from './WaveformSeek.tsx';
+import {
+  aggregateWaveformBars,
+  WaveformSeek,
+  waveformBarCount,
+} from './WaveformSeek.tsx';
 
 const waveform = Object.fromEntries(
   ['A', 'B', 'C'].map((channel) => [
@@ -19,12 +23,17 @@ afterEach(() => {
 
 function stubDrawingContext(): {
   readonly clearRect: ReturnType<typeof vi.fn>;
+  readonly createLinearGradient: ReturnType<typeof vi.fn>;
+  readonly addColorStop: ReturnType<typeof vi.fn>;
 } {
   const clearRect = vi.fn();
+  const addColorStop = vi.fn();
+  const createLinearGradient = vi.fn(() => ({ addColorStop }));
   const context = {
     beginPath: vi.fn(),
     clearRect,
     clip: vi.fn(),
+    createLinearGradient,
     drawImage: vi.fn(),
     fill: vi.fn(),
     fillRect: vi.fn(),
@@ -36,7 +45,7 @@ function stubDrawingContext(): {
     stroke: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
-  return { clearRect };
+  return { clearRect, createLinearGradient, addColorStop };
 }
 
 function stubReducedMotion(reduce: boolean): void {
@@ -79,10 +88,73 @@ const playingAdapter = {
 };
 
 describe('WaveformSeek', () => {
+  it('aggregates every source bucket into responsive display bars', () => {
+    const peaks = new Int8Array(WAVEFORM_BUCKET_COUNT * 2);
+    for (let bucket = 0; bucket < WAVEFORM_BUCKET_COUNT / 2; bucket += 1) {
+      peaks[bucket * 2] = -127;
+      peaks[bucket * 2 + 1] = 80;
+    }
+    for (
+      let bucket = WAVEFORM_BUCKET_COUNT / 2;
+      bucket < WAVEFORM_BUCKET_COUNT;
+      bucket += 1
+    ) {
+      peaks[bucket * 2] = -32;
+      peaks[bucket * 2 + 1] = 64;
+    }
+
+    const bars = aggregateWaveformBars(peaks, 2);
+    expect(bars[0]).toBe(1);
+    expect(bars[1]).toBeCloseTo(64 / 127, 6);
+
+    peaks.fill(0);
+    peaks[peaks.length - 1] = 127;
+    expect(aggregateWaveformBars(peaks, 3)[2]).toBeGreaterThan(0);
+  });
+
+  it('derives bar density from CSS width rather than device pixels', () => {
+    expect(waveformBarCount(120, 1)).toBe(30);
+    expect(waveformBarCount(240, 2)).toBe(30);
+    expect(waveformBarCount(1, 1)).toBe(1);
+    expect(waveformBarCount(20_000, 1)).toBe(WAVEFORM_BUCKET_COUNT);
+  });
+
+  it('fades each channel bar toward its upper and lower tips', () => {
+    const { createLinearGradient, addColorStop } = stubDrawingContext();
+    countingResizeObserver();
+
+    render(
+      <WaveformSeek
+        waveform={waveform}
+        duration={120}
+        position={0}
+        showPosition={false}
+        disabled={false}
+        label="Seek test track"
+        onCommit={vi.fn()}
+      />,
+    );
+
+    expect(createLinearGradient).toHaveBeenCalledTimes(3);
+    expect(addColorStop.mock.calls).toEqual([
+      [0, '#dca6ad66'],
+      [0.5, '#dca6ade6'],
+      [1, '#dca6ad66'],
+      [0, '#dfcda266'],
+      [0.5, '#dfcda2e6'],
+      [1, '#dfcda266'],
+      [0, '#9fcbd066'],
+      [0.5, '#9fcbd0e6'],
+      [1, '#9fcbd066'],
+    ]);
+  });
+
   it('positions a seek marker under a hovering mouse', () => {
+    const addColorStop = vi.fn();
     const context = {
       beginPath: vi.fn(),
       clearRect: vi.fn(),
+      createLinearGradient: vi.fn(() => ({ addColorStop })),
       fillRect: vi.fn(),
       lineTo: vi.fn(),
       moveTo: vi.fn(),
@@ -148,9 +220,11 @@ describe('WaveformSeek', () => {
     const observe = vi.fn();
     const disconnect = vi.fn();
     const clearRect = vi.fn();
+    const addColorStop = vi.fn();
     const context = {
       beginPath: vi.fn(),
       clearRect,
+      createLinearGradient: vi.fn(() => ({ addColorStop })),
       fillRect: vi.fn(),
       lineTo: vi.fn(),
       moveTo: vi.fn(),

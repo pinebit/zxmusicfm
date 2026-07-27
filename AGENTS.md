@@ -126,7 +126,7 @@ Never statically import `Ym2149PlaybackAdapter.ts`, the worklet, vendored glue, 
 
 - Keep high-frequency meter, keyboard, and waveform work out of React renders. The controller publishes semantic transitions and 250 ms position updates; per-frame reads happen in rAF loops.
 - Position updates must not rebuild rAF loops or `ResizeObserver`s.
-- Waveform resize redraws never refetch data. The static 2,048-bucket × three-channel layer is cached in `OffscreenCanvas` and blitted; the inline fallback remains required.
+- Waveform resize redraws never refetch data. Each A/B/C lane averages the fixed 2,048-bucket peaks into one rounded bar per 4 CSS px (2 px bar, 2 px gap), so density follows rendered width rather than device pixels. Bars retain full emphasis at the lane center and fade toward both tips. The static three-lane layer is cached in `OffscreenCanvas` and blitted; the inline fallback remains required.
 - The waveform contains progress and playhead overlays only. Do not reintroduce the removed oscilloscope lens without a product decision.
 - Every rAF animation consults `usePrefersReducedMotion`; information keeps updating at a coarse cadence when motion is reduced.
 

@@ -21,19 +21,23 @@ type WaveformSeekProps = {
 
 const waveformPalette = {
   ...channelPalette,
-  baseline: '#777d84',
   divider: '#34383d',
   playhead: '#f4e7c3',
   unplayed: '#111315',
 } as const;
 
 const CHANNELS = ['A', 'B', 'C'] as const;
+const BAR_PITCH_CSS_PX = 4;
+const BAR_WIDTH_CSS_PX = 2;
+const BAR_END_ALPHA_HEX = '66';
+const BAR_CENTER_ALPHA_HEX = 'e6';
 
 // The subset of the 2D context that lane drawing needs, so the same routine can
 // target the visible canvas or an offscreen cache.
 type LaneContext = Pick<
   CanvasRenderingContext2D,
   | 'beginPath'
+  | 'createLinearGradient'
   | 'globalAlpha'
   | 'lineCap'
   | 'lineTo'
@@ -51,9 +55,43 @@ type StaticLayer = {
 };
 
 /**
- * Draws the three channel lanes: divider, baseline, and 2,048 peak segments per
- * channel. That is ~6,100 stroked segments, far too much to repeat per frame
- * just to move a playhead, so it is cached whenever `OffscreenCanvas` exists.
+ * Groups the fixed-resolution peak data into a number of display bars. Averaging
+ * each bar's peak magnitudes keeps broad changes in the song visible without
+ * letting one transient make a whole visual interval look uniformly loud.
+ */
+export function aggregateWaveformBars(
+  peaks: Int8Array,
+  barCount: number,
+): Float32Array {
+  const bars = new Float32Array(barCount);
+  for (let bar = 0; bar < barCount; bar += 1) {
+    const start = Math.floor((bar * WAVEFORM_BUCKET_COUNT) / barCount);
+    const end = Math.max(
+      start + 1,
+      Math.floor(((bar + 1) * WAVEFORM_BUCKET_COUNT) / barCount),
+    );
+    let magnitude = 0;
+    for (let bucket = start; bucket < end; bucket += 1) {
+      const minimum = peaks[bucket * 2] ?? 0;
+      const maximum = peaks[bucket * 2 + 1] ?? 0;
+      magnitude += Math.max(Math.abs(minimum), Math.abs(maximum)) / 127;
+    }
+    bars[bar] = magnitude / (end - start);
+  }
+  return bars;
+}
+
+export function waveformBarCount(width: number, ratio: number): number {
+  const cssWidth = width / ratio;
+  return Math.min(
+    WAVEFORM_BUCKET_COUNT,
+    Math.max(1, Math.floor(cssWidth / BAR_PITCH_CSS_PX)),
+  );
+}
+
+/**
+ * Draws responsive, spaced bars in three channel lanes. The static result is
+ * cached whenever `OffscreenCanvas` exists so animation only redraws progress.
  */
 function drawStaticLanes(
   target: LaneContext,
@@ -63,6 +101,7 @@ function drawStaticLanes(
   waveform: DecodedWaveform,
 ): void {
   const laneHeight = height / CHANNELS.length;
+  const barCount = waveformBarCount(width, ratio);
   target.lineCap = 'round';
   for (const [index, channel] of CHANNELS.entries()) {
     const center = laneHeight * (index + 0.5);
@@ -76,25 +115,26 @@ function drawStaticLanes(
       target.lineTo(width, laneHeight * index);
       target.stroke();
     }
-    target.globalAlpha = 0.4;
-    target.strokeStyle = waveformPalette.baseline;
-    target.lineWidth = Math.max(1, ratio * 0.5);
+    const bars = aggregateWaveformBars(waveform[channel], barCount);
+    const channelColor = waveformPalette[channel];
+    const gradient = target.createLinearGradient(
+      0,
+      center - amplitude,
+      0,
+      center + amplitude,
+    );
+    gradient.addColorStop(0, `${channelColor}${BAR_END_ALPHA_HEX}`);
+    gradient.addColorStop(0.5, `${channelColor}${BAR_CENTER_ALPHA_HEX}`);
+    gradient.addColorStop(1, `${channelColor}${BAR_END_ALPHA_HEX}`);
+    target.strokeStyle = gradient;
+    target.globalAlpha = 1;
+    target.lineWidth = BAR_WIDTH_CSS_PX * ratio;
     target.beginPath();
-    target.moveTo(0, center);
-    target.lineTo(width, center);
-    target.stroke();
-
-    const peaks = waveform[channel];
-    target.strokeStyle = waveformPalette[channel];
-    target.globalAlpha = 0.9;
-    target.lineWidth = Math.max(1, ratio);
-    target.beginPath();
-    for (let bucket = 0; bucket < WAVEFORM_BUCKET_COUNT; bucket += 1) {
-      const x = (bucket / (WAVEFORM_BUCKET_COUNT - 1)) * width;
-      const minimum = (peaks[bucket * 2] ?? 0) / 127;
-      const maximum = (peaks[bucket * 2 + 1] ?? 0) / 127;
-      target.moveTo(x, center - maximum * amplitude);
-      target.lineTo(x, center - minimum * amplitude);
+    for (let bar = 0; bar < barCount; bar += 1) {
+      const x = ((bar + 0.5) / barCount) * width;
+      const halfHeight = Math.max(ratio * 0.5, (bars[bar] ?? 0) * amplitude);
+      target.moveTo(x, center - halfHeight);
+      target.lineTo(x, center + halfHeight);
     }
     target.stroke();
   }
