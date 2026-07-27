@@ -3,9 +3,14 @@ import { expect, test } from '@playwright/test';
 test('loads the catalog shell', async ({ page }) => {
   await page.goto('/');
 
+  await expect(page).toHaveTitle('ZX RADIO — ZX Spectrum AY/YM Chip Music');
   await expect(
-    page.getByRole('heading', { level: 1, name: 'ZX-MUSIC.FM' }),
+    page.getByRole('heading', { level: 1, name: 'ZX RADIO' }),
   ).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    'https://zxradio.org/',
+  );
   await expect(
     page.getByRole('heading', { level: 3, name: 'Solitude' }),
   ).toBeVisible();

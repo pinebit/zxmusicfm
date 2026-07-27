@@ -1,13 +1,14 @@
-# ZX-MUSIC.FM
+# ZX RADIO
 
-A web player for a curated collection of ZX Spectrum AY/YM chip music.
+ZX RADIO is a web player for a curated collection of ZX Spectrum AY/YM chip
+music.
 
 Nothing here is a recording. Each track is prepared offline into a finite,
 seekable YM6 register stream, and the browser plays it by running a real YM2149
 sound-chip emulator compiled to WebAssembly — the same three square-wave channels
 the original hardware had, rendered a sample at a time while you listen.
 
-![The ZX-MUSIC.FM player: a curated track list with per-channel waveforms beside a deck holding three needle VU meters, a live piano keyboard, transport controls, and a volume knob](assets/zxscreenshot.jpg)
+![The ZX RADIO player: a curated track list with per-channel waveforms beside a deck holding three needle VU meters, a live piano keyboard, transport controls, and a volume knob](assets/zxscreenshot.jpg)
 
 ## What it does
 

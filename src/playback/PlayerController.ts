@@ -705,7 +705,7 @@ export class PlayerController {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.author,
-      album: 'ZX-MUSIC.FM',
+      album: 'ZX RADIO',
       artwork: [
         { src: '/app-icon.svg', sizes: '512x512', type: 'image/svg+xml' },
       ],

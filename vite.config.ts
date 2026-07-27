@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
-import { build as viteBuild, loadEnv } from 'vite';
+import { build as viteBuild } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 const WORKLET_ENTRY = 'src/playback/worklet/chipProcessor.ts';
@@ -66,56 +66,10 @@ async function bundleDevelopmentWorklet(): Promise<string> {
   return chunk.code;
 }
 
-export default defineConfig(({ mode }) => {
-  const siteUrl = loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_URL;
-  let canonicalUrl: string | undefined;
-  if (siteUrl !== undefined && siteUrl !== '') {
-    const parsed = new URL(siteUrl);
-    if (
-      parsed.protocol !== 'https:' ||
-      parsed.username !== '' ||
-      parsed.password !== ''
-    ) {
-      throw new Error('VITE_SITE_URL must be a credential-free HTTPS URL.');
-    }
-    canonicalUrl = parsed.href.endsWith('/') ? parsed.href : `${parsed.href}/`;
-  }
-
+export default defineConfig(() => {
   return {
     plugins: [
       react(),
-      {
-        name: 'zxmusicfm-production-metadata',
-        transformIndexHtml: {
-          order: 'post',
-          handler: (html) => {
-            if (canonicalUrl === undefined) return html;
-            return {
-              html,
-              tags: [
-                {
-                  tag: 'link',
-                  attrs: { rel: 'canonical', href: canonicalUrl },
-                  injectTo: 'head',
-                },
-                {
-                  tag: 'meta',
-                  attrs: { property: 'og:url', content: canonicalUrl },
-                  injectTo: 'head',
-                },
-                {
-                  tag: 'meta',
-                  attrs: {
-                    property: 'og:image',
-                    content: new URL('og-preview.jpg', canonicalUrl).href,
-                  },
-                  injectTo: 'head',
-                },
-              ],
-            };
-          },
-        },
-      },
       {
         name: 'zxmusicfm-development-worklet',
         configureServer(server) {

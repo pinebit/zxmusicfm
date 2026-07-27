@@ -62,7 +62,7 @@ type WaveformState = { readonly attempt: number } & (
 const initialState: CatalogState = { status: 'loading' };
 const mobilePortraitQuery =
   '(max-width: 1024px) and (orientation: portrait) and (hover: none) and (pointer: coarse)';
-const SHARE_URL = 'https://zxmusicfm.vercel.app';
+const SHARE_URL = 'https://zxradio.org/';
 
 function catalogReducer(
   _state: CatalogState,
@@ -358,7 +358,7 @@ function PlayerApplication({
     window.setTimeout(() => aboutTrigger.current?.focus(), 0);
   }, []);
   const shareApp = useCallback(() => {
-    const shareData = { title: 'ZX-MUSIC.FM', url: SHARE_URL };
+    const shareData = { title: 'ZX RADIO', url: SHARE_URL };
     if (typeof navigator.share === 'function') {
       navigator.share(shareData).catch(() => undefined);
       return;
@@ -374,11 +374,11 @@ function PlayerApplication({
           window.setTimeout(() => setShareStatus('idle'), 2000);
         })
         .catch(() =>
-          window.prompt('Copy this link to share ZX-MUSIC.FM:', SHARE_URL),
+          window.prompt('Copy this link to share ZX RADIO:', SHARE_URL),
         );
       return;
     }
-    window.prompt('Copy this link to share ZX-MUSIC.FM:', SHARE_URL);
+    window.prompt('Copy this link to share ZX RADIO:', SHARE_URL);
   }, []);
 
   return (
@@ -750,7 +750,7 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
       <header className="brand-header">
         <div className="brand-titles">
           <h1>
-            <span className="visually-hidden">ZX-MUSIC.FM</span>
+            <span className="visually-hidden">ZX RADIO</span>
             <BrandWordmark />
           </h1>
         </div>

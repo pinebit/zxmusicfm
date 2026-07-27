@@ -150,7 +150,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
     >
       <div className="about-masthead">
         <div>
-          <p className="section-kicker">ZX-MUSIC.FM</p>
+          <p className="section-kicker">ZX RADIO</p>
           <h2 id="about-title">About</h2>
         </div>
         <button
