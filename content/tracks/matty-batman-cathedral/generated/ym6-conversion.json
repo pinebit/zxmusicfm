@@ -1,0 +1,16 @@
+{
+  "tool": "zxmusicfm-ay-capture",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "sourceSha256": "7d2f5f03eb432676229fdd93f1339982fc76d0596d8e7c6ccbcc59fcbbd024e4",
+  "sourceByteLength": 7532,
+  "subsong": 7,
+  "durationSource": "source",
+  "ym6Sha256": "b132a85ec15c4d9ccaec46d2842f7539ab4e3db23cd3f4909ed2979df6a06c9b",
+  "ym6ByteLength": 104906,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 6550,
+  "title": "Batman The Movie II",
+  "author": "Matty",
+  "comment": "Captured from AY subsong 7 by ZX-MUSIC.FM"
+}

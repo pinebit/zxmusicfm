@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "621c6fafbc2afed4615d23d62e7df1a361dff0680b3fded07837e96f5268f349",
+  "psgByteLength": 225984,
+  "ym6Sha256": "567658d2c558bc40b089839d6a1b6fb2b4fa751de7d6b3c2130feb25009b98ca",
+  "ym6ByteLength": 134047,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8371,
+  "title": "Lost Memories",
+  "author": "Pator",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

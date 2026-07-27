@@ -76,11 +76,6 @@ const playingAdapter = {
     positionSeconds: 1,
     durationSeconds: 120,
   }),
-  getOscilloscopeSamples: () => ({
-    A: new Float32Array(1_024),
-    B: new Float32Array(1_024),
-    C: new Float32Array(1_024),
-  }),
 };
 
 describe('WaveformSeek', () => {

@@ -16,16 +16,19 @@ const manifestPath = path.join(vendorDirectory, 'manifest.json');
 // Bindings the runtime and the content pipeline actually call. A vendor drop
 // that renames or removes any of them has to fail here rather than at playback.
 const requiredBindings = [
-  'generateSamples',
+  'newWithOptions',
   'generateSamplesWithChannels',
-  'getChannelStates',
   'channelCount',
   'get_registers',
+  'seek_to_frame',
+  'frame_position',
+  'frame_count',
   'hasDurationInfo',
   'duration_seconds',
   'play',
   'pause',
   'free',
+  'initSync',
 ];
 
 function sha256(bytes: Uint8Array): string {

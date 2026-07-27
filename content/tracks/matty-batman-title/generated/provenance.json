@@ -9,21 +9,36 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "5379afa39fd3ec0a7e5d6255c101c30bfe5f026b2c362116aa4d3b6792b9f2c3",
-  "runtimeByteLength": 106503,
+  "runtimeSha256": "65dab36f3db9707d14d31c045caf1ef278f93ddf9755e46c18f561b7b55fc375",
+  "runtimeByteLength": 106505,
   "frameCount": 6650,
   "durationSeconds": 133,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "992a93740e8be284f4a7b55116f30a75c99e2458bb682af79262ea8cef3f021a",
-  "measuredLoudnessLufs": -8.17,
-  "normalizationGainDb": -0.83,
+  "waveformSha256": "0f3933fe73ed7788098b610297e046c1bfd0dac3ff653cb43a74a0764f79a21a",
+  "measuredLoudnessLufs": -8.36,
+  "normalizationGainDb": -0.64,
   "trackerConversion": null,
+  "ym6Conversion": {
+    "tool": "zxmusicfm-ay-capture",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "65dab36f3db9707d14d31c045caf1ef278f93ddf9755e46c18f561b7b55fc375",
+    "ym6ByteLength": 106505,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 6650,
+    "title": "Batman The Movie I",
+    "author": "Matty",
+    "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM",
+    "sourceSha256": "7d2f5f03eb432676229fdd93f1339982fc76d0596d8e7c6ccbcc59fcbbd024e4",
+    "sourceByteLength": 7532,
+    "subsong": 1,
+    "durationSource": "source"
+  },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

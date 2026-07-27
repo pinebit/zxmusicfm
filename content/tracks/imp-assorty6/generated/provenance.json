@@ -9,29 +9,43 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ACB",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "299902c2a449fa0192c15dfdd59b8455f068498fede14783006a1da95ba5887f",
+  "runtimeSha256": "ef2d9c340dc6955460c5416f5d32d07ab663c593cc1db21a0120f928d87d96d8",
   "runtimeByteLength": 138330,
   "frameCount": 8639,
   "durationSeconds": 172.78,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "4e8f644f76f54a8e74212e8a39b2aa68b7965ea84240269efb85a3e96543fcc6",
-  "measuredLoudnessLufs": -8.34,
-  "normalizationGainDb": -0.66,
+  "waveformSha256": "7d29d6af00f9a85400cbbc54e6a1f69e89e161abe0561daa88607e8850dd15d4",
+  "measuredLoudnessLufs": -8.47,
+  "normalizationGainDb": -0.53,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "STC",
     "sourceSha256": "1c73379e2580a708e1b25ab806e79db345ead10529a7cbc00243d8920bd2a440",
-    "psgSha256": "ff851d93d15386bd517d16f35e661b89571af7ee05fcd04c5372a49e2c732777",
-    "psgByteLength": 83248
+    "psgSha256": "d99ce2f68018d5864009472d66e65e5c237022163b4c2f25b91091fe99e1595e",
+    "psgByteLength": 183334
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "ef2d9c340dc6955460c5416f5d32d07ab663c593cc1db21a0120f928d87d96d8",
+    "ym6ByteLength": 138330,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8639,
+    "title": "Assorty VI",
+    "author": "IMP",
+    "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "d99ce2f68018d5864009472d66e65e5c237022163b4c2f25b91091fe99e1595e",
+    "psgByteLength": 183334
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

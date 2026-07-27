@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "ab43f3b7360b9a0ef5c646b5183af77acdd1ab9b5ebf1f5536fb65b7d8cb097f",
+  "psgByteLength": 136566,
+  "ym6Sha256": "846bbb6a004a70bfb43e5c7d6cf6ac517f845f729820defd84c7420419946e1e",
+  "ym6ByteLength": 98404,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 6143,
+  "title": "Action Demo Epilogue",
+  "author": "KSA",
+  "comment": "Converted from STP through ZXTune PSG by ZX-MUSIC.FM"
+}

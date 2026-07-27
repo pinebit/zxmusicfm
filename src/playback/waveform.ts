@@ -1,4 +1,4 @@
-import type { OfflineRender } from './contracts.ts';
+import type { ChannelId } from './contracts.ts';
 
 export const WAVEFORM_BUCKET_COUNT = 2_048;
 export const WAVEFORM_CHANNEL_COUNT = 3;
@@ -13,7 +13,11 @@ function encodeMaximum(value: number): number {
   return Math.max(-127, Math.min(127, Math.ceil(value * 127)));
 }
 
-export function encodeWaveformPayload(render: OfflineRender): Uint8Array {
+export type WaveformRender = {
+  readonly channels: Readonly<Record<ChannelId, Float32Array>>;
+};
+
+export function encodeWaveformPayload(render: WaveformRender): Uint8Array {
   const payload = new Uint8Array(WAVEFORM_BYTES_PER_TRACK);
   const signed = new Int8Array(payload.buffer);
   const sources = [render.channels.A, render.channels.B, render.channels.C];

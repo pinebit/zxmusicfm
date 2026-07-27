@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "9154ef984f5ce7be82c9f2488a1e9c3a95c17d76b888526063aa40b86fa029be",
+  "psgByteLength": 148492,
+  "ym6Sha256": "b2b63190bd2e7d8b9a8b97de23879a14815d2be4b4c8a1e85232e01735664219",
+  "ym6ByteLength": 98398,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 6143,
+  "title": "Where We Are",
+  "author": "LR-18",
+  "comment": "Converted from FTC through ZXTune PSG by ZX-MUSIC.FM"
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "originalFileName": "source.ay",
+  "originalFileName": "BatManTheMovie.ay",
   "sourceFormat": "AY",
   "sourceSha256": "7d2f5f03eb432676229fdd93f1339982fc76d0596d8e7c6ccbcc59fcbbd024e4",
   "sourceByteLength": 7532,
@@ -9,21 +9,37 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "96a0dd116f28a58da5e716e66d193ae2d67908c3da4f2f5d0e6377b4742f06ca",
-  "runtimeByteLength": 104903,
+  "runtimeSha256": "b132a85ec15c4d9ccaec46d2842f7539ab4e3db23cd3f4909ed2979df6a06c9b",
+  "runtimeByteLength": 104906,
   "frameCount": 6550,
   "durationSeconds": 131,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "ffadc2187c9c4f53d18e8e5727e5325ac8effc81789085f2c7478f6b9c50a519",
-  "measuredLoudnessLufs": -10.15,
-  "normalizationGainDb": 1.15,
+  "waveformSha256": "5b50097d2567823aa6e0930d98eee2c155cf0d3bf1f0a3ef2de79e8225704a8b",
+  "measuredLoudnessLufs": -10.46,
+  "normalizationGainDb": 1.07,
+  "peakLimitedFrom": 1.46,
   "trackerConversion": null,
+  "ym6Conversion": {
+    "tool": "zxmusicfm-ay-capture",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "b132a85ec15c4d9ccaec46d2842f7539ab4e3db23cd3f4909ed2979df6a06c9b",
+    "ym6ByteLength": 104906,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 6550,
+    "title": "Batman The Movie II",
+    "author": "Matty",
+    "comment": "Captured from AY subsong 7 by ZX-MUSIC.FM",
+    "sourceSha256": "7d2f5f03eb432676229fdd93f1339982fc76d0596d8e7c6ccbcc59fcbbd024e4",
+    "sourceByteLength": 7532,
+    "subsong": 7,
+    "durationSource": "source"
+  },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

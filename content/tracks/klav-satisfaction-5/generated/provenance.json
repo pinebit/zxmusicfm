@@ -9,29 +9,43 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ACB",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "ff35350f72f8d51db44db23f0fcc437ec7d67e66a234b2a495ec68a1f28b3904",
+  "runtimeSha256": "7240f84c094f17b1dbf7aa700959a94c6c4cee8cfac5045368b7665333c91814",
   "runtimeByteLength": 141407,
   "frameCount": 8831,
   "durationSeconds": 176.62,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "207cf80ee670f37ef8b195eae805051f50fc87c99d8f6dc043718bf9601057b7",
-  "measuredLoudnessLufs": -7.55,
-  "normalizationGainDb": -1.45,
+  "waveformSha256": "6c19da6163d1451431688680328bff8171e4d5037b2d61926ca10a4c9d5937ac",
+  "measuredLoudnessLufs": -7.6,
+  "normalizationGainDb": -1.4,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "STC",
     "sourceSha256": "c8d9771ce9feabaa8cdb3338f7b331070153ef2ed0d8aca3a76dbbd50776fd29",
-    "psgSha256": "97d33a4d5bea67cece8d19b52d32bc59805a74d61c7553a126ae40af6e097488",
-    "psgByteLength": 84456
+    "psgSha256": "87fc47fee0c4f5738cf1ddd5a5a6676af59025c30e9ce8b51daa995f7a575496",
+    "psgByteLength": 185548
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "7240f84c094f17b1dbf7aa700959a94c6c4cee8cfac5045368b7665333c91814",
+    "ym6ByteLength": 141407,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8831,
+    "title": "Satisfaction 5",
+    "author": "Klav",
+    "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "87fc47fee0c4f5738cf1ddd5a5a6676af59025c30e9ce8b51daa995f7a575496",
+    "psgByteLength": 185548
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

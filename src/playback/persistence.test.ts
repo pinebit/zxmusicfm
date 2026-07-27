@@ -30,14 +30,11 @@ describe('player persistence', () => {
       volume: 0.4,
       shuffle: true,
       channelOrder: 'ABC',
-      mode: 'studio',
     });
     expect(restored).not.toHaveProperty('playing');
   });
 
-  it('defaults preferences written before the mode existed to studio', () => {
-    // No schemaVersion bump accompanied `mode`, so a returning listener's stored
-    // preferences legitimately lack the key and must not be discarded.
+  it('ignores removed preference fields without a schema bump', () => {
     const restored = parsePlayerPreferences(
       {
         schemaVersion: 1,
@@ -46,26 +43,14 @@ describe('player persistence', () => {
         volume: 0.6,
         shuffle: false,
         channelOrder: 'BAC',
+        mode: 'studio',
       },
       tracks,
     );
 
-    expect(restored.mode).toBe('studio');
+    expect(restored).not.toHaveProperty('mode');
     expect(restored.channelOrder).toBe('BAC');
     expect(restored.volume).toBe(0.6);
-  });
-
-  it('keeps a stored mode and rejects an unknown one', () => {
-    const stored = (mode: unknown) =>
-      parsePlayerPreferences(
-        { schemaVersion: 1, selectedTrackId: 'proof', mode },
-        tracks,
-      ).mode;
-
-    expect(stored('vanilla')).toBe('vanilla');
-    expect(stored('studio')).toBe('studio');
-    expect(stored('turbo')).toBe(DEFAULT_PLAYER_PREFERENCES.mode);
-    expect(stored(null)).toBe(DEFAULT_PLAYER_PREFERENCES.mode);
   });
 
   it('validates version-one fields independently', () => {

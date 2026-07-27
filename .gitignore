@@ -3,10 +3,11 @@ dist/
 coverage/
 playwright-report/
 test-results/
+.playwright-mcp/
 .vite/
+.tools/
 *.log
 .DS_Store
 .env
 .env.*
 !.env.example
-

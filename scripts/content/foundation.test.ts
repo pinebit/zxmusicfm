@@ -8,9 +8,11 @@ import {
   generatedCatalogSchema,
   generatedProvenanceSchema,
 } from '../../src/content/schemas.ts';
+import { ENGINE_COMMIT } from '../../src/playback/enginePin.ts';
 import {
   detectSupportedSource,
   generateFoundationContent,
+  readRecordedOriginalFileName,
   validateContent,
 } from './foundation.ts';
 
@@ -37,6 +39,44 @@ describe('foundation content generation', () => {
     await expect(validateContent(root)).resolves.toMatchObject({
       trackCount: 0,
     });
+  });
+
+  it('carries the recorded original filename across a schema change', async () => {
+    const root = await createTemporaryRoot();
+    const provenancePath = path.join(root, 'provenance.json');
+    const write = (value: unknown) =>
+      writeFile(provenancePath, JSON.stringify(value));
+
+    // The curator's filename lives only in provenance, and a regeneration reads
+    // it back to carry it forward. A document written by an older or newer
+    // schema still has to yield it, or the value is replaced by `source.<ext>`
+    // for every track the moment any unrelated field moves.
+    await write({
+      originalFileName: 'Klav_-_Satisfaction_9_(1994).stc',
+      runtimeMode: 'convert',
+      thisFieldDoesNotExistInTheSchema: true,
+    });
+    await expect(readRecordedOriginalFileName(provenancePath)).resolves.toBe(
+      'Klav_-_Satisfaction_9_(1994).stc',
+    );
+
+    for (const absent of [
+      {},
+      { originalFileName: '' },
+      { originalFileName: 3 },
+    ]) {
+      await write(absent);
+      await expect(
+        readRecordedOriginalFileName(provenancePath),
+      ).resolves.toBeUndefined();
+    }
+    await writeFile(provenancePath, 'not json');
+    await expect(
+      readRecordedOriginalFileName(provenancePath),
+    ).resolves.toBeUndefined();
+    await expect(
+      readRecordedOriginalFileName(path.join(root, 'missing.json')),
+    ).resolves.toBeUndefined();
   });
 
   it('rejects a stale generated catalog', async () => {
@@ -93,6 +133,11 @@ describe('foundation content generation', () => {
       // the measurement it came from, so a retune can be reasoned about later.
       expect(provenance.normalizationGainDb).toBe(track.normalizationGainDb);
       expect(provenance.measuredLoudnessLufs).toBeLessThan(0);
+      expect(provenance.ym6Conversion.commit).toBe(ENGINE_COMMIT);
+      expect(provenance.ym6Conversion.ym6Sha256).toBe(provenance.runtimeSha256);
+      expect(provenance.ym6Conversion.ym6ByteLength).toBe(
+        provenance.runtimeByteLength,
+      );
     }
   }, 30_000);
 
@@ -131,7 +176,13 @@ describe('foundation content generation', () => {
       );
       // Within a rounding step: the gain is derived from the unrounded
       // measurement, while provenance stores the rounded one.
-      expect(track.normalizationGainDb).toBeCloseTo(expected, 1);
+      if (track.peakLimitedFrom === undefined) {
+        expect(track.normalizationGainDb).toBeCloseTo(expected, 1);
+      } else {
+        expect(track.peakLimitedFrom).toBeCloseTo(expected, 1);
+        expect(track.normalizationGainDb).toBeLessThan(track.peakLimitedFrom);
+        expect(provenance.peakLimitedFrom).toBe(track.peakLimitedFrom);
+      }
     }
   }, 30_000);
 });
@@ -160,11 +211,23 @@ describe('tracker source routing', () => {
       format: 'FTC',
       extension: '.ftc',
     });
+    expect(
+      detectSupportedSource(new TextEncoder().encode('ZXAYEMUL'), 'song.ay'),
+    ).toEqual({
+      format: 'AY',
+      extension: '.ay',
+    });
   });
 
   it('does not route an unsupported extension as a tracker', () => {
     expect(() =>
       detectSupportedSource(new Uint8Array([1, 2, 3]), 'song.mod'),
+    ).toThrow('unsupported source signature');
+    expect(() =>
+      detectSupportedSource(
+        new TextEncoder().encode('YM6!LeOnArD!'),
+        'song.ym',
+      ),
     ).toThrow('unsupported source signature');
   });
 });

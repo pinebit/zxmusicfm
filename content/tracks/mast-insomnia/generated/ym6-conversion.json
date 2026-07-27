@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "401920e1b66e1efed3b8e123a7204a419742f41a3eb49d8d6e0a322e22ebf3c4",
+  "psgByteLength": 220977,
+  "ym6Sha256": "9ce70223c9b9032b00c6f66aa00ae8db05f7dac6ae107dd5bf34e90ad3d7d3a8",
+  "ym6ByteLength": 130985,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8180,
+  "title": "Insomnia",
+  "author": "Mast",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

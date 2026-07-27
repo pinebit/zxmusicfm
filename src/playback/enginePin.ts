@@ -6,4 +6,4 @@
  * pipeline, and `scripts/playback/rebuild-engine.sh` cannot drift apart. Change
  * it only alongside an explicit engine decision recorded in AGENTS.md.
  */
-export const ENGINE_COMMIT = 'b3096aac0dcab6dd1d82c0209f579761943aadc6';
+export const ENGINE_COMMIT = '5bb4886fb35032db07980e5fdac408db54c7796f';

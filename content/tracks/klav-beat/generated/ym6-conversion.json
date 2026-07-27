@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "2d185eadd2a48f66f16db82e6d4d02a6b5341c800a3329323864619b654d1dec",
+  "psgByteLength": 256810,
+  "ym6Sha256": "e960c154eb4607adfdff1a8be62a2801a9c7c84f0fc3712908916455a50c0a36",
+  "ym6ByteLength": 184404,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 11519,
+  "title": "Beat",
+  "author": "ASC",
+  "comment": "Converted from ASC through ZXTune PSG by ZX-MUSIC.FM"
+}

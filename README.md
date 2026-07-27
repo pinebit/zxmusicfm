@@ -15,9 +15,9 @@ the original hardware had, rendered a sample at a time while you listen.
   the output, so the three waveform lanes, the three VU meters, and the piano
   keyboard show what each chip channel is actually doing — not a post-hoc
   analysis of a stereo mix.
-- **Sample-exact seeking.** The upstream engine cannot restore tone, noise, and
-  envelope phase on a seek, so the player reconstructs the chip state by
-  rendering deterministically from the beginning to the target sample.
+- **Immediate seeking.** The worklet asks the engine to jump directly to the
+  target YM6 frame. This deliberately preserves the engine's phase-discontinuous
+  native seek semantics instead of blocking the main thread to replay from zero.
 - **Stereo placement you control.** Channel order cycles through ABC, ACB, and
   BAC, remapping the live audio without interrupting playback.
 - **Shuffle, auto-advance, and resume.** Volume, channel order, selected track,
@@ -27,17 +27,18 @@ the original hardware had, rendered a sample at a time while you listen.
 - **Accessible controls.** Keyboard operation, visible focus, non-colour state
   communication, a conventional slider fallback when canvas or waveform data
   fails, and a WCAG 2.2 AA target checked by automated axe scans.
-- **No tracking of any kind.** No analytics, cookies, telemetry, advertising,
-  service worker, or third-party requests. Fonts, code, images, audio, and
-  generated data are all self-hosted behind a restrictive CSP.
+- **Minimal, first-party telemetry.** Vercel Web Analytics records page views and
+  Web Vitals through the deployment's own origin. There are no custom events,
+  advertising cookies, service worker, or remote runtime assets; fonts, code,
+  images, audio, and generated data are self-hosted behind a restrictive CSP.
 
-The committed catalog currently holds 24 tracks by 14 authors, from 1987 to 2024,
-about 70 minutes in total. Catalog size is a curatorial choice rather than a
+The committed catalog currently holds 33 tracks by 14 authors, from 1987 to 2024,
+about 97 minutes in total. Catalog size is a curatorial choice rather than a
 constraint; a valid catalog may hold any number of tracks, including none.
 
-Cold-load transfer is about 194 KB against a 500 KB budget. The 1.3 MB
-WebAssembly engine and the music itself load lazily, only after a user gesture
-permits audio.
+Cold-load transfer stays under a 500 KB budget. The WebAssembly engine, its
+self-contained AudioWorklet, and the music itself load lazily, only after a user
+gesture permits audio.
 
 ## How it works
 
@@ -53,9 +54,13 @@ content/tracks/<permanent-id>/
   generated/source.psg           intermediate register dump
   generated/tracker-conversion.json
     │
-    │  project-owned PSG → YM6, plus a dry offline render at 48 kHz
+    │  pinned native psg2ym6 converter
     ▼
   generated/playback.ym          finite, seekable runtime stream
+  generated/ym6-conversion.json  converter identity and input/output hashes
+    │
+    │  native WASM offline render at 48 kHz
+    ▼
   generated/waveform.bin         2,048 min/max peaks per channel
   generated/provenance.json      source hashes, formats, engine pin
     │
@@ -70,16 +75,18 @@ At runtime the browser fetches `catalog.json`, verifies every asset's SHA-256
 against the catalog before use, then lazily loads the engine and renders:
 
 ```
-YM6 registers → WASM YM2149 → 3 discrete channels → stereo router (ABC/ACB/BAC)
-              → high-pass → bass shelf → limiter → low-pass → volume → output
-                                    └─ analyser taps feed meters, keyboard, and
-                                       the oscilloscope lens
+main thread                 AudioWorklet
+YM6 + compiled WASM ──────► WASM YM2149 ──► 3 discrete channels
+                                            └─► stereo router (ABC/ACB/BAC)
+                                                └─► track gain → volume → output
+                         timestamped snapshots ─► meters and keyboard
 ```
 
-Because preparation is deterministic, `npm run content:validate` can re-derive
-every artifact from the authoritative sources and byte-compare it against what is
-committed. That check runs inside `npm run build`, so a change that alters
-rendered audio by a single sample fails the build rather than shipping quietly.
+The content pipeline byte-compares deterministic generated artifacts and validates
+the committed converter provenance without requiring Rust in production or CI.
+`npm run content:validate` also renders the strict YM6 with the pinned native
+engine, so waveform, loudness, and peak-safety changes cannot ship quietly. The
+check runs inside `npm run build`.
 
 ## Getting started
 
@@ -96,22 +103,23 @@ site — only to import tracker-format music or rebuild the engine.
 
 ## Commands
 
-| Command                    | What it does                                                    |
-| -------------------------- | --------------------------------------------------------------- |
-| `npm run dev`              | Vite dev server                                                 |
-| `npm run build`            | Validates content, verifies the engine, typechecks, then builds |
-| `npm run preview`          | Serves the production build from `dist`                         |
-| `npm run typecheck`        | `tsc --noEmit`                                                  |
-| `npm run lint`             | ESLint, zero warnings tolerated                                 |
-| `npm run format:check`     | Prettier                                                        |
-| `npm test`                 | Unit and component suites, including real WASM rendering        |
-| `npm run test:e2e`         | Playwright journeys against the production build                |
-| `npm run engine:verify`    | Checks the vendored engine against its pin and hashes           |
-| `npm run content:generate` | Re-derives every generated artifact                             |
-| `npm run content:validate` | Byte-compares committed artifacts against a fresh derivation    |
+| Command                            | What it does                                                    |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `npm run dev`                      | Vite dev server                                                 |
+| `npm run build`                    | Validates content, verifies the engine, typechecks, then builds |
+| `npm run preview`                  | Serves the production build from `dist`                         |
+| `npm run typecheck`                | `tsc --noEmit`                                                  |
+| `npm run lint`                     | ESLint, zero warnings tolerated                                 |
+| `npm run format:check`             | Prettier                                                        |
+| `npm test`                         | Unit and component suites, including real WASM rendering        |
+| `npm run test:e2e`                 | Playwright journeys against the production build                |
+| `npm run engine:verify`            | Checks the vendored engine against its pin and hashes           |
+| `npm run engine:install-converter` | Builds the pinned native `psg2ym6` tool in `.tools/bin`         |
+| `npm run content:generate`         | Re-derives every generated artifact                             |
+| `npm run content:validate`         | Byte-compares committed artifacts against a fresh derivation    |
 
 `npm run engine:rebuild` is an exceptional maintainer command that rebuilds the
-pinned browser engine from source. It needs Rust 1.88.0, the
+pinned browser engine from source. It needs Rust 1.95.0, the
 `wasm32-unknown-unknown` target, and `wasm-bindgen-cli` 0.2.105.
 
 ## Adding music
@@ -143,13 +151,20 @@ Permanent IDs never change. `content:update` requires `--replace-source` before 
 will replace authoritative bytes, and `content:remove` prints its exact target
 before asking for confirmation.
 
-**Formats.** AY, YM, and PSG are prepared with Node alone. PT3, STC, ASC, STP, and
-FTC additionally require Docker Desktop: the importer builds a Linux `zxtune123`
-image from pinned commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`, confirms
-ZXTune's detected module type matches the file extension, and converts to an
-intermediate PSG inside a read-only, network-disabled, capability-free container.
-The resulting conversion is committed with its hashes, so later builds and
-deployments need neither Docker nor network access.
+**Formats.** Strict, canonical interleaved YM6 is the only runtime format. PSG
+sources and the PSG produced from PT3, STC, ASC, STP, and FTC are converted by the
+pinned native `psg2ym6` tool. Tracker imports additionally require Docker Desktop:
+the importer builds a Linux `zxtune123` image from pinned commit
+`8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`, confirms ZXTune's detected module
+type matches the file extension, and converts inside a read-only,
+network-disabled, capability-free container.
+
+ZXTune currently crashes while converting the catalog's AY containers, so AY is
+the documented fallback path: the pinned WASM engine loads the selected AY
+subsong, exposes its register frames, and the project writes those frames directly
+as strict YM6 without an intermediate PSG. Direct YM imports are not supported.
+All conversion products and their hashes are committed, so later builds and
+deployments need neither Docker, Rust, nor network access.
 
 ## Attribution and licensing
 

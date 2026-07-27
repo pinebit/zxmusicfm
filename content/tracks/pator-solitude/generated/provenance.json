@@ -9,21 +9,34 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "0553a79567caed76bce4f94cc10dea22622af63541eb2ba8dd8a33cb2a6a97bd",
+  "runtimeSha256": "d2597f8eef9d989c26ba28692b53abcd7bc84302f1254a1363b9b7d9bb38ca66",
   "runtimeByteLength": 138510,
   "frameCount": 8651,
   "durationSeconds": 173.02,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "3b5e87b99641b79cba1bcbf8d5c9da99ef9240e85fdbfad89d749338f5c065fe",
-  "measuredLoudnessLufs": -6.91,
-  "normalizationGainDb": -2.09,
+  "waveformSha256": "84554236fe0aedd7fc3eaf7b0834cad992fbbc9c29eb13eaff997387c75b97aa",
+  "measuredLoudnessLufs": -6.97,
+  "normalizationGainDb": -2.03,
   "trackerConversion": null,
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "d2597f8eef9d989c26ba28692b53abcd7bc84302f1254a1363b9b7d9bb38ca66",
+    "ym6ByteLength": 138510,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8651,
+    "title": "Solitude",
+    "author": "Pator",
+    "comment": "Converted from source.psg by ZX-MUSIC.FM",
+    "psgSha256": "63b6f3d1f31f06786aa0f52fc8e8e8da0f58d789cf3b513ed352dde008192f91",
+    "psgByteLength": 63474
+  },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "e40ffdf6d25be7409d6acf043fe40ac1d23e110345b35037b5a5a57a1088e719",
+  "psgByteLength": 172308,
+  "ym6Sha256": "b9444fec4ceaed4bd2bb6691ed8278ac904cb74eb89b9711712f99b252ec7269",
+  "ym6ByteLength": 136282,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8511,
+  "title": "Assorty II",
+  "author": "IMP",
+  "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM"
+}

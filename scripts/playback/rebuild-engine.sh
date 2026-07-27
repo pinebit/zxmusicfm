@@ -15,11 +15,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-git clone --filter=blob:none https://github.com/slippyex/ym2149-rs.git "$engine_checkout"
+git clone --filter=blob:none https://github.com/pinebit/ym2149-rs.git "$engine_checkout"
 git -C "$engine_checkout" checkout --detach "$revision"
-cp "$project_root/vendor/ym2149/Cargo.lock" "$engine_checkout/Cargo.lock"
+# The fork's workspace lock is authoritative for both the WASM package and the
+# curator-time converter. Refresh the vendored copy before the locked build.
+cp "$engine_checkout/Cargo.lock" "$project_root/vendor/ym2149/Cargo.lock"
 
-rustup run 1.88.0 cargo build \
+rustup run 1.95.0 cargo build \
   --manifest-path "$engine_checkout/Cargo.toml" \
   --release \
   --locked \
@@ -38,6 +40,7 @@ cp "$bindgen_output"/ym2149_wasm.js \
   "$bindgen_output"/ym2149_wasm_bg.wasm \
   "$bindgen_output"/ym2149_wasm_bg.wasm.d.ts \
   "$project_root/vendor/ym2149/"
+cp "$engine_checkout/LICENSE" "$project_root/vendor/ym2149/LICENSE"
 
 cd "$project_root"
 npm run engine:verify

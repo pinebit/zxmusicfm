@@ -10,7 +10,11 @@ test('loads the catalog shell', async ({ page }) => {
     page.getByRole('heading', { level: 3, name: 'Solitude' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { level: 3, name: 'Batman The Movie' }),
+    page.getByRole('heading', {
+      level: 3,
+      name: 'Batman The Movie I',
+      exact: true,
+    }),
   ).toBeVisible();
   const actionEpilogue = page.getByRole('listitem').filter({
     has: page.getByRole('heading', {

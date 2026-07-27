@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "b4380b08880a9af8c7ba0b89f8c0307eb313f71d3d9483995ba802a4cc964e23",
+  "psgByteLength": 170964,
+  "ym6Sha256": "9b86b8a7458bd1cf1e0ed8ce89302ef7ec927d95aabd9dffd5f921ebff87fba8",
+  "ym6ByteLength": 129113,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8063,
+  "title": "Shock6",
+  "author": "Ziutek",
+  "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM"
+}

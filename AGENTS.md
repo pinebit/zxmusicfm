@@ -10,27 +10,14 @@ These instructions apply to the entire repository.
 
 ## What this is
 
-A browser player for a curated collection of ZX Spectrum AY/YM chip music. Tracker and chip files are converted offline into finite, seekable YM6 runtime files plus precomputed waveform peaks; the browser renders audio itself. There is no prerecorded audio anywhere in the product.
+A browser player for a curated collection of ZX Spectrum AY/YM chip music. Tracker and chip files are converted offline into finite, seekable, strict YM6 runtime files plus precomputed waveform peaks. The browser renders the chip audio itself; there is no prerecorded audio anywhere in the product.
 
-Two things follow from that and explain most of the design:
+The player has one presentation: the pinned `pinebit/ym2149-rs` engine's raw three-channel output. The fork integrates the PSG's piecewise-constant output over exact host-sample intervals and carries native AY and YM DAC curves. On the 4105 Hz regression tone at 44.1 kHz, `engineSpectrum.test.ts` requires spurious even harmonics below **-45 dB** and inharmonic partials below **-55 dB** relative to the fundamental. This is the direct guard against the sample-grid edge jitter that once required a separate studio renderer.
 
-- **The engine is a synchronous, main-thread WASM renderer.** Anything that rewinds it costs a full render from sample zero. Position changes are therefore deferred and batched, not free.
-- **Everything the browser plays is derived from committed authoritative inputs by deterministic tooling.** Derived artifacts are byte-compared in CI. A change that alters rendered output by one sample fails `content:validate`, which is the intended alarm, not an obstacle to route around.
+Two facts explain most of the design:
 
-### Two playback modes
-
-The player ships two presentations of the same track, switchable on the fly and persisted:
-
-- **`vanilla`** — the pinned Rust/WASM YM2149 emulator through the original master chain. Preserved exactly as it has always been; `content:validate` is what proves it.
-- **`studio`** — a project-owned band-limited renderer (`chipSynth.ts`) through a per-channel processing chain. The default for a new listener.
-
-Studio exists because the vendored engine snaps tone edges to the output sample grid, which jitters the pulse width. Measured on a 4105 Hz tone at 44.1 kHz, the engine produces spurious even harmonics near **-13 dB** and inharmonic partials near **-16 dB**; those land between 1 and 12 kHz, where no output filter can remove them. The same tone through `chipSynth.ts` measures **-52 dB** and **-64 dB**. That is emulator error, not chip character — real hardware toggles at exact chip-clock instants.
-
-Both modes exist as parallel graphs feeding one volume node, and both renderers stay loaded so a switch only reconciles the one becoming active. Consequences worth knowing before touching either:
-
-- **Vanilla is a fixed reference, not a fallback.** Do not retune its chain, its gain structure, or its amplitude model to make studio look better. It is the thing listeners A/B against.
-- **Studio has no aliasing to hide.** Filters justified as "taming harshness" only throw away real harmonics there. `CHANNEL_SMOOTHING_HZ` was 9 kHz on that mistaken reasoning and left studio 3 to 7.6 dB darker than vanilla; it is 14 kHz because that measures within about 2 dB of vanilla from 2 kHz to 20 kHz. The bass shelf that followed spends a little of that margin deliberately: studio now sits about 2.3 dB below vanilla at 4 kHz, as the other end of a tilt, not as band limiting.
-- **The two modes must stay loudness-matched**, or the toggle compares level instead of tone and the louder one always wins. See `STUDIO_MAKEUP_DB`.
+- **The synchronous WASM renderer lives in an `AudioWorklet`, not on the main thread.** The worklet renders 1,024-sample blocks and drains them into 128-frame render quanta. There is no timer scheduler, buffer lookahead, `AudioBufferSourceNode`, or browser-side tracker parser.
+- **Everything the browser plays is derived from committed authoritative inputs.** Runtime YM, conversion records, provenance, waveforms, and the public catalog are deterministic committed artifacts. Validation structurally verifies committed YM6 and fully re-derives engine-dependent artifacts without requiring Rust, Docker, or network access.
 
 ## Repository workflow
 
@@ -38,193 +25,176 @@ Both modes exist as parallel graphs feeding one volume node, and both renderers 
 - Do not stage changes as part of normal implementation or verification.
 - Do not create or modify an external Vercel project without separate explicit authorization.
 - Use `apply_patch` for hand-edited text and source files. Formatting tools may perform mechanical rewrites.
-- Do not hand-edit generated catalogs, waveform packs, playback files, hashes, or provenance. Change authoritative inputs or tooling and regenerate them.
+- Do not hand-edit generated catalogs, waveform packs, playback files, hashes, conversion records, or provenance. Change authoritative inputs or tooling and regenerate them.
 - Do not add advertising, cookies, a service worker, PWA behavior, or remote runtime assets.
-- Vercel Web Analytics (`@vercel/analytics/react`, the default `<Analytics />` component with no `mode` or `debug` override) is the one permitted exception, added as an explicit product decision. It is page-view/web-vitals telemetry only: do not call `track()` for custom events, clicks, or other UI interactions. Its script and beacon requests are served through the deployment's own origin by Vercel's edge network, so `'self'` in the existing CSP already covers them — do not relax `script-src` or `connect-src` for a third-party analytics domain. Do not add any other analytics or tracking provider without a similar explicit decision recorded here.
+- Vercel Web Analytics (`@vercel/analytics/react`, the default `<Analytics />` component with no `mode` or `debug` override) is the one permitted telemetry exception. Do not call `track()` or relax CSP for another provider.
 
 ## Toolchain and commands
 
-Use the pinned Node.js/npm versions and the lockfile. Install with `npm ci`, not `npm install`, when verifying a clean checkout.
+Use the pinned Node.js/npm versions and lockfile. Verify a clean checkout with `npm ci`, not `npm install`.
 
-| Command                    | What it proves                                                            | Rough cost      |
-| -------------------------- | ------------------------------------------------------------------------- | --------------- |
-| `npm run typecheck`        | `tsc --noEmit` over src, scripts, tests, and configs                      | seconds         |
-| `npm run lint`             | ESLint, zero warnings tolerated; includes React hook rules                | seconds         |
-| `npm run format:check`     | Prettier over the whole tree, including Markdown                          | seconds         |
-| `npm test`                 | Vitest unit and component suites, including real WASM rendering           | ~50 s           |
-| `npm run test:e2e`         | Playwright journeys **against the production build**                      | build + minutes |
-| `npm run engine:verify`    | Vendored engine matches the pin, hashes, and required bindings            | instant         |
-| `npm run content:generate` | Re-derives every artifact from authoritative inputs                       | ~40 s           |
-| `npm run content:validate` | Byte-compares every committed derived artifact against a fresh derivation | ~40 s           |
-| `npm run build`            | `content:validate` + `engine:verify` + `typecheck` + `vite build`         | ~45 s           |
+| Command                            | What it proves                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| `npm run typecheck`                | `tsc --noEmit` over source, scripts, tests, and configs                           |
+| `npm run lint`                     | ESLint with zero warnings                                                         |
+| `npm run format:check`             | Prettier over the whole tree                                                      |
+| `npm test`                         | Unit/component suites, including real WASM and worklet processor tests            |
+| `npm run test:e2e`                 | Playwright journeys against the production build                                  |
+| `npm run engine:verify`            | Vendored fork matches its pin, hashes, and required bindings                      |
+| `npm run engine:install-converter` | Installs the pinned native `psg2ym6` into gitignored `.tools/`                    |
+| `npm run content:generate`         | Regenerates every artifact; needs converter and Docker only when inputs are stale |
+| `npm run content:validate`         | Structurally checks YM6 and byte-compares all re-derived committed output         |
+| `npm run build`                    | Content validation, engine verification, typecheck, and Vite build                |
 
-Run checks in proportion to the change, then run the complete relevant suite before handoff. The production build must retain content validation and engine verification; do not weaken it to make a failure disappear.
+The production build must retain content validation and engine verification. Do not weaken either to make a failure disappear. A deliberate engine, renderer, or conversion change may rewrite every runtime, waveform, hash, provenance file, and catalog entry; regenerate once and report the scope explicitly.
 
-`content:validate` is the strongest tool in the repo. Any change touching the engine adapter, the chip amplitude model, the offline render, or the YM/PSG format code must keep it passing, which is proof the change is bit-exact. If a change is _meant_ to alter rendered output, that is a product decision: regenerate with `content:generate` and say so explicitly in the handoff, because it rewrites every provenance file and content hash.
-
-Continuous integration is intentionally limited to `npm run build`, which already runs the TypeScript sanity check. Keep richer lint, unit, browser, and accessibility checks as documented local commands unless the specification changes.
+Continuous integration intentionally runs only `npm run build`. Keep lint, unit, browser, accessibility, and manual audio checks as documented local gates unless the specification changes.
 
 ## Repository map
 
-```
+```text
 src/
-  main.tsx                     createRoot, no StrictMode (see remount note below)
-  app/                         React UI, project-owned CSS, no UI framework
-    App.tsx                    catalog load, layout, distraction-free mode, keyboard
-    WaveformSeek.tsx           canvas waveform + oscilloscope lens + range fallback
-    ChannelMeters.tsx          three needle meters, rAF-driven
-    PianoKeyboard.tsx          88-key note visualiser, rAF-driven
+  main.tsx
+  app/
+    App.tsx                    catalog, layout, distraction-free mode, keyboard
+    WaveformSeek.tsx           cached three-lane waveform + range fallback
+    ChannelMeters.tsx          three rAF-driven needle meters
+    PianoKeyboard.tsx          rAF-driven 88-key visualiser
     VolumeKnob.tsx             role="slider" knob
-    usePrefersReducedMotion.ts every rAF animation must consult this
-    styles.css                 all styling
   content/
-    schemas.ts                 zod schemas: sidecar, provenance, generated catalog
-    runtime.ts                 fetch + SHA-256 verify, waveform pack decode
+    schemas.ts                 sidecar, conversion, provenance, catalog schemas
+    runtime.ts                 fetch/SHA-256 verification and waveform decoding
   playback/
-    contracts.ts               PlaybackAdapter contract and shared types
+    contracts.ts               eager adapter contract and shared types
     PlayerController.ts        the single controller the UI talks to
-    Ym2149PlaybackAdapter.ts   scheduler and mode switching (lazy chunk)
-    audioGraph.ts              both mode chains and all DSP tuning (lazy chunk)
-    reverbImpulse.ts           synthesized plate impulse response (lazy chunk)
-    chipSource.ts              ChipSource: engine and synth behind one shape
-    chipSynth.ts               band-limited YM2149 renderer (studio mode)
-    engine.ts                  WASM binding narrowing (lazy chunk)
-    sampleRates.ts             ENGINE_SAMPLE_RATE, OFFLINE_SAMPLE_RATE
-    enginePin.ts               ENGINE_COMMIT, the single source of the pin
-    chipModel.ts               AY amplitude mapping + DAC tables (see invariants)
-    loudness.ts                ITU-R BS.1770 measurement (build time only)
-    formats.ts                 PSG / YM3 / YM6 / AY parsing and YM6 authoring
-    waveform.ts                waveform peak encoding and layout constants
-    persistence.ts             localStorage preferences
+    Ym2149PlaybackAdapter.ts   lazy main-thread worklet bridge
+    audioGraph.ts              raw A/B/C stereo routing and gains only
+    worklet/chipProcessor.ts   the sole browser WASM player
+    worklet/utf8Shim.ts        worklet-safe wasm-bindgen UTF-8 globals
+    workletMessages.ts         type-only port protocol
+    enginePin.ts               the single engine/converter revision pin
+    formats.ts                 Node-side PSG/AY/YM6 parsing and strict YM6 authoring
+    loudness.ts                ITU-R BS.1770 measurement, build time only
+    waveform.ts                waveform peak encoding/layout
 scripts/
-  content/{cli,foundation,remote,tracker}.ts   curator pipeline (Node only)
-  playback/{verify-engine-artifacts.ts,rebuild-engine.sh}
+  content/{cli,foundation,offlineRender,psg2ym6,remote,tracker}.ts
+  playback/{install-converter,rebuild-engine,verify-engine-artifacts}.*
 content/tracks/<permanent-id>/  authoritative source + sidecar + generated/
-public/generated/               catalog.json, hashed runtime YM, hashed waveform pack
-vendor/ym2149/                  pinned WASM engine, hashes in manifest.json
-tests/e2e/                      Playwright journeys
+public/generated/               catalog, hashed runtime YM, waveform pack
+vendor/ym2149/                  pinned fork artifacts and manifest
+tests/e2e/                      production-build browser journeys
 ```
 
 ## Application architecture
 
-- Keep React, strict TypeScript, Vite, and project-owned CSS. Do not introduce a heavyweight UI framework without an explicit product decision.
-- Keep playback behind the application-owned adapter and the single `PlayerController`. UI components must not call Web Audio or engine APIs directly. Components may read the adapter's semantic accessors (`getChannelLevels`, `getChannelVoices`, `getOscilloscopeSamples`, `getSnapshot`); those exist precisely so the UI never touches an `AudioNode`.
-- Preserve one lazy `AudioContext` and at most one playback-engine instance.
-- Engine/WASM and music bytes must remain lazy-loaded after a permitted user gesture.
-- Both renderers sit behind the `ChipSource` shape in `chipSource.ts`, so `scheduleBuffers` never branches on which mode is active beyond recovering a chip level. Add a renderer by implementing `ChipSource`, not by special-casing the scheduler.
-- All DSP tuning lives in `audioGraph.ts` as named constants with the measurement that produced them. Do not scatter filter frequencies or gains into the adapter.
+- Keep React, strict TypeScript, Vite, and project-owned CSS. Do not add a heavyweight UI framework without a product decision.
+- Playback stays behind one `PlayerController` and the application-owned adapter. UI code may read only semantic accessors (`getChannelLevels`, `getChannelVoices`, `getSnapshot`), never Web Audio or engine objects.
+- Preserve one lazy `AudioContext`, one `AudioWorkletNode`, and at most one `Ym2149Player`. Engine/WASM and track bytes load only after a permitted user gesture.
+- `AudioContext` is created without a forced sample rate. The worklet constructs the engine using its actual global `sampleRate`, so playback is native at the device rate. `OFFLINE_SAMPLE_RATE` is independently fixed at 48 kHz in the Node content renderer.
+- The raw graph is: three-channel worklet output → splitter → per-channel L/R gains → stereo merger → normalization gain → volume gain → destination. There are no filters, compressors, saturation, analysers, panners, reverb, chorus, or limiters.
+- Preserve A/B/C identity and `ABC`/`ACB`/`BAC` routing. Outer channels use `MIX_HEADROOM` 0.5 in one ear; the centre channel uses `0.5 × Math.SQRT1_2` in both. The routing gains are built silent and reach those values through the first `setChannelOrder`, so nothing can leak into the wrong ear at unity while that ramp runs.
+- **The audible channel order belongs to the listener, not the track.** `setChannelOrder` is called once before the routing nodes exist, so the adapter holds the order and applies it when the worklet is built. Per-track `channelLayout` is curator metadata recording the source tracker's convention; a track load must never write it into the routing, or the cycler and the audio disagree from the first load onward.
 
-### The eager/lazy module boundary
+### Worklet invariants
 
-`PlayerController` is in the eager bundle. `Ym2149PlaybackAdapter` and `engine.ts` are reached only through `await import()` inside `createAdapter`, which is what keeps the 1.3 MB WASM out of the cold load.
+- The worklet bundle must be a self-contained same-origin IIFE. It must contain no static `import`/`export` and must not use a `blob:` URL. Production uses Vite's emitted hashed worker asset; dev uses the dedicated `/@zxmusicfm/chipProcessor.js` bundle endpoint because Vite's ordinary dev worker URL emits ESM imports.
+- **Both worklet bundles are about 17 kB, and a regression shows up as size.** The generated glue's default init path resolves the `.wasm` beside itself; a library build in IIFE format cannot resolve `import.meta.url`, so Vite inlines the whole 1.3 MB engine as base64 into a branch nothing calls. The dev build cuts that branch, and its plugin throws if the expression it targets disappears from a vendor drop. The dev endpoint is memoized and invalidated from the watcher, because it is a nested Vite build and `addModule` asks for it on every first play.
+- `AudioWorkletGlobalScope` may lack `TextEncoder` and `TextDecoder`. `utf8Shim.ts` must execute before the wasm-bindgen glue. The worklet also lacks dependable `fetch`/`URL`, so initialize with `initSync`.
+- **The engine crosses the port as transferred bytes, and is compiled inside the worklet.** Posting a compiled `WebAssembly.Module` instead would keep a 1.3 MB compile off the audio thread, and it works on desktop Chromium, Firefox and WebKit — but Chromium under a mobile device profile accepts that `postMessage` without throwing and then never delivers it, leaving playback stuck in `loading` forever. `structuredClone` of the same module succeeds, so no feature probe can see it, and the only other option is racing the reply against a timer, which misfires under parallel load and ships the engine twice. Bytes are deterministic everywhere. The compile runs once during setup while the graph is silent, so the quantum it stalls would have produced silence anyway. `playback-engine.spec.ts` on `mobile-chrome` is what catches a regression here.
+- Compile WASM on the main thread and post the `WebAssembly.Module`. If a browser rejects module cloning, post a copied `ArrayBuffer` and use the same `initSync` path. Chromium can accept `postMessage` yet silently lose the module message, so the bridge also sends the byte fallback when the ready handshake has not arrived within 500 ms; keep that timeout covered by Chromium journeys.
+- Render blocks stay at 1,024 samples. Rendering one 128-frame quantum per `process()` call creates 375 wasm-bindgen objects per second. The final block is shortened to the exact finite track sample count so playback does not gain a silent tail.
+- The worklet owns playback generation numbers. Every load/playback reply capable of affecting a track is generation-stamped; stale frames, completions, and failures must not mutate newer state.
+- Worklet meter/register snapshots are stamped with the context time when their block becomes audible. `getChannelLevels`, `getChannelVoices`, and position must keep the `audioTime <= currentTime` gate.
+- Voice pitch is derived in TypeScript as `chipClockHz / (16 × tonePeriod)`. Do not use the engine's legacy channel-state helper, which assumes a 2 MHz Atari clock. Envelope-driven keyboard intensity uses the audible block's per-channel RMS because a register snapshot does not expose the envelope generator's instantaneous DAC step.
 
-Anything the eager bundle imports becomes eager. This is easy to break by accident: `audioPermission.ts` needs the engine's sample rate, so that constant lives in the dependency-free `sampleRates.ts` rather than in `engine.ts`. Likewise `content/schemas.ts` needs the engine commit, so the pin lives in the dependency-free `enginePin.ts`. **Never import `engine.ts`, `Ym2149PlaybackAdapter.ts`, `chipSource.ts`, `chipSynth.ts`, `audioGraph.ts`, or `reverbImpulse.ts` from `PlayerController.ts`, `audioPermission.ts`, `content/`, or `app/`** except through the existing dynamic import. `contracts.ts` is eager, so keep runtime values there trivial — `playbackModes` is a three-element array and nothing heavier belongs beside it.
+### The eager/lazy boundary
 
-Verify after any import change that `dist/assets/` still emits a separate `Ym2149PlaybackAdapter-*.js` chunk, and grep the eager chunk for a distinctive string from the lazy modules; minified identifiers make a name-based check useless.
+`PlayerController` is eager. It reaches `Ym2149PlaybackAdapter` only through the existing dynamic import, keeping the roughly 1.3 MB WASM and worklet machinery out of cold load. `enginePin.ts`, `contracts.ts`, and `audioPermission.ts` remain dependency-light.
+
+Never statically import `Ym2149PlaybackAdapter.ts`, the worklet, vendored glue, or `audioGraph.ts` from `PlayerController.ts`, `audioPermission.ts`, `content/`, or `app/`. After import changes, verify that `dist/assets/` still contains a separate `Ym2149PlaybackAdapter-*.js`, a separate `chipProcessor-*.js`, and a separate WASM file, and that the eager chunk has no distinctive engine strings.
 
 ### Async ownership in `PlayerController`
 
-- Preserve generation/cancellation checks for every async selection. Late loads, failures, seeks, or decoder results must not mutate newer state.
-- The permitted `AudioContext` is acquired once by `acquirePermission` and cached. Two rapid selections must share it; minting a second context violates the one-context invariant. `requestPlaybackAudioPermission` must still be called synchronously inside the user gesture.
-- Adapter creation is memoized in `adapterPromise`. `createAdapter` performs a dynamic import, so two rapid selections both reach it before either resolves; without the shared promise the losing adapter is orphaned with its context still open.
-- `releaseAudio` is the single place that tears the audio side down, and it leaves exactly one owner responsible for closing the context: the adapter once it has adopted it, the controller until then. Do not add context `close()` calls elsewhere.
-- `activate()` is deliberately re-entrant and clears `disposed`. React remounts effects without rebuilding a `useMemo` value, so a terminal `dispose()` would leave the controller permanently inert with a live ticker. `main.tsx` does not currently use `StrictMode`; the controller must survive it if that changes.
-- Preference writes are coalesced only for continuous controls (the volume knob publishes per pointer move). `dispose()` flushes a _pending_ coalesced write and must never invent a write of its own — an unconditional write on teardown resurrects preferences a caller just cleared.
+- Preserve generation/cancellation checks for every async selection. Late loads, failures, seeks, and decoder results must not mutate newer state.
+- The permitted context is acquired once and cached. Two rapid selections share it.
+- Adapter creation remains memoized in `adapterPromise`; otherwise two dynamic imports can orphan a worklet and context.
+- `releaseAudio` is the sole audio teardown. The adapter owns closing a context it adopted; the controller owns it before adoption.
+- `activate()` remains re-entrant for a future React StrictMode remount.
+- Preference writes are coalesced only for continuous controls. `dispose()` flushes a pending write and never invents one.
 
 ### Rendering and animation
 
-- Keep high-frequency meter and waveform work out of React render cycles. Publish only semantic transitions and coarse position updates. The controller ticks position at 250 ms; per-frame work belongs in `requestAnimationFrame` loops that read the adapter directly.
-- A position update must never tear down an animation loop or a `ResizeObserver`. Position reaches the loops through a ref, and effects are keyed on whether animation is active, not on the position value.
-- Waveform canvases redraw directly when their rendered size changes, including after their track list is restored on fullscreen exit. Do not refetch waveform data or route resize-only redraws through React.
-- The static three-lane waveform (2,048 buckets × 3 channels ≈ 6,100 stroked segments) is cached in an `OffscreenCanvas` and blitted per frame; only the progress overlay, playhead, and oscilloscope lens are redrawn. Where `OffscreenCanvas` is unavailable the lanes are drawn inline — keep that fallback.
-- Every `requestAnimationFrame` animation must consult `usePrefersReducedMotion`. The CSS `prefers-reduced-motion` block neutralises transitions and keyframes only; it cannot stop canvas repaints or inline style updates. Under reduced motion the loops fall back to a coarse cadence, which also removes the easing because all smoothing is elapsed-time based. Information (levels, notes, playhead) must keep updating; only the motion stands down.
+- Keep high-frequency meter, keyboard, and waveform work out of React renders. The controller publishes semantic transitions and 250 ms position updates; per-frame reads happen in rAF loops.
+- Position updates must not rebuild rAF loops or `ResizeObserver`s.
+- Waveform resize redraws never refetch data. The static 2,048-bucket × three-channel layer is cached in `OffscreenCanvas` and blitted; the inline fallback remains required.
+- The waveform contains progress and playhead overlays only. Do not reintroduce the removed oscilloscope lens without a product decision.
+- Every rAF animation consults `usePrefersReducedMotion`; information keeps updating at a coarse cadence when motion is reduced.
 
-### Audio graph and playback contract
+## Audio and format invariants
 
-- The browser runtime contract is finite, seekable generated YM. Do not add prerecorded audio fallback, overlapping playback, or browser-side tracker parsing. Browser-side **YM6 register parsing** is required — it is what drives the studio renderer — and is distinct from parsing tracker formats, which stays offline.
-- Maintain the exact A/B/C channel identity, waveform colors, mix behavior, volume semantics, sequencing, persistence, Media Session, and error recovery as currently implemented. Channel identity holds in both modes: vanilla routes through per-channel left/right gain pairs, studio through equal-power panners at ±0.8.
-- **Vanilla master chain**, in order, before the volume gain node: sub-sonic high-pass, bass low-shelf, loudness match, safety limiter, high-frequency low-pass. Preserve the chain and its order.
-- **Studio chain**: per channel, DC block → smoothing low-pass → 4× oversampled saturation → analyser → equal-power pan; then a master tilt EQ (bass shelf, presence dip, air shelf), a synthesized plate reverb send and a detuned chorus send, then the loudness match and the limiter. The per-channel processing sits **ahead of the analyser** on purpose, so the oscilloscope shows the waveform that is actually heard.
-- The loudness match is always ahead of a chain's limiter, never after it. A track needing a lift would otherwise clip the output, since the match can exceed unity.
-- The offline render that feeds per-channel waveforms stays dry, on the engine, unaffected by playback mode. One waveform pack serves both modes: band-limiting barely moves min/max peaks across a 2,048-bucket reduction, and a second pack would cost roughly 288 KB for no visible gain.
-- Playback `AudioContext`s are created at `ENGINE_SAMPLE_RATE` (44.1 kHz), matching the buffers the scheduler produces. A buffer whose rate differs from its context is resampled by each `AudioBufferSourceNode` independently, restarting the interpolator at every scheduled chunk boundary. Do not create the playback context at 48 kHz; `OFFLINE_SAMPLE_RATE` is for the waveform render only.
+**Exact integration lives in the fork.** `compute_next_sample` averages every chip transition by fractional overlap at the real host sample rate. Replacing it with point sampling or snapping edges to the host grid restores the defect guarded by `engineSpectrum.test.ts`.
 
-## Invariants that look optimizable but are not
+**R13 = 0xFF means “no envelope write this frame.”** Treating it as a shape write retriggers slow envelopes 50 times per second. Worklet tests span frame boundaries to guard this.
 
-Each of these has a cheap-looking "improvement" that silently breaks audio or correctness. Read the rationale before touching them.
+**Native seek is intentionally phase-discontinuous.** `seek_to_frame` jumps the YM frame pointer, resets effects and `prev_r13`, but does not reconstruct tone/noise/envelope phase. That is the chosen O(1) seek behavior. Do not render from zero or introduce a main-thread reconstruction path.
 
-**`chipModel.ts` candidate order.** The AY magnitude mapping is a nearest-neighbour scan over 64 candidates with strict `<`, so the _first_ match wins. Fourteen candidates share a `ym` magnitude with a _different_ `ay` result, including real chip levels 60, 85, 101, 241, 287, 341, 574, 965, 1148, 1365, 2296, 3247, 4592, and 5461. Sorting the table for a binary search, or relaxing the comparison to `<=`, changes the amplitude of those levels and audibly alters every AY track (17 of 24 in the current catalog). The lookup is memoized instead. The memo is keyed on the magnitudes that actually arrive, because the engine returns `Float32Array` samples that are not bit-identical to the double-precision table, and it is capped because the offline render interpolates between samples and would otherwise grow it without bound.
+**Strict runtime YM6 is narrow by design.** Runtime files are interleaved YM6 with no digi-drums, loop, extra data, or port output; R14/R15 are zero and reserved register bits are clear. Browser playback rejects anything outside the fork's `strictZxYm6` profile.
 
-**Engine reconstruction lives in `play()` only.** The upstream native seek does not reconstruct tone/noise/envelope phase, so the adapter creates a fresh engine and renders deterministically from zero to the target sample. Cost is roughly 1 ms per second of audio on a fast desktop, so ~370 ms at the end of a six-minute track and several times that on a phone. `pause`, `stop`, and `seek` therefore only record where playback should resume; each `ChipSource` tracks where it actually is and `play()` reconciles the active one exactly once. Do not reintroduce a rewind into `pause`/`stop`/`seek`, and do not substitute the native seek. If reconstruction is moved off the main thread, keep the same sample-exact result — `content:validate` will confirm it.
+**Loudness gain has no limiter after it.** Offline generation measures the worst per-ear peak over all three channel orders and clamps normalization to a **-0.3 dBFS** ceiling after the ±6 dB loudness clamp. A peak-limited track records `peakLimitedFrom`; peak-limited gains round downward to remain safe.
 
-This applies to the engine only. `chipSynth.ts` seeks by replaying register writes, which is effectively free, so a studio-mode seek or mode switch costs nothing. Tests asserting the deferred-reconstruction invariant **must select vanilla explicitly**: under the default studio mode the engine is never rebuilt and every such assertion passes for the wrong reason.
+**`originalFileName` survives only in provenance.** A regeneration reads it back out of the existing `provenance.json` to carry it forward, so `readRecordedOriginalFileName` reads that one field instead of validating the whole document. Parsing against the current schema loses the curator's filename for every track the first time any unrelated field is added or removed, silently, because the fallback is the on-disk `source.<ext>`. Keep it exported and table-tested.
 
-**`chipSynth.ts` integrates exactly; it does not point-sample.** The chip output is piecewise constant, changing only at chip-step boundaries, and each output sample is the exact average over its interval — so an edge three quarters of the way through a sample contributes exactly three quarters of it. Replacing that with point sampling reintroduces the pulse-width jitter the renderer exists to remove. Integration runs at 4× and decimates through two halfband stages, which discards partials above the output Nyquist instead of folding them down. The counters advance at **clock/8**, which is what makes tone frequency clock/(16·period) and one 32-step envelope cycle clock/(256·period); "simplifying" that divisor detunes everything.
+**A noise-mixing channel has no note.** The piano visualiser draws a key only while `R7` gates tone on and noise off for that channel. A channel mixing noise into its tone is percussion, and its tone period is usually a value left over from an earlier note, so drawing from it lights an arbitrary key. The consequence is deliberate: a tone-plus-noise lead stops appearing on the keyboard, and the meters remain the only visualisation of that channel.
 
-**R13 = 0xFF means "no envelope write this frame".** YM files use it as a sentinel. Treating it as a shape write retriggers the envelope 50 times a second and destroys every slow envelope in the catalog. Envelope shapes without the continue bit are indistinguishable from 0x09 and 0x0F and are remapped to them, so only four behaviours need modelling.
+**Envelope-driven keys are shaded from level, not from a register.** The piano visualiser reads a channel's amplitude from `R8`-`R10` while bit 4 is clear. Once it is set the channel follows the envelope, whose level is generator state no register carries, so the only source left is the rendered per-channel level — and that sits on the DAC curve rather than the register index. `amplitudeFromLevel` closes the gap by reading it through the same 48 dB floor the meters use, because the AY DAC steps about 3.2 dB per index: level 4 reads 0.38 against a register-linear 0.27, level 8 reads 0.63 against 0.53, level 12 reads 0.87 against 0.80. Clamping the level straight into 0..1 instead makes every envelope bass and lead in the catalog roughly four times darker than a volume-driven note at the same chip level.
 
-**The saturator's input trim is bounded by the WaveShaper curve's domain.** A `WaveShaperNode` curve is defined over ±1 and **hard-clamps** past it, which is clipping, not saturation. The hottest per-channel peak reaching the saturator across the whole catalog is 1.26 after DC blocking and smoothing, so `SATURATION_INPUT_TRIM` keeps that inside the curve and `saturationMakeupGain` restores unity for small signals. Raising `CHANNEL_SMOOTHING_HZ` raises that peak — re-measure before changing either. An early draft used a trim of 2.5 on the assumption that per-channel peaks were near 0.28; that would have hard-clipped every loud passage.
+**Address blocking fails closed.** `isBlockedAddress` compares expanded IPv6 bytes, not textual prefixes. Anything unparseable is blocked; keep it exported and table-tested.
 
-**`STUDIO_MAKEUP_DB` is a measurement, not a taste setting.** It must be derived from K-weighted loudness at the **output of both complete chains**, not from their dry mixes and not from a pre-limiter tap: a dry comparison misses the two EQ curves, and a pre-limiter one misses that the limiter absorbs roughly 60% of any make-up change, so 0.1 dB off the constant moves the output about 0.04 dB. Sweep it against a measurement; do not solve for it. Re-derive after any change to either chain's EQ or to the synth's band limiting, or the toggle silently becomes a level comparison.
-
-**Meter and voice timelines are stamped with audible time.** Buffers are scheduled up to 300 ms ahead, so reading the engine or the newest queued chunk directly would run the meters, keyboard, and oscilloscope ahead of the sound. Both `getChannelLevels` and `getChannelVoices` must keep their `time <= now` gate.
-
-**`renderOffline` closures are hoisted deliberately.** They are declared once per render, not per output sample; a three-minute track interpolates over eight million samples.
-
-**The unreachable throw in `remote.ts` is required.** The redirect loop always returns or throws in its final iteration, but control-flow analysis cannot see that and the function returns a value.
-
-**Address blocking fails closed.** `isBlockedAddress` compares expanded IPv6 bytes, not text prefixes, so `::1` and `0:0:0:0:0:0:0:1` and `2001:db8::`/`2001:0db8::` are treated alike. Anything unparseable is blocked. Keep it exported and table-tested.
+**The unreachable throw in `remote.ts` is required.** The redirect loop returns or throws in its final iteration, but control-flow analysis cannot prove that.
 
 ## Performance budgets
 
-- Cold-load transfer (HTML, CSS, initial JS, catalog, waveform pack, initially used fonts, above-the-fold images) stays under 500 KB, excluding the lazy engine and music. Currently ~194 KB.
-- Target LCP under 2.5 s and CLS under 0.1, and keep meter and waveform animation near 55 fps or better during playback.
-- Hot paths, in order of sensitivity: the 50 ms scheduler tick in `scheduleBuffers` (source render plus per-sample chip model for one 100 ms chunk), the per-frame waveform draw, then the meter and keyboard loops.
-- Main-thread cost per second of audio, measured over four catalog tracks in the scheduler's own per-frame segments: **vanilla 2.2 ms (0.22% of a core), studio 23.1 ms (2.31%)**. Studio is about 10× vanilla and the difference is entirely the synth's render step (22.3 ms against the engine's 1.15 ms) — exact-area integration at 4× plus two halfband stages is real arithmetic, and it is not cheaper than the WASM emulator it replaces. It is merely cheap in absolute terms: a tick renders at most 100 ms of audio, so worst case is ~2.3 ms of work against a 50 ms deadline.
-- That headroom, not any claim of being faster, is why studio reuses the main-thread push scheduler instead of an `AudioWorklet`: it preserves every timeline, lookahead, and reconciliation invariant above and avoids worklet module loading entirely. Re-measure before adding per-sample work to the synth.
-- Studio is slightly _cheaper_ than vanilla in the two smaller steps: it skips `applyChipAmplitudeModel` because it indexes the DAC tables directly (0.16 ms against 0.67 ms), and its voice state is a plain object rather than a wasm-bindgen JSON round trip (0.01 ms against 0.35 ms). Both are swamped by the render difference.
-- A mode switch is the one CPU spike: both sources render for the crossfade chunk, and a studio-to-vanilla switch also pays the engine reconstruction, up to ~370 ms of synchronous work at the end of a long track.
-- Mode chains are built on first use, so a listener who stays in one mode never pays for the other's nodes — notably the studio `ConvolverNode`. Keep that laziness.
-- A mode switch renders both sources for one 100 ms chunk and crossfades the two chains. Do not "simplify" it into a hard splice: the retiring chain's buffers would stop mid-signal and the DC step left in its high-pass is an audible thump.
-- Public runtime and waveform URLs stay content-hashed and immutable; HTML and `generated/catalog.json` stay revalidated. Production sourcemaps are emitted but not linked (`sourcemap: 'hidden'`), so browsers never fetch them.
+- Cold-load transfer stays under 500 KB, excluding lazy WASM and music. Keep LCP under 2.5 s, CLS under 0.1, and meter/waveform animation near 55 fps or better.
+- The audio hot path is isolated to the worklet: 1,024-sample WASM render, per-channel RMS, one register copy, and 128-frame ring drains. Do not add per-sample main-thread work.
+- Measured locally on arm64 with Node 24.14.1 at 48 kHz over 60 seconds each of `pator-solitude`, `klav-satisfaction-10`, `jason-c-brooke-ramparts-128k-title-1`, and `ziutek-shock7`, including block RMS and register reads: **5.75 ms per second of audio on average (0.58% of one core)**. AY tracks measured 6.25–6.34 ms/s; the YM track measured 4.09 ms/s. This is a regression baseline, not a phone guarantee.
+- A 128-frame quantum at 48 kHz has a 2.67 ms deadline, but block rendering amortizes allocation and typical work is far below the 21.3 ms represented by a 1,024-sample block. Re-measure before adding work in `fillRing` or `process`.
+- Runtime YM and waveform URLs remain content-hashed and immutable. HTML and `generated/catalog.json` revalidate. Production sourcemaps are hidden and unlinked.
 
 ## Accessibility and interface
 
-- Target WCAG 2.2 AA. Every interactive control needs an accessible name, keyboard behavior, visible focus, and non-color state communication.
-- `aria-label` on a `div` with no role is dropped by assistive technology. Give such containers an explicit role (for example `role="group"`).
-- Deck toggles (Shuffle, Studio sound) keep a **fixed** accessible name and carry their state in `aria-pressed`; the state-dependent wording lives in `title`. Their LED is a 0.22rem strip that changes brightness and blooms rather than only hue. A strip that narrow cannot render a system colour legibly, so under `forced-colors: active` the pressed state is an outline on the button instead.
-- Preserve the waveform's semantic range control and its conventional slider fallback when canvas or waveform data fails.
-- Preserve desktop distraction-free mode and its established deck proportions. On mobile portrait, expose distraction-free mode only when native fullscreen and landscape orientation locking are available; activate the expanded deck only after the device is actually landscape, exit cleanly after a rejected landscape request, and keep the control available for retries.
-- Keep the mobile-landscape distraction-free layout compact without changing the UV meters' `1.34` aspect ratio, the desktop control geometry, or normal-mode responsive proportions.
-- Preserve dialog focus trapping/restoration, reduced-motion behavior, forced-colors usability, 200% zoom usability, and responsive layouts without horizontal overflow.
-- External links open safely with `noopener noreferrer`. Bundled music is not exposed through direct download controls.
-- Keep fonts, code, images, audio, and generated data self-hosted. Maintain the restrictive CSP and security headers. The CSP has no `unsafe-inline`, so the build must not emit inline `<script>`; check `dist/index.html` after changing Vite options.
+- Target WCAG 2.2 AA. Every control needs an accessible name, keyboard behavior, visible focus, and non-color state communication.
+- `aria-label` on a roleless `div` is dropped; use an explicit semantic role.
+- Shuffle keeps a fixed accessible name and carries state in `aria-pressed`. Its narrow LED uses brightness/bloom plus a forced-colors outline.
+- Preserve the waveform's semantic range input and conventional fallback when canvas or data fails.
+- Preserve desktop distraction-free proportions. On mobile portrait, expose it only when native fullscreen and landscape locking are available; recover cleanly from rejected orientation requests.
+- Preserve UV meter aspect ratio `1.34`, dialog focus trapping/restoration, reduced motion, forced colors, 200% zoom, and no horizontal overflow.
+- External links use `noopener noreferrer`. Bundled music has no direct download control.
+- Keep fonts, code, images, audio, and generated data self-hosted. CSP has no `unsafe-inline`; builds must not emit inline script. The About dialog's `ym2149-rs` attribution points to the `pinebit` fork.
 
 ## Content and provenance
 
-- Curator inputs live under `content/tracks/<permanent-id>/`. IDs are stable and ordering is contiguous and one-based.
-- Every public track requires a valid human-facing `sourceUrl`; it is the catalog's sole per-track attribution field. Do not add or invent per-track license metadata.
-- Catalog size is a curatorial and deployment choice: development, preview, and release builds may ship any valid number of tracks, including an empty catalog. Invalid tracks must never be silently omitted.
-- AY, YM, and PSG preparation is Node-only. PSG-to-YM6 and waveform generation remain project-owned deterministic paths.
-- PT3, STC, ASC, STP, and FTC are accepted only through the pinned ZXTune Docker workflow at commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`.
-- Tracker conversion runs as a Linux container on the curator's macOS machine. Do not build or introduce an Android application.
-- Preserve original tracker bytes as authoritative. Treat `generated/source.psg`, `generated/tracker-conversion.json`, runtime YM, waveforms, and provenance as derived artifacts.
-- Require ZXTune's detected type to match the tracker extension. Reject a source whose index names another supported tracker type alongside it. Keep processing network-disabled, read-only, capability-free, and bound to an isolated working directory.
-- Production validation and Vercel builds consume committed derived tracker artifacts and must not require Docker or network access. A committed conversion is reused whenever its recorded source hash still matches, which is why re-deriving tracker tracks needs neither Docker nor network.
-- Import/update/remove operations remain atomic. A failed download, conversion, generation, or validation must not leave partial content or catalog state.
+- Inputs live under `content/tracks/<permanent-id>/`. IDs are stable; ordering is contiguous and one-based.
+- Every public track has one human-facing `sourceUrl`. Do not invent per-track license metadata.
+- Supported authoritative extensions are `.pt3`, `.stc`, `.asc`, `.stp`, `.ftc`, `.ay`, and `.psg`. Direct `.ym`/`.ym3`/`.ym6` sources are not accepted.
+- PT3/STC/ASC/STP/FTC use pinned ZXTune Docker commit `8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a`, with `mode=psg,optimization=0`. Keep the container network-disabled, read-only, capability-free, and isolated. Detected type must match the extension; dual-chip TurboSound is unsupported.
+- The pinned ZXTune build currently enumerates AY subsongs but throws while converting AY to PSG, including single-song files. AY sources therefore use the documented fallback: vendored WASM captures the selected subsong's registers and project-owned strict YM6 authoring writes the runtime directly, without an intermediate PSG. The WASM exposes register state rather than write events, so captured R13 remains `0xFF` after the initial state.
+- PSG-backed tracks use the native `.tools/bin/psg2ym6` from the same `ENGINE_COMMIT` as WASM. Legacy direct PSG ending on a frame marker is normalized only for converter input by replacing that final marker with `0xFD`; authoritative bytes are unchanged.
+- `generated/ym6-conversion.json` records the route, engine/converter commit, input and output hashes/lengths, clock, frame rate/count, and metadata. Tracker tracks also retain `source.psg` and `tracker-conversion.json`.
+- Production validation and Vercel require no Docker, Rust, or network. They reuse committed conversion artifacts when hashes and parameters match, structurally parse strict YM6, then re-render waveforms/loudness/catalog with vendored WASM.
+- Import/update/remove remains atomic. No `.content-stage-*` directory may survive. Invalid tracks are never silently omitted.
 
 ### Loudness normalization
 
-`content:generate` measures the dry offline mix with ITU-R BS.1770 K-weighting (`src/playback/loudness.ts`) and records two fields on both `provenance.json` and `catalog.json`: `measuredLoudnessLufs` and the `normalizationGainDb` the browser applies in **both** modes.
+`content:generate` renders the strict YM6 natively at 48 kHz, measures the dry mix with ITU-R BS.1770 K-weighting, and writes `measuredLoudnessLufs` plus `normalizationGainDb` to provenance and catalog.
 
-- The target is **-9 LUFS**, chosen to sit near the measured median of the current catalog (-9.3, spanning -5.7 to -11.7) rather than at a broadcast reference. That removes the 5.6 dB track-to-track jump while leaving the site's overall level where listeners already have it, and keeps every derived gain inside a few dB so the ±6 dB clamp never bites. Dense square waves measure loud at a modest peak, so a figure this high is expected here.
-- Gains are rounded to two decimals so the value is stable under `content:validate`'s byte comparison.
-- A **short** render is not a **silent** one. Loudness measurement falls back to an ungated measurement below one 0.4 s gating block; only genuine silence is unmeasurable, and that is a hard pipeline error. The synthetic PSG fixture is two frames long, which is exactly the case an over-strict implementation breaks.
-- These fields depend on rendered audio, not on metadata, so adding or retuning them rewrites `provenance.json` and `catalog.json` for every track while leaving runtime YM bytes, their hashes and filenames, and the waveform pack hash untouched. Expect exactly that set of files to change.
+- Target loudness is **-9 LUFS**, with a ±6 dB clamp.
+- After that, normalization is reduced as needed so the worst possible left or right ear peak across ABC/ACB/BAC remains at or below **-0.3 dBFS**. `peakLimitedFrom` records the pre-peak-clamp gain.
+- Values are serialized to two decimals; peak-limited values round toward safety.
+- Shorter than one 0.4 s gating block is not silence; use ungated measurement. Genuine silence is a hard pipeline error.
 
 ### Editing catalog metadata
 
-Never hand-edit `track.json` plus the derived files. Use the CLI, which stages into a temporary directory, regenerates, validates, and only then swaps `content/` and `public/generated/` into place:
+Never hand-edit sidecars plus generated output:
 
 ```sh
 npm run content:import -- --file <path> --id <slug> --order <n> --title ... --author ... --source-url ...
@@ -232,52 +202,47 @@ npm run content:update -- --id <slug> --title "..."
 npm run content:remove -- --id <slug> --yes
 ```
 
-Track title and author are embedded in the generated YM6 metadata, so changing either rewrites the runtime bytes, its SHA-256, its public filename, `provenance.json`, and `catalog.json`. Waveform payloads do not depend on metadata, so the waveform pack hash stays put. Expect exactly that set of files to change and confirm no `.content-stage-*` directory survives the run.
+Title/author are embedded in YM6. Updating either requires the pinned converter for PSG-backed tracks and rewrites runtime bytes, conversion record, hashes, public filename, provenance, and catalog. Fail clearly with `npm run engine:install-converter` when the binary is absent.
 
-### Resolving zxart.ee source URLs
+### Resolving zxart.ee URLs
 
-A zxart.ee track page (e.g. `https://zxart.ee/eng/authors/z/ziutek/shock7/`) is an Angular SPA; the module download link is not present in the plain HTML. Resolve it through zxart's public API instead of scraping the rendered page:
+The track page is an Angular SPA. Read its `og:audio` numeric ID, then query `https://zxart.ee/api/export:zxMusic/limit:10/filter:zxMusicId=<id>` with a non-empty User-Agent. Use `originalUrl` for import and retain the page URL as attribution.
 
-1. Fetch the page HTML anyway and read the `og:audio` meta tag, e.g. `https://music.zxart.ee/music/81553_Ziutek_Shock7.ogg`. The leading number (`81553`) is the `zxMusicId`.
-2. Query `https://zxart.ee/api/export:zxMusic/limit:10/filter:zxMusicId=<id>` with a non-empty `User-Agent` (required or the API bans the IP on sight). The response's `responseData.zxMusic[0]` has `title`, `authorIds`, `year`, `type` (tracker/chip format), `compo`, and `originalUrl` — the real, directly downloadable file URL to pass as `--url` to `content:import`. Keep the zxart page URL itself as `--source-url`; it is the catalog's attribution field, not the download source.
-3. `type` names the format zxart assigns, which does not always match the file extension `content:import` expects: `COP`/`VTX`/other non-tracker types cannot be imported at all (only PT3/STC/ASC/STP/FTC via Docker, or AY/YM/PSG directly). A `.pt3` extension is not sufficient on its own either — ZXTune inspects the file and rejects a source whose _detected_ type is `TS` (dual-chip TurboSound), which the pipeline does not model; `content:import` fails with a clear "extension does not match ZXTune type" error in that case, before writing anything.
-4. `chipType` (AY vs YM) and `channelLayout` (ABC vs ACB) are not derivable from the zxart API; they encode the curator's knowledge of the intended hardware and the tracker's channel convention. In the current catalog, `channelLayout` tracks the source format (STC and ASC convert to ACB; PT3, AY, PSG, STP, and FTC convert to ABC) and `chipType` tracks the author's established convention elsewhere in the catalog (e.g. every Ziutek track is YM, every Klav track is AY) — check existing tracks by the same author before guessing, and note the guess explicitly when there is no precedent, since it audibly changes the amplitude model.
+`type` does not guarantee support: COP, VTX, TurboSound, and other foreign formats are rejected. `chipType` and `channelLayout` remain curator knowledge; check existing work by the same author before guessing.
 
-## Playback engine and generated artifacts
+## Playback engine and artifacts
 
-- `ENGINE_COMMIT` in `src/playback/enginePin.ts` is the only place the pinned revision is written. The provenance schema, the content pipeline, `rebuild-engine.sh`, and `engine:verify` all read it, and `engine:verify` asserts `vendor/ym2149/manifest.json` records the same revision. Change it only alongside an explicit engine decision recorded here. The pin is currently `b3096aac0dcab6dd1d82c0209f579761943aadc6` (ym2149-rs v0.9.1).
-- `engine:verify` also asserts the bindings the runtime actually calls are still declared. Add to that list when the adapter or pipeline starts calling a new binding; do not guard bindings nothing consumes.
-- Do not rebuild the engine during ordinary development. `npm run engine:rebuild` is an exceptional maintainer command, and it does not update `manifest.json` hashes for you.
-- Authoritative sources, sidecars, internal provenance, and build-machine information must not enter public output.
+- `ENGINE_COMMIT` is the sole pin for both vendored WASM and `psg2ym6`: `5bb4886fb35032db07980e5fdac408db54c7796f` from `https://github.com/pinebit/ym2149-rs` (`v0.9.1`).
+- `engine:verify` checks the manifest revision, every vendored hash, and bindings actually called by browser/runtime tooling. Update the list with real use, not speculative bindings.
+- `engine:rebuild` is exceptional and uses Rust 1.95.0 plus wasm-bindgen 0.2.105. It does not silently update manifest hashes.
+- `engine:install-converter` installs the native converter under gitignored `.tools/`.
+- Authoritative sources, sidecars, internal provenance paths, and build-machine data must not enter public output.
 
 ## Testing expectations
 
 - Add regression tests for behavioral fixes.
-- Controller async tests must cover rapid selection, stale completion, stale failure, disposal during loading, single-adapter/single-context creation under a slow engine import, and the activate/dispose/activate remount cycle.
-- Content tests must cover signatures/types, conversion provenance, stale derived files, atomic mutation, release catalog rules, and the loudness derivation.
-- **`chipSynth.ts` is guarded by spectrum assertions, not golden samples.** The renderer's whole purpose is a spectral property, and its output is not required to be bit-stable across a legitimate filter retune. `chipSynth.test.ts` measures a 4105 Hz tone and requires spurious even harmonics below -45 dB and inharmonic partials below -55 dB relative to the fundamental — the direct regression test for the engine defect studio mode exists to fix. Keep envelope-shape, noise, register-sentinel, and seek-equivalence coverage alongside it.
-- Envelope assertions must span at least one full envelope cycle. A window shorter than a cycle can sample an alternating sweep entirely within its quiet phase and fail for no reason.
-- Adapter tests must cover both modes: which renderer `play` reconciles, that a mid-playback switch reconstructs the engine at most once and never for a vanilla-to-studio switch, that a switch while paused defers reconciliation, that chains are memoized and built lazily, and that the oscilloscope follows the active mode.
-- Browser journeys must exercise real generated catalog/waveform/runtime assets and the real WASM engine where specified; do not replace acceptance evidence with mocked audio. `test:e2e` builds first and serves `dist` through `vite preview`, so the journeys cover the shipped bundle rather than the dev server.
-- Accessibility scans fail on serious or critical findings. Manual platform/device checks remain required where automation cannot provide the specified evidence.
+- Controller tests cover rapid selection, stale completion/failure, disposal while loading, single-context/single-adapter creation, and activate/dispose/activate.
+- Adapter tests cover one worklet, message ordering, generation rejection, audible-time gates, real ZX-clock pitch, all channel orders, that a listener's order survives the worklet build and a track load, that envelope- and volume-driven voices shade alike, and plain normalization.
+- Worklet tests use real vendored WASM and cover non-silent A/B/C output, ring-boundary continuity, direct seek, R13 sentinel behavior, and exactly-once completion.
+- `engineSpectrum.test.ts` is the direct regression for the defect the fork fixes. Keep the -45/-55 dB thresholds.
+- Content tests cover signatures/types, conversion provenance and staleness, peak-limited loudness, deterministic generation, and atomic mutation.
+- Browser journeys use real catalog, waveform, worklet, and WASM assets. `test:e2e` builds first and serves `dist`. `playback-worklet.spec.ts` is the only proof that the module transfer, the UTF-8 shim, and the self-contained bundle work outside Chromium; a worklet that fails to render still reports playing, so keep its position-advances and stereo-order assertions on every browser project.
+- Accessibility scans fail on serious/critical findings. Manual Chromium, Firefox, and WebKit listening still matters where automation cannot prove audible continuity or stereo image.
 
 ### Test environment facts
 
-jsdom differs from a browser in ways these suites depend on. Know them before writing a component test:
-
-- `OffscreenCanvas` is undefined, so canvas code takes its inline fallback path.
-- `devicePixelRatio` is 1.
-- `matchMedia` is absent; `src/test/setup.ts` installs a stub reporting "no preference" with inert listeners. Stub it per test to exercise reduced motion or mobile portrait.
-- 2D contexts are not implemented; tests mock `HTMLCanvasElement.prototype.getContext` and must include every method the drawing path calls.
-- Component loops driven by `requestAnimationFrame` receive the frame timestamp as an argument so tests can advance time deterministically. Keep that parameter; do not read `performance.now()` inside the loop body.
-- Web Audio is absent. `src/test/audioContext.ts` is a scriptable `AudioContext` double with a test-driven `currentTime`, and it must gain a factory for every node type the graph builders call — a missing one surfaces as `context.createX is not a function` from deep inside `ensureChain`. It exposes `gainValues()` and `panValues()` in creation order. Assert with `slice` from the end rather than absolute positions: chain-level gains are created before the per-channel ones, and the chorus's panners before the channel panners.
+- jsdom has no `OffscreenCanvas`; waveform tests use the inline path.
+- `devicePixelRatio` is 1. `matchMedia` is stubbed to no preference.
+- Canvas 2D contexts are mocked and must expose every method the tested path calls.
+- Web Audio is absent. `src/test/audioContext.ts` supplies test-driven `currentTime`, gain capture, `audioWorklet.addModule`, and a scriptable `AudioWorkletNode.port`.
+- rAF callbacks receive their timestamp so tests can advance time deterministically.
 
 ## Linting
 
-`eslint-plugin-react-hooks` is enabled for `src/**` and is the only automated guard on effect dependencies, ref access during render, and `setState` inside effects — the exact failure modes that produce torn-down animation loops and cascading renders here. Fix what it reports rather than suppressing it.
+`eslint-plugin-react-hooks` is the automated guard on effect dependencies, ref access during render, and state writes in effects. Fix findings rather than suppressing them.
 
-`eslint-plugin-jsx-a11y` is deliberately absent: its current release does not declare ESLint 10 peer support. The accessibility gate is the axe scan in the Playwright suite. Revisit when upstream supports ESLint 10.
+`eslint-plugin-jsx-a11y` remains absent until it supports ESLint 10; axe in Playwright is the accessibility gate.
 
 ## Handoff
 
-Report what changed, the exact checks run and their results, and any remaining release gate. State plainly when a change altered generated content and why. Never describe the MVP or release as complete while the canonical production URL, deployment, performance measurements, or required manual platform checks remain unresolved.
+Report what changed, exact checks and results, generated-content scope and reason, converter/AY route, peak-limited track count and deltas, measured performance, and remaining manual platform/audio gates. Never call a release complete while required deployment or manual checks remain unresolved.

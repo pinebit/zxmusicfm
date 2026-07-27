@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "e60b7adb37ec036f88b65fe5d8b7b0c021c0de9f1f2737445d0c43810ef02649",
+  "psgByteLength": 260368,
+  "ym6Sha256": "58bcdc9d409b390a06eff72458595261e04d90637bc99a7e21947e1778b6e500",
+  "ym6ByteLength": 196703,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 12287,
+  "title": "Satisfaction 6",
+  "author": "Klav",
+  "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM"
+}

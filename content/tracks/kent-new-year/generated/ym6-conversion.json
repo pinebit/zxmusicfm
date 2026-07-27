@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "4e4e7a3f84d58b7aa115806027dcdacd516a2101958adcb1e7e5c36650f40c77",
+  "psgByteLength": 119546,
+  "ym6Sha256": "cc5f0b6ee7d4ef3e1ef6a4a6ff25a341e06118ddf8512d97473ea310552211af",
+  "ym6ByteLength": 86122,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 5375,
+  "title": "New Year",
+  "author": "Kent (Pavel Vorobyev)",
+  "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM"
+}

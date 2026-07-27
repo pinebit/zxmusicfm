@@ -14,97 +14,61 @@ export class Ym2149Player {
   free(): void;
   [Symbol.dispose](): void;
   /**
-   * Create a new player from file data.
-   *
-   * Automatically detects the file format (YM, AKS, AY, or SNDH).
-   *
-   * # Arguments
-   *
-   * * `data` - File data as Uint8Array
-   *
-   * # Returns
-   *
-   * Result containing the player or an error message.
+   * Active chip model (`"ym2149"` or `"ay8912"`).
    */
-  constructor(data: Uint8Array);
-  /**
-   * Start playback.
-   */
-  play(): void;
-  /**
-   * Pause playback.
-   */
-  pause(): void;
-  /**
-   * Stop playback and reset to beginning.
-   */
-  stop(): void;
-  /**
-   * Restart playback from the beginning.
-   */
-  restart(): void;
+  chipModel(): string;
   /**
    * Get current playback state.
    */
   is_playing(): boolean;
   /**
-   * Get current playback state as string.
+   * Get the number of times the song has looped.
    */
-  state(): string;
+  loop_count(): number;
   /**
    * Set volume (0.0 to 1.0). Applied to generated samples.
    */
   set_volume(volume: number): void;
   /**
-   * Get current volume (0.0 to 1.0).
-   */
-  volume(): number;
-  /**
-   * Get current frame position.
-   */
-  frame_position(): number;
-  /**
    * Get total frame count.
    */
   frame_count(): number;
   /**
-   * Get the number of times the song has looped.
+   * Set the current subsong (1-based index). Returns true on success.
    */
-  loop_count(): number;
+  setSubsong(index: number): boolean;
   /**
-   * Get playback position as percentage (0.0 to 1.0).
+   * Get the number of audio channels.
+   *
+   * Returns 3 for standard single-chip songs, 6 for dual-chip (some Arkos songs), etc.
    */
-  position_percentage(): number;
+  channelCount(): number;
+  /**
+   * Get the current register values (for visualization).
+   */
+  get_registers(): Uint8Array;
   /**
    * Seek to a specific frame (silently ignored for Arkos/AY backends).
    */
   seek_to_frame(frame: number): void;
   /**
-   * Seek to a percentage of the song (0.0 to 1.0).
-   *
-   * Returns true if seek succeeded. Works for all SNDH files (uses fallback duration for older files).
+   * Get the number of subsongs (1 for most formats, >1 for multi-song SNDH files).
    */
-  seek_to_percentage(percentage: number): boolean;
+  subsongCount(): number;
+  /**
+   * Get current frame position.
+   */
+  frame_position(): number;
+  /**
+   * Get the current subsong index (1-based).
+   */
+  currentSubsong(): number;
   /**
    * Get duration in seconds.
    *
    * For SNDH < 2.2 without FRMS/TIME, returns 300 (5 minute fallback).
    */
   duration_seconds(): number;
-  /**
-   * Check if the duration is from actual metadata or estimated.
-   *
-   * Returns false for older SNDH files using the 5-minute fallback.
-   */
-  hasDurationInfo(): boolean;
-  /**
-   * Mute or unmute a channel (0-2 for YM2149, 3-4 for STE DAC L/R).
-   */
-  setChannelMute(channel: number, mute: boolean): void;
-  /**
-   * Check if a channel is muted.
-   */
-  isChannelMuted(channel: number): boolean;
   /**
    * Generate audio samples.
    *
@@ -114,6 +78,90 @@ export class Ym2149Player {
    * For 44.1kHz at 50Hz frame rate: 882 samples per frame.
    */
   generateSamples(count: number): Float32Array;
+  /**
+   * Check if a channel is muted.
+   */
+  isChannelMuted(channel: number): boolean;
+  /**
+   * Create a player with browser output and chip-model options.
+   *
+   * JavaScript options use `{ sampleRate, chipModel, strictZxYm6 }`.
+   * Create the `AudioContext` first and pass its actual `sampleRate`.
+   */
+  static newWithOptions(data: Uint8Array, options: any): Ym2149Player;
+  /**
+   * Mute or unmute a channel (0-2 for YM2149, 3-4 for STE DAC L/R).
+   */
+  setChannelMute(channel: number, mute: boolean): void;
+  /**
+   * Enable or disable the ST color filter.
+   */
+  set_color_filter(enabled: boolean): void;
+  /**
+   * Get LMC1992 state for visualization (SNDH only).
+   *
+   * Returns a JsValue containing an object with LMC1992 state:
+   * ```json
+   * {
+   *   "masterVolume": 0,      // dB (-80 to 0)
+   *   "leftVolume": 0,        // dB (-40 to 0)
+   *   "rightVolume": 0,       // dB (-40 to 0)
+   *   "bass": 0,              // dB (-12 to +12)
+   *   "treble": 0             // dB (-12 to +12)
+   * }
+   * ```
+   *
+   * Returns null for non-SNDH formats.
+   */
+  getLmc1992State(): any;
+  /**
+   * Check if the duration is from actual metadata or estimated.
+   *
+   * Returns false for older SNDH files using the 5-minute fallback.
+   */
+  hasDurationInfo(): boolean;
+  /**
+   * Get channel states for visualization (frequency, amplitude, note, effects).
+   *
+   * Returns a JsValue containing an object with channel data for all PSG chips:
+   * ```json
+   * {
+   *   "channels": [
+   *     { "frequency": 440.0, "note": "A4", "amplitude": 0.8, "toneEnabled": true, "noiseEnabled": false, "envelopeEnabled": false },
+   *     ...
+   *   ],
+   *   "envelopes": [
+   *     { "period": 256, "shape": 14, "shapeName": "/\\/\\" },
+   *     ...
+   *   ]
+   * }
+   * ```
+   */
+  getChannelStates(): any;
+  /**
+   * Output sample rate used by the synthesizer.
+   */
+  outputSampleRate(): number;
+  /**
+   * Seek to a percentage of the song (0.0 to 1.0).
+   *
+   * Returns true if seek succeeded. Works for all SNDH files (uses fallback duration for older files).
+   */
+  seek_to_percentage(percentage: number): boolean;
+  /**
+   * Get current per-channel audio outputs for oscilloscope visualization.
+   *
+   * Returns a flat array of channel outputs: [A0, B0, C0, A1, B1, C1, ...]
+   * where each group of 3 represents one PSG chip.
+   *
+   * These are the actual audio output values (updated at sample rate),
+   * not register values. Perfect for real-time oscilloscope display.
+   */
+  getChannelOutputs(): Float32Array;
+  /**
+   * Get playback position as percentage (0.0 to 1.0).
+   */
+  position_percentage(): number;
   /**
    * Generate samples into a pre-allocated buffer (zero-allocation).
    *
@@ -135,55 +183,6 @@ export class Ym2149Player {
    */
   generateSamplesIntoStereo(buffer: Float32Array): void;
   /**
-   * Get the current register values (for visualization).
-   */
-  get_registers(): Uint8Array;
-  /**
-   * Get channel states for visualization (frequency, amplitude, note, effects).
-   *
-   * Returns a JsValue containing an object with channel data for all PSG chips:
-   * ```json
-   * {
-   *   "channels": [
-   *     { "frequency": 440.0, "note": "A4", "amplitude": 0.8, "toneEnabled": true, "noiseEnabled": false, "envelopeEnabled": false },
-   *     ...
-   *   ],
-   *   "envelopes": [
-   *     { "period": 256, "shape": 14, "shapeName": "/\\/\\" },
-   *     ...
-   *   ]
-   * }
-   * ```
-   */
-  getChannelStates(): any;
-  /**
-   * Get LMC1992 state for visualization (SNDH only).
-   *
-   * Returns a JsValue containing an object with LMC1992 state:
-   * ```json
-   * {
-   *   "masterVolume": 0,      // dB (-80 to 0)
-   *   "leftVolume": 0,        // dB (-40 to 0)
-   *   "rightVolume": 0,       // dB (-40 to 0)
-   *   "bass": 0,              // dB (-12 to +12)
-   *   "treble": 0             // dB (-12 to +12)
-   * }
-   * ```
-   *
-   * Returns null for non-SNDH formats.
-   */
-  getLmc1992State(): any;
-  /**
-   * Get current per-channel audio outputs for oscilloscope visualization.
-   *
-   * Returns a flat array of channel outputs: [A0, B0, C0, A1, B1, C1, ...]
-   * where each group of 3 represents one PSG chip.
-   *
-   * These are the actual audio output values (updated at sample rate),
-   * not register values. Perfect for real-time oscilloscope display.
-   */
-  getChannelOutputs(): Float32Array;
-  /**
    * Generate audio samples with per-sample channel outputs for visualization.
    *
    * Returns a JavaScript object containing:
@@ -197,27 +196,43 @@ export class Ym2149Player {
    */
   generateSamplesWithChannels(count: number): any;
   /**
-   * Enable or disable the ST color filter.
-   */
-  set_color_filter(enabled: boolean): void;
-  /**
-   * Get the number of subsongs (1 for most formats, >1 for multi-song SNDH files).
-   */
-  subsongCount(): number;
-  /**
-   * Get the number of audio channels.
+   * Create a new player from file data.
    *
-   * Returns 3 for standard single-chip songs, 6 for dual-chip (some Arkos songs), etc.
+   * Automatically detects the file format (YM, AKS, AY, or SNDH).
+   *
+   * # Arguments
+   *
+   * * `data` - File data as Uint8Array
+   *
+   * # Returns
+   *
+   * Result containing the player or an error message.
    */
-  channelCount(): number;
+  constructor(data: Uint8Array);
   /**
-   * Get the current subsong index (1-based).
+   * Start playback.
    */
-  currentSubsong(): number;
+  play(): void;
   /**
-   * Set the current subsong (1-based index). Returns true on success.
+   * Stop playback and reset to beginning.
    */
-  setSubsong(index: number): boolean;
+  stop(): void;
+  /**
+   * Pause playback.
+   */
+  pause(): void;
+  /**
+   * Get current playback state as string.
+   */
+  state(): string;
+  /**
+   * Get current volume (0.0 to 1.0).
+   */
+  volume(): number;
+  /**
+   * Restart playback from the beginning.
+   */
+  restart(): void;
   /**
    * Get metadata about the loaded file.
    */
@@ -231,6 +246,18 @@ export class YmMetadata {
   free(): void;
   [Symbol.dispose](): void;
   /**
+   * Get frame rate in Hz.
+   */
+  readonly frame_rate: number;
+  /**
+   * Get frame count.
+   */
+  readonly frame_count: number;
+  /**
+   * Get duration in seconds.
+   */
+  readonly duration_seconds: number;
+  /**
    * Get the song title.
    */
   readonly title: string;
@@ -239,25 +266,13 @@ export class YmMetadata {
    */
   readonly author: string;
   /**
-   * Get the song comments.
-   */
-  readonly comments: string;
-  /**
    * Get the YM format version.
    */
   readonly format: string;
   /**
-   * Get frame count.
+   * Get the song comments.
    */
-  readonly frame_count: number;
-  /**
-   * Get frame rate in Hz.
-   */
-  readonly frame_rate: number;
-  /**
-   * Get duration in seconds.
-   */
-  readonly duration_seconds: number;
+  readonly comments: string;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -265,55 +280,58 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_ym2149player_free: (a: number, b: number) => void;
-  readonly ym2149player_new: (a: number, b: number) => [number, number, number];
-  readonly ym2149player_metadata: (a: number) => number;
-  readonly ym2149player_play: (a: number) => void;
-  readonly ym2149player_pause: (a: number) => void;
-  readonly ym2149player_stop: (a: number) => void;
-  readonly ym2149player_restart: (a: number) => void;
-  readonly ym2149player_is_playing: (a: number) => number;
-  readonly ym2149player_state: (a: number) => [number, number];
-  readonly ym2149player_set_volume: (a: number, b: number) => void;
-  readonly ym2149player_volume: (a: number) => number;
-  readonly ym2149player_frame_position: (a: number) => number;
-  readonly ym2149player_frame_count: (a: number) => number;
-  readonly ym2149player_loop_count: (a: number) => number;
-  readonly ym2149player_position_percentage: (a: number) => number;
-  readonly ym2149player_seek_to_frame: (a: number, b: number) => void;
-  readonly ym2149player_seek_to_percentage: (a: number, b: number) => number;
+  readonly ym2149player_channelCount: (a: number) => number;
+  readonly ym2149player_chipModel: (a: number) => [number, number];
+  readonly ym2149player_currentSubsong: (a: number) => number;
   readonly ym2149player_duration_seconds: (a: number) => number;
-  readonly ym2149player_hasDurationInfo: (a: number) => number;
-  readonly ym2149player_setChannelMute: (a: number, b: number, c: number) => void;
-  readonly ym2149player_isChannelMuted: (a: number, b: number) => number;
+  readonly ym2149player_frame_count: (a: number) => number;
+  readonly ym2149player_frame_position: (a: number) => number;
   readonly ym2149player_generateSamples: (a: number, b: number) => [number, number];
   readonly ym2149player_generateSamplesInto: (a: number, b: number, c: number, d: any) => void;
-  readonly ym2149player_generateSamplesStereo: (a: number, b: number) => [number, number];
   readonly ym2149player_generateSamplesIntoStereo: (a: number, b: number, c: number, d: any) => void;
-  readonly ym2149player_get_registers: (a: number) => [number, number];
+  readonly ym2149player_generateSamplesStereo: (a: number, b: number) => [number, number];
+  readonly ym2149player_generateSamplesWithChannels: (a: number, b: number) => any;
+  readonly ym2149player_getChannelOutputs: (a: number) => [number, number];
   readonly ym2149player_getChannelStates: (a: number) => any;
   readonly ym2149player_getLmc1992State: (a: number) => any;
-  readonly ym2149player_getChannelOutputs: (a: number) => [number, number];
-  readonly ym2149player_generateSamplesWithChannels: (a: number, b: number) => any;
-  readonly ym2149player_set_color_filter: (a: number, b: number) => void;
-  readonly ym2149player_subsongCount: (a: number) => number;
-  readonly ym2149player_channelCount: (a: number) => number;
-  readonly ym2149player_currentSubsong: (a: number) => number;
+  readonly ym2149player_get_registers: (a: number) => [number, number];
+  readonly ym2149player_hasDurationInfo: (a: number) => number;
+  readonly ym2149player_isChannelMuted: (a: number, b: number) => number;
+  readonly ym2149player_is_playing: (a: number) => number;
+  readonly ym2149player_loop_count: (a: number) => number;
+  readonly ym2149player_metadata: (a: number) => number;
+  readonly ym2149player_new: (a: number, b: number) => [number, number, number];
+  readonly ym2149player_newWithOptions: (a: number, b: number, c: any) => [number, number, number];
+  readonly ym2149player_outputSampleRate: (a: number) => number;
+  readonly ym2149player_pause: (a: number) => void;
+  readonly ym2149player_play: (a: number) => void;
+  readonly ym2149player_position_percentage: (a: number) => number;
+  readonly ym2149player_restart: (a: number) => void;
+  readonly ym2149player_seek_to_frame: (a: number, b: number) => void;
+  readonly ym2149player_seek_to_percentage: (a: number, b: number) => number;
+  readonly ym2149player_setChannelMute: (a: number, b: number, c: number) => void;
   readonly ym2149player_setSubsong: (a: number, b: number) => number;
+  readonly ym2149player_set_color_filter: (a: number, b: number) => void;
+  readonly ym2149player_set_volume: (a: number, b: number) => void;
+  readonly ym2149player_state: (a: number) => [number, number];
+  readonly ym2149player_stop: (a: number) => void;
+  readonly ym2149player_subsongCount: (a: number) => number;
+  readonly ym2149player_volume: (a: number) => number;
   readonly init_panic_hook: () => void;
   readonly __wbg_ymmetadata_free: (a: number, b: number) => void;
-  readonly ymmetadata_title: (a: number) => [number, number];
   readonly ymmetadata_author: (a: number) => [number, number];
   readonly ymmetadata_comments: (a: number) => [number, number];
+  readonly ymmetadata_duration_seconds: (a: number) => number;
   readonly ymmetadata_format: (a: number) => [number, number];
   readonly ymmetadata_frame_count: (a: number) => number;
   readonly ymmetadata_frame_rate: (a: number) => number;
-  readonly ymmetadata_duration_seconds: (a: number) => number;
+  readonly ymmetadata_title: (a: number) => [number, number];
+  readonly __wbindgen_malloc: (a: number, b: number) => number;
+  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_exn_store: (a: number) => void;
   readonly __externref_table_alloc: () => number;
   readonly __wbindgen_externrefs: WebAssembly.Table;
-  readonly __wbindgen_malloc: (a: number, b: number) => number;
-  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __externref_table_dealloc: (a: number) => void;
   readonly __wbindgen_start: () => void;
 }

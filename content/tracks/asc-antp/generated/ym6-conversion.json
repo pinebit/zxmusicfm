@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "fc8ce230201df6386b29d50497310ea27620d7773377717365dca0e1ad9c0694",
+  "psgByteLength": 273378,
+  "ym6Sha256": "4ded04840cfb52740d9b6d2acc4053aeccf64eea55d92bd60e0c6a5a013d4b43",
+  "ym6ByteLength": 190548,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 11903,
+  "title": "ANTP",
+  "author": "ASC",
+  "comment": "Converted from ASC through ZXTune PSG by ZX-MUSIC.FM"
+}

@@ -35,7 +35,7 @@ const browserNotices = [
   {
     name: 'ym2149-rs',
     license: 'MIT',
-    url: 'https://github.com/slippyex/ym2149-rs',
+    url: 'https://github.com/pinebit/ym2149-rs',
   },
 ] as const;
 

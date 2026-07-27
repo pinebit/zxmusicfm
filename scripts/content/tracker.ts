@@ -174,7 +174,7 @@ export async function convertTrackerToPsg(
 
     await runConverter(work, [
       '--convert',
-      'mode=psg,filename=/work/output.psg',
+      'mode=psg,optimization=0,filename=/work/output.psg',
       '--providers-options',
       'file.overwrite=1',
       `/work/${sourceName}`,

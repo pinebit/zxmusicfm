@@ -1,504 +1,459 @@
+import workletUrl from './worklet/chipProcessor.ts?worker&url';
+import wasmUrl from '../../vendor/ym2149/ym2149_wasm_bg.wasm?url';
 import {
-  buildStudioChain,
-  buildVanillaChain,
-  CHANNELS,
-  MIX_HEADROOM,
-  mixTransitionEnd,
-  type ModeChain,
-  OSCILLOSCOPE_FFT_SIZE,
+  buildOutputRouting,
+  rampGain,
+  type OutputRouting,
 } from './audioGraph.ts';
-import { applyChipAmplitudeModel } from './chipModel.ts';
-import {
-  type ChipSource,
-  createEngineChipSource,
-  createSynthChipSource,
-} from './chipSource.ts';
-import {
-  type ChannelLevels,
-  type ChannelOrder,
-  type ChannelVoices,
-  type OfflineRender,
-  type OscilloscopeSamples,
-  type PlaybackAdapter,
-  type PlaybackAdapterListener,
-  type PlaybackAdapterSnapshot,
-  type PlaybackMode,
-  playbackModes,
-  type PlaybackStatus,
-  type RuntimeTrack,
+import type {
+  ChannelId,
+  ChannelLevels,
+  ChannelOrder,
+  ChannelVoice,
+  ChannelVoices,
+  PlaybackAdapter,
+  PlaybackAdapterListener,
+  PlaybackAdapterSnapshot,
+  PlaybackStatus,
+  RuntimeTrack,
 } from './contracts.ts';
-import {
-  createEnginePlayer,
-  ENGINE_RENDER_CHUNK,
-  generateEngineChannels,
-  initializeYm2149,
-} from './engine.ts';
-import { ENGINE_SAMPLE_RATE, OFFLINE_SAMPLE_RATE } from './sampleRates.ts';
+import type {
+  WorkletCommand,
+  WorkletFrameSnapshot,
+  WorkletReply,
+} from './workletMessages.ts';
 
-const EMPTY_LEVELS: ChannelLevels = { A: 0, B: 0, C: 0 };
-const EMPTY_VOICES: ChannelVoices = { A: null, B: null, C: null };
-const SCHEDULE_CHUNK_SAMPLES = 4_410;
-const SCHEDULE_AHEAD_SECONDS = 0.3;
-const SCHEDULER_INTERVAL_MS = 50;
-const START_LATENCY_SECONDS = 0.02;
-// A mode switch renders both sources for one chunk and crossfades between the
-// two chains, so the listener hears a morph rather than a splice. Without the
-// overlap the retiring chain's buffers simply stop, and the DC step that leaves
-// in its high-pass is an audible thump.
-const CROSSFADE_SAMPLES = SCHEDULE_CHUNK_SAMPLES;
-const CROSSFADE_SECONDS = CROSSFADE_SAMPLES / ENGINE_SAMPLE_RATE;
-const DEFAULT_MODE: PlaybackMode = 'studio';
+const AUDIO_WORKLET_URL = import.meta.env.DEV
+  ? '/@zxmusicfm/chipProcessor.js'
+  : workletUrl;
+const CHANNEL_IDS: readonly ChannelId[] = ['A', 'B', 'C'];
+const CHANNEL_COUNT = CHANNEL_IDS.length;
+const VOLUME_TRANSITION_SECONDS = 0.02;
+const SNAPSHOT_RETENTION_SECONDS = 1;
+/**
+ * Floor for turning a channel's measured level into the 0..1 amplitude the piano
+ * visualiser shades keys with. An envelope level is generator state that no
+ * register exposes, so an envelope-driven channel has to be read from its
+ * rendered level, which sits on the DAC curve rather than the register index.
+ * The AY DAC steps about 3.2 dB per index, so a 48 dB floor puts that reading
+ * within about 0.1 of the register-linear scale used for volume-driven channels
+ * (index 4 gives 0.38 against 0.27, index 8 gives 0.63 against 0.53, index 12
+ * gives 0.87 against 0.80). Both paths therefore read as the same brightness.
+ */
+const AMPLITUDE_FLOOR_DB = 48;
+
+type PendingLoad = {
+  readonly generation: number;
+  readonly resolve: () => void;
+  readonly reject: (error: Error) => void;
+};
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
-function assertFiniteTrack(track: RuntimeTrack): void {
-  if (track.bytes.length === 0) {
-    throw new Error(`Track ${track.id} has no runtime bytes.`);
-  }
-  if (!Number.isFinite(track.durationSeconds) || track.durationSeconds <= 0) {
-    throw new Error(`Track ${track.id} has an invalid duration.`);
-  }
-  if (!Number.isInteger(track.frameRateHz) || track.frameRateHz <= 0) {
-    throw new Error(`Track ${track.id} has an invalid frame rate.`);
-  }
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-function isPlayingStatus(status: PlaybackStatus): boolean {
-  return status === 'playing';
+function abortError(): DOMException {
+  return new DOMException('Playback load was aborted.', 'AbortError');
+}
+
+function frequencyToMidiNote(frequencyHz: number): number | null {
+  if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) return null;
+  return 69 + 12 * Math.log2(frequencyHz / 440);
+}
+
+function amplitudeFromLevel(level: number): number {
+  if (!(level > 0)) return 0;
+  const decibels = 20 * Math.log10(Math.min(1, level));
+  return clamp((decibels + AMPLITUDE_FLOOR_DB) / AMPLITUDE_FLOOR_DB, 0, 1);
 }
 
 export class Ym2149PlaybackAdapter implements PlaybackAdapter {
+  private readonly context: AudioContext;
+  private readonly listeners = new Set<PlaybackAdapterListener>();
+  private readonly volumeGain: GainNode;
+  private node: AudioWorkletNode | undefined;
+  private routing: OutputRouting | undefined;
+  private initialization: Promise<void> | undefined;
+  private readyResolve: (() => void) | undefined;
+  private readyReject: ((error: Error) => void) | undefined;
+  private pendingLoad: PendingLoad | undefined;
+  private generation = 0;
   private status: PlaybackStatus = 'idle';
-  private positionSeconds = 0;
   private durationSeconds = 0;
-  private track: RuntimeTrack | undefined;
-  private listeners = new Set<PlaybackAdapterListener>();
-  private audioContext: AudioContext | undefined;
-  private gainNode: GainNode | undefined;
-  // Build-time loudness match. Each chain applies it ahead of its own limiter,
-  // so a track that needs lifting is caught rather than clipped.
-  private normalizationGainDb = 0;
-  // Chains are built on first use: a listener who stays in vanilla never pays
-  // for the studio convolver, and vice versa.
-  private chains: Partial<Record<PlaybackMode, ModeChain>> = {};
-  private mode: PlaybackMode = DEFAULT_MODE;
-  private readonly oscilloscopeSamples: OscilloscopeSamples = {
-    A: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
-    B: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
-    C: new Float32Array(OSCILLOSCOPE_FFT_SIZE),
-  };
-  // Both renderers stay loaded so a mode switch only has to reconcile the one
-  // becoming active. Each tracks its own source-sample position.
-  private sources: Partial<Record<PlaybackMode, ChipSource>> = {};
-  // The mode being faded out, rendered alongside the active one until its
-  // source-sample deadline passes.
-  private retiring:
-    { readonly mode: PlaybackMode; readonly untilSample: number } | undefined;
-  private scheduledSources = new Set<AudioBufferSourceNode>();
-  private scheduler: ReturnType<typeof globalThis.setInterval> | undefined;
-  private nextScheduleTime = 0;
-  private scheduledNativeSample = 0;
-  private anchorContextTime = 0;
-  private anchorPositionSeconds = 0;
-  // Levels stamped with the AudioContext time at which each scheduled chunk
-  // becomes audible, so meters can read the currently-heard chunk rather than
-  // the furthest one queued ahead.
-  private levelTimeline: {
-    readonly time: number;
-    readonly levels: ChannelLevels;
-  }[] = [];
-  // Pitch changes are recorded at source-frame resolution and stamped with
-  // their audible AudioContext time. Reading the renderer directly would expose
-  // the buffers scheduled up to 300 ms ahead.
-  private voiceTimeline: {
-    readonly time: number;
-    readonly voices: ChannelVoices;
-  }[] = [];
+  private frameRateHz = 50;
+  private frameCount = 0;
+  private chipClockHz = 1_773_400;
   private volume = 1;
+  private normalizationGain = 1;
+  // The listener's stereo order, held here because the routing nodes do not
+  // exist until the worklet is built. `setChannelOrder` is called once while the
+  // adapter is still bare, so applying it only to `routing` would drop it.
   private channelOrder: ChannelOrder = 'ABC';
-  private loadGeneration = 0;
+  private positionSeconds = 0;
+  private snapshots: WorkletFrameSnapshot[] = [];
+  private audibleSnapshot: WorkletFrameSnapshot | undefined;
   private disposed = false;
 
-  constructor(permittedAudioContext?: AudioContext) {
-    this.audioContext = permittedAudioContext;
+  constructor(context: AudioContext) {
+    this.context = context;
+    this.volumeGain = context.createGain();
+    this.volumeGain.connect(context.destination);
+  }
+
+  private snapshot(): PlaybackAdapterSnapshot {
+    return {
+      status: this.status,
+      positionSeconds: this.currentPositionSeconds(),
+      durationSeconds: this.durationSeconds,
+    };
+  }
+
+  private publish(): void {
+    const snapshot = this.snapshot();
+    for (const listener of this.listeners) listener(snapshot);
+  }
+
+  private setStatus(status: PlaybackStatus): void {
+    this.status = status;
+    this.publish();
+  }
+
+  private post(command: WorkletCommand, transfer: Transferable[] = []): void {
+    if (this.node === undefined) {
+      throw new Error('The audio worklet is not initialized.');
+    }
+    this.node.port.postMessage(command, transfer);
+  }
+
+  private async ensureWorklet(): Promise<void> {
+    if (this.initialization !== undefined) {
+      return await this.initialization;
+    }
+
+    this.initialization = (async () => {
+      await this.context.audioWorklet.addModule(AUDIO_WORKLET_URL);
+      if (this.disposed) {
+        throw new Error('Playback was disposed during initialization.');
+      }
+
+      const node = new AudioWorkletNode(this.context, 'ym2149-chip', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [CHANNEL_COUNT],
+        channelCount: CHANNEL_COUNT,
+        channelCountMode: 'explicit',
+        channelInterpretation: 'discrete',
+      });
+      node.port.onmessage = (event: MessageEvent<WorkletReply>) => {
+        this.handleReply(event.data);
+      };
+      node.onprocessorerror = () => {
+        this.fail(new Error('The chip audio processor stopped unexpectedly.'));
+      };
+      this.node = node;
+      this.routing = buildOutputRouting(this.context, this.volumeGain);
+      this.routing.setChannelOrder(this.channelOrder);
+      this.routing.setNormalization(this.normalizationGain);
+      node.connect(this.routing.input);
+
+      const response = await fetch(wasmUrl);
+      if (!response.ok) {
+        throw new Error(
+          `Could not load the playback engine (${response.status}).`,
+        );
+      }
+      const wasmBytes = await response.arrayBuffer();
+
+      // The engine crosses as transferred bytes and is compiled inside the
+      // worklet. A compiled `WebAssembly.Module` would keep the compile off the
+      // audio thread, but Chromium accepts that `postMessage` without throwing
+      // and then never delivers it, and `structuredClone` of the same module
+      // succeeds — so no feature probe can tell the difference, and the only
+      // alternative is racing the reply against a timer. Bytes are deterministic
+      // on every engine. The compile happens once, during setup, while the graph
+      // is still silent, so the render quantum it stalls would have produced
+      // silence anyway.
+      await new Promise<void>((resolve, reject) => {
+        this.readyResolve = resolve;
+        this.readyReject = reject;
+        this.post({ type: 'init', wasm: wasmBytes }, [wasmBytes]);
+      });
+    })().catch((error: unknown) => {
+      const normalized = new Error(errorMessage(error));
+      this.fail(normalized);
+      throw normalized;
+    });
+
+    return await this.initialization;
+  }
+
+  private fail(error: Error): void {
+    this.readyReject?.(error);
+    this.readyResolve = undefined;
+    this.readyReject = undefined;
+    this.pendingLoad?.reject(error);
+    this.pendingLoad = undefined;
+    if (!this.disposed) this.setStatus('error');
+  }
+
+  private handleReply(reply: WorkletReply): void {
+    if (reply.type === 'ready') {
+      this.readyResolve?.();
+      this.readyResolve = undefined;
+      this.readyReject = undefined;
+      return;
+    }
+    if (reply.type === 'error') {
+      if (
+        reply.generation === undefined ||
+        reply.generation === this.generation
+      ) {
+        this.fail(new Error(reply.message));
+      }
+      return;
+    }
+    if (reply.generation !== this.generation) return;
+
+    switch (reply.type) {
+      case 'loaded':
+        this.frameCount = reply.frameCount;
+        this.durationSeconds = reply.frameCount / this.frameRateHz;
+        this.positionSeconds = 0;
+        this.snapshots = [];
+        this.audibleSnapshot = undefined;
+        this.pendingLoad?.resolve();
+        this.pendingLoad = undefined;
+        this.setStatus('ready');
+        break;
+      case 'frame':
+        this.snapshots.push(reply);
+        this.pruneSnapshots();
+        break;
+      case 'ended':
+        this.positionSeconds = this.durationSeconds;
+        this.setStatus('ended');
+        break;
+    }
+  }
+
+  private pruneSnapshots(): void {
+    const cutoff = this.context.currentTime - SNAPSHOT_RETENTION_SECONDS;
+    while (this.snapshots.length > 1) {
+      const next = this.snapshots[1];
+      if (next === undefined || next.audioTime > cutoff) break;
+      this.snapshots.shift();
+    }
+  }
+
+  private updateAudibleSnapshot(): WorkletFrameSnapshot | undefined {
+    while (this.snapshots.length > 0) {
+      const next = this.snapshots[0];
+      if (next === undefined || next.audioTime > this.context.currentTime) {
+        break;
+      }
+      this.audibleSnapshot = this.snapshots.shift();
+    }
+    return this.audibleSnapshot;
   }
 
   async load(track: RuntimeTrack, signal: AbortSignal): Promise<void> {
-    this.assertNotDisposed();
-    assertFiniteTrack(track);
-    const generation = ++this.loadGeneration;
-    this.stopScheduling();
-    this.releaseSources();
-    this.track = track;
+    if (this.disposed) throw new Error('Playback has been disposed.');
+    if (signal.aborted) throw abortError();
+
+    const generation = ++this.generation;
+    this.pendingLoad?.reject(abortError());
+    this.pendingLoad = undefined;
     this.durationSeconds = track.durationSeconds;
-    this.positionSeconds = 0;
-    this.status = 'loading';
-    this.levelTimeline = [];
-    this.voiceTimeline = [];
-    this.normalizationGainDb = track.normalizationGainDb ?? 0;
-    this.updateNormalization();
-    this.publish();
+    this.frameRateHz = track.frameRateHz;
+    this.chipClockHz = track.chipClockHz;
+    this.normalizationGain = Math.pow(
+      10,
+      (track.normalizationGainDb ?? 0) / 20,
+    );
+    this.setStatus('loading');
 
-    try {
-      signal.throwIfAborted();
-      await initializeYm2149();
-      signal.throwIfAborted();
-      if (generation !== this.loadGeneration || this.disposed) {
-        return;
-      }
-
-      const { source, channelCount } = createEngineChipSource(track.bytes);
-      if (channelCount !== 3) {
-        source.free();
-        throw new Error(
-          `Track ${track.id} did not expose exactly A/B/C channels.`,
-        );
-      }
-      this.sources = {
-        vanilla: source,
-        studio: createSynthChipSource(track),
-      };
-      this.status = 'ready';
-      this.publish();
-    } catch (error) {
-      if (generation === this.loadGeneration && !signal.aborted) {
-        this.status = 'error';
-        this.publish();
-      }
-      throw error;
+    await this.ensureWorklet();
+    signal.throwIfAborted();
+    if (!this.isCurrentGeneration(generation)) {
+      throw abortError();
     }
+
+    // Only the loudness match is per track. `channelLayout` is curator metadata
+    // describing the source tracker's convention; the audible order belongs to
+    // the listener's cycler, so a track change must not overwrite it.
+    this.routing?.setNormalization(this.normalizationGain);
+
+    const bytes = track.bytes.slice();
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = (): void => {
+        if (this.pendingLoad?.generation === generation) {
+          this.pendingLoad = undefined;
+        }
+        reject(abortError());
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+      this.pendingLoad = {
+        generation,
+        resolve: () => {
+          signal.removeEventListener('abort', onAbort);
+          resolve();
+        },
+        reject: (error) => {
+          signal.removeEventListener('abort', onAbort);
+          reject(error);
+        },
+      };
+      this.post(
+        {
+          type: 'load',
+          generation,
+          bytes,
+          chipType: track.chipType,
+          frameRateHz: track.frameRateHz,
+        },
+        [bytes.buffer],
+      );
+    });
   }
 
   async play(): Promise<void> {
-    this.assertNotDisposed();
-    const source = this.sources[this.mode];
     if (
-      source === undefined ||
-      this.track === undefined ||
-      !['ready', 'paused', 'ended'].includes(this.status)
+      this.status === 'idle' ||
+      this.status === 'loading' ||
+      this.status === 'error'
     ) {
       return;
     }
-    if (this.status === 'ended') {
-      this.positionSeconds = 0;
-    }
-
-    const context = this.ensureAudioContext();
-    if (context.state === 'suspended') {
-      await context.resume();
-    }
-    if (context.state !== 'running') {
-      throw new Error(
-        'Audio output is not running; a user gesture is required.',
-      );
-    }
-
-    // The only place a renderer is rewound. Doing it here rather than in
-    // pause/stop/seek keeps those instant and collapses a pause-then-seek, or a
-    // pause-then-different-track, into no reconstruction at all.
-    const startSample = Math.round(this.positionSeconds * ENGINE_SAMPLE_RATE);
-    if (source.sample !== startSample) {
-      source.seekToSample(startSample);
-    }
-
-    source.play();
-    this.retiring = undefined;
-    this.status = 'playing';
-    this.anchorPositionSeconds = this.positionSeconds;
-    this.anchorContextTime = context.currentTime + START_LATENCY_SECONDS;
-    this.nextScheduleTime = this.anchorContextTime;
-    this.scheduledNativeSample = startSample;
-    this.scheduleBuffers();
-    this.scheduler = globalThis.setInterval(() => {
-      this.scheduleBuffers();
-    }, SCHEDULER_INTERVAL_MS);
-    this.publish();
+    if (this.status === 'ended') await this.seek(0);
+    await this.context.resume();
+    this.post({ type: 'play', generation: this.generation });
+    this.setStatus('playing');
   }
 
   pause(): void {
-    if (!isPlayingStatus(this.status)) {
-      return;
-    }
-    const position = this.livePosition();
-    this.stopScheduling();
-    this.pauseSources();
-    this.positionSeconds = position;
-    this.status = 'paused';
-    this.levelTimeline = [];
-    this.voiceTimeline = [];
-    this.publish();
+    if (this.status !== 'playing') return;
+    this.positionSeconds = this.currentPositionSeconds();
+    this.snapshots = [];
+    this.audibleSnapshot = undefined;
+    this.post({ type: 'pause', generation: this.generation });
+    this.setStatus('paused');
   }
 
   stop(): void {
-    if (this.sources[this.mode] === undefined) {
-      return;
-    }
-    this.stopScheduling();
-    this.pauseSources();
+    if (this.status === 'idle' || this.status === 'loading') return;
     this.positionSeconds = 0;
-    this.status = 'ready';
-    this.levelTimeline = [];
-    this.voiceTimeline = [];
-    this.publish();
+    this.snapshots = [];
+    this.audibleSnapshot = undefined;
+    this.post({ type: 'stop', generation: this.generation });
+    this.setStatus('ready');
   }
 
-  async seek(positionSeconds: number): Promise<void> {
-    this.assertNotDisposed();
-    if (this.sources[this.mode] === undefined || this.track === undefined) {
-      return;
+  seek(positionSeconds: number): Promise<void> {
+    if (this.status === 'idle' || this.status === 'loading') {
+      return Promise.resolve();
     }
-    const wasPlaying = isPlayingStatus(this.status);
     const position = clamp(positionSeconds, 0, this.durationSeconds);
-    this.stopScheduling();
-    this.pauseSources();
-    this.positionSeconds = position;
-    this.levelTimeline = [];
-    this.voiceTimeline = [];
-
+    const frame = clamp(
+      Math.floor(position * this.frameRateHz),
+      0,
+      this.frameCount,
+    );
+    this.positionSeconds = frame / this.frameRateHz;
+    this.snapshots = [];
+    this.audibleSnapshot = undefined;
+    this.post({
+      type: 'seek',
+      generation: this.generation,
+      frame,
+    });
     if (position >= this.durationSeconds) {
-      this.status = 'ended';
-    } else if (wasPlaying) {
-      this.status = 'paused';
-      await this.play();
-      return;
-    } else if (this.status !== 'paused') {
-      this.status = 'ready';
+      this.setStatus('ended');
+    } else {
+      this.publish();
     }
-    this.publish();
+    return Promise.resolve();
   }
 
   setVolume(volume: number): void {
-    this.volume = clamp(Number.isFinite(volume) ? volume : 0, 0, 1);
-    this.updateGain();
+    this.volume = clamp(volume, 0, 1);
+    rampGain(
+      this.volumeGain.gain,
+      this.volume,
+      this.context,
+      this.context.currentTime + VOLUME_TRANSITION_SECONDS,
+    );
   }
 
   setChannelOrder(channelOrder: ChannelOrder): void {
-    if (this.channelOrder === channelOrder) return;
     this.channelOrder = channelOrder;
-    this.updateChannelMix();
+    this.routing?.setChannelOrder(channelOrder);
   }
 
-  /**
-   * Switches renderer and processing chain together. While playing, the retiring
-   * mode keeps rendering for one chunk so the two chains crossfade; the audio
-   * already queued always finishes on the chain that produced it.
-   */
-  setMode(mode: PlaybackMode): void {
-    if (this.mode === mode) return;
-    const previous = this.mode;
-    this.mode = mode;
+  private currentPositionSeconds(): number {
+    const audible = this.updateAudibleSnapshot();
+    if (audible === undefined) return this.positionSeconds;
+    const elapsed =
+      this.status === 'playing'
+        ? Math.max(0, this.context.currentTime - audible.audioTime)
+        : 0;
+    return clamp(
+      audible.frame / this.frameRateHz + elapsed,
+      0,
+      this.durationSeconds,
+    );
+  }
 
-    const context = this.audioContext;
-    if (context === undefined || this.gainNode === undefined) {
-      // No graph yet: `play` builds the right chain and reconciles the source.
-      return;
-    }
-    const incoming = this.ensureChain(mode);
-    const outgoing = this.chains[previous];
-
-    if (!isPlayingStatus(this.status)) {
-      incoming.input.gain.value = 1;
-      if (outgoing !== undefined) outgoing.input.gain.value = 0;
-      this.retiring = undefined;
-      return;
-    }
-
-    const source = this.sources[mode];
-    const at = Math.max(context.currentTime, this.nextScheduleTime);
-    const end = at + CROSSFADE_SECONDS;
-    const ramp = (parameter: AudioParam, target: number) => {
-      parameter.cancelScheduledValues(context.currentTime);
-      parameter.setValueAtTime(parameter.value, at);
-      parameter.linearRampToValueAtTime(target, end);
-    };
-    ramp(incoming.input.gain, 1);
-    if (outgoing !== undefined) ramp(outgoing.input.gain, 0);
-
-    if (source !== undefined) {
-      if (source.sample !== this.scheduledNativeSample) {
-        source.seekToSample(this.scheduledNativeSample);
-      }
-      source.play();
-    }
-    this.retiring = {
-      mode: previous,
-      untilSample: this.scheduledNativeSample + CROSSFADE_SAMPLES,
-    };
+  getSnapshot(): PlaybackAdapterSnapshot {
+    return this.snapshot();
   }
 
   getChannelLevels(): ChannelLevels {
-    if (!isPlayingStatus(this.status) || this.audioContext === undefined) {
-      return EMPTY_LEVELS;
-    }
-    const now = this.audioContext.currentTime;
-    // Drop chunks that a later one has already superseded at the playhead.
-    while (this.levelTimeline.length > 1) {
-      const next = this.levelTimeline[1];
-      if (next === undefined || next.time > now) break;
-      this.levelTimeline.shift();
-    }
-    const current = this.levelTimeline[0];
-    // A chunk queued ahead of the playhead is not audible yet, so report rest
-    // until it is — the same gate `getChannelVoices` applies.
-    if (current === undefined || current.time > now) {
-      return EMPTY_LEVELS;
-    }
-    // Includes the loudness match, so the needles do not disagree with what is
-    // heard by up to three decibels from one track to the next.
-    const scale = this.volume * this.normalizationLinear();
+    const audible = this.updateAudibleSnapshot();
+    const scale = this.volume * this.normalizationGain;
     return {
-      A: current.levels.A * scale,
-      B: current.levels.B * scale,
-      C: current.levels.C * scale,
+      A: (audible?.rms[0] ?? 0) * scale,
+      B: (audible?.rms[1] ?? 0) * scale,
+      C: (audible?.rms[2] ?? 0) * scale,
     };
   }
 
   getChannelVoices(): ChannelVoices {
-    if (!isPlayingStatus(this.status) || this.audioContext === undefined) {
-      return EMPTY_VOICES;
+    const audible = this.updateAudibleSnapshot();
+    if (audible === undefined) return { A: null, B: null, C: null };
+
+    const registers = audible.registers;
+    const voices: Partial<Record<ChannelId, ChannelVoice | null>> = {};
+    const register = (index: number): number => registers[index] ?? 0;
+    for (const [channel, channelId] of CHANNEL_IDS.entries()) {
+      const period =
+        register(channel * 2) | ((register(channel * 2 + 1) & 0x0f) << 8);
+      const toneEnabled = (register(7) & (1 << channel)) === 0;
+      // R7 bits 3-5 gate noise, active low. A channel mixing noise has no
+      // musical pitch to show: its tone period is often a leftover value, and
+      // the percussion it produces would otherwise light an arbitrary key.
+      const noiseEnabled = (register(7) & (1 << (channel + 3))) === 0;
+      const amplitudeRegister = register(8 + channel);
+      const amplitude =
+        (amplitudeRegister & 0x10) !== 0
+          ? amplitudeFromLevel(audible.rms[channel] ?? 0)
+          : (amplitudeRegister & 0x0f) / 15;
+      const frequencyHz =
+        toneEnabled && !noiseEnabled && period > 0
+          ? this.chipClockHz / (16 * period)
+          : 0;
+      const midiNote = frequencyToMidiNote(frequencyHz);
+      voices[channelId] =
+        midiNote === null || amplitude <= 0 ? null : { midiNote, amplitude };
     }
-    const now = this.audioContext.currentTime;
-    while (this.voiceTimeline.length > 1) {
-      const next = this.voiceTimeline[1];
-      if (next === undefined || next.time > now) break;
-      this.voiceTimeline.shift();
-    }
-    const current = this.voiceTimeline[0];
-    return current !== undefined && current.time <= now
-      ? current.voices
-      : EMPTY_VOICES;
+    return voices as ChannelVoices;
   }
 
-  getOscilloscopeSamples(): OscilloscopeSamples {
-    const analysers = this.chains[this.mode]?.analysers;
-    if (analysers !== undefined) {
-      for (const channel of CHANNELS) {
-        analysers[channel].getFloatTimeDomainData(
-          this.oscilloscopeSamples[channel],
-        );
-      }
-    }
-    return this.oscilloscopeSamples;
-  }
-
-  /**
-   * The dry engine render that feeds the committed waveform peaks. Deliberately
-   * unaffected by playback mode: the waveform lanes describe the track, not the
-   * current presentation of it.
-   */
-  async renderOffline(
-    track: RuntimeTrack,
-    signal: AbortSignal,
-  ): Promise<OfflineRender> {
-    assertFiniteTrack(track);
-    signal.throwIfAborted();
-    await initializeYm2149();
-    signal.throwIfAborted();
-
-    const outputLength = Math.round(
-      track.durationSeconds * OFFLINE_SAMPLE_RATE,
-    );
-    const nativeLength = Math.round(track.durationSeconds * ENGINE_SAMPLE_RATE);
-    const channelA = new Float32Array(outputLength);
-    const channelB = new Float32Array(outputLength);
-    const channelC = new Float32Array(outputLength);
-    const mix = new Float32Array(outputLength);
-    const player = createEnginePlayer(track.bytes);
-    player.play();
-
-    let sourceStart = 0;
-    let outputIndex = 0;
-    let generated: Float32Array = new Float32Array(0);
-    let previous: readonly [number, number, number] | undefined;
-
-    // Declared once for the whole render rather than per output sample; a
-    // three-minute track interpolates over eight million of them.
-    const read = (absoluteSample: number, channel: number): number => {
-      if (absoluteSample === sourceStart - 1 && previous !== undefined) {
-        return previous[channel] ?? 0;
-      }
-      return generated[(absoluteSample - sourceStart) * 3 + channel] ?? 0;
-    };
-    const interpolate = (
-      channel: number,
-      low: number,
-      high: number,
-      fraction: number,
-    ): number => {
-      const lowValue = read(low, channel);
-      return lowValue + (read(high, channel) - lowValue) * fraction;
-    };
-
-    try {
-      while (sourceStart < nativeLength + 1) {
-        signal.throwIfAborted();
-        const count = Math.min(
-          ENGINE_RENDER_CHUNK,
-          nativeLength + 1 - sourceStart,
-        );
-        generated = generateEngineChannels(player, count).channels;
-        const sourceEnd = sourceStart + count;
-
-        while (outputIndex < outputLength) {
-          const sourcePosition =
-            (outputIndex * ENGINE_SAMPLE_RATE) / OFFLINE_SAMPLE_RATE;
-          const low = Math.floor(sourcePosition);
-          const high = low + 1;
-          if (high >= sourceEnd) {
-            break;
-          }
-          const fraction = sourcePosition - low;
-          const a = applyChipAmplitudeModel(
-            interpolate(0, low, high, fraction),
-            track.chipType,
-          );
-          const b = applyChipAmplitudeModel(
-            interpolate(1, low, high, fraction),
-            track.chipType,
-          );
-          const c = applyChipAmplitudeModel(
-            interpolate(2, low, high, fraction),
-            track.chipType,
-          );
-          channelA[outputIndex] = a;
-          channelB[outputIndex] = b;
-          channelC[outputIndex] = c;
-          mix[outputIndex] = (a + b + c) * MIX_HEADROOM;
-          outputIndex += 1;
-        }
-
-        const last = (count - 1) * 3;
-        previous = [
-          generated[last] ?? 0,
-          generated[last + 1] ?? 0,
-          generated[last + 2] ?? 0,
-        ];
-        sourceStart = sourceEnd;
-      }
-    } finally {
-      player.free();
-    }
-
-    if (outputIndex !== outputLength) {
-      throw new Error(
-        `Offline render produced ${outputIndex} of ${outputLength} samples.`,
-      );
-    }
-    return {
-      sampleRate: OFFLINE_SAMPLE_RATE,
-      channels: { A: channelA, B: channelB, C: channelC },
-      mix,
-    };
-  }
-
-  getSnapshot(): PlaybackAdapterSnapshot {
-    return {
-      status: this.status,
-      positionSeconds: this.livePosition(),
-      durationSeconds: this.durationSeconds,
-    };
+  private isCurrentGeneration(generation: number): boolean {
+    return generation === this.generation;
   }
 
   subscribe(listener: PlaybackAdapterListener): () => void {
@@ -509,328 +464,16 @@ export class Ym2149PlaybackAdapter implements PlaybackAdapter {
   }
 
   dispose(): void {
-    if (this.disposed) {
-      return;
-    }
+    if (this.disposed) return;
     this.disposed = true;
-    this.loadGeneration += 1;
-    this.stopScheduling();
-    this.releaseSources();
+    this.generation += 1;
+    this.pendingLoad?.reject(abortError());
+    this.pendingLoad = undefined;
+    this.node?.disconnect();
+    this.node?.port.close();
+    this.routing?.dispose();
+    this.volumeGain.disconnect();
+    if (this.context.state !== 'closed') void this.context.close();
     this.listeners.clear();
-    const context = this.audioContext;
-    this.audioContext = undefined;
-    this.gainNode = undefined;
-    this.chains = {};
-    if (context !== undefined && context.state !== 'closed') {
-      void context.close();
-    }
-    this.status = 'idle';
-    this.positionSeconds = 0;
-    this.durationSeconds = 0;
-    this.track = undefined;
-    this.levelTimeline = [];
-    this.voiceTimeline = [];
-  }
-
-  private assertNotDisposed(): void {
-    if (this.disposed) {
-      throw new Error('The playback adapter has been disposed.');
-    }
-  }
-
-  private ensureAudioContext(): AudioContext {
-    const context =
-      this.audioContext ?? new AudioContext({ sampleRate: ENGINE_SAMPLE_RATE });
-    this.audioContext = context;
-    if (this.gainNode === undefined) {
-      this.buildAudioGraph(context);
-    }
-    return context;
-  }
-
-  /**
-   * Builds the volume node the chains share, then the chain for the active mode.
-   * Keeping the routing gains outside the scheduled buffers lets channel order
-   * and mode changes take effect while those buffers are already playing.
-   */
-  private buildAudioGraph(context: AudioContext): void {
-    const gain = context.createGain();
-    gain.connect(context.destination);
-    this.gainNode = gain;
-    this.updateGain();
-    this.ensureChain(this.mode).input.gain.value = 1;
-  }
-
-  private ensureChain(mode: PlaybackMode): ModeChain {
-    const existing = this.chains[mode];
-    if (existing !== undefined) return existing;
-    const context = this.audioContext;
-    const gain = this.gainNode;
-    if (context === undefined || gain === undefined) {
-      throw new Error('The audio graph has not been built yet.');
-    }
-    const chain =
-      mode === 'vanilla'
-        ? buildVanillaChain(context, gain)
-        : buildStudioChain(context, gain);
-    // A chain built while another is active must start silent, or its first
-    // buffer arrives at full level partway through a crossfade.
-    chain.input.gain.value = 0;
-    chain.setChannelOrder(this.channelOrder, undefined);
-    chain.setNormalization(this.normalizationLinear());
-    this.chains[mode] = chain;
-    return chain;
-  }
-
-  private updateGain(): void {
-    if (this.gainNode !== undefined) {
-      this.gainNode.gain.value = this.volume;
-    }
-  }
-
-  private normalizationLinear(): number {
-    return 10 ** (this.normalizationGainDb / 20);
-  }
-
-  private updateNormalization(): void {
-    const gain = this.normalizationLinear();
-    for (const mode of playbackModes) {
-      this.chains[mode]?.setNormalization(gain);
-    }
-  }
-
-  private updateChannelMix(): void {
-    const context = this.audioContext;
-    const transitionEnd =
-      context === undefined
-        ? undefined
-        : mixTransitionEnd(context, isPlayingStatus(this.status));
-    for (const mode of playbackModes) {
-      this.chains[mode]?.setChannelOrder(this.channelOrder, transitionEnd);
-    }
-  }
-
-  private livePosition(): number {
-    if (!isPlayingStatus(this.status) || this.audioContext === undefined) {
-      return this.positionSeconds;
-    }
-    return clamp(
-      this.anchorPositionSeconds +
-        Math.max(0, this.audioContext.currentTime - this.anchorContextTime),
-      0,
-      this.durationSeconds,
-    );
-  }
-
-  private scheduleBuffers(): void {
-    const context = this.audioContext;
-    const chain = this.chains[this.mode];
-    const source = this.sources[this.mode];
-    const track = this.track;
-    if (
-      context === undefined ||
-      chain === undefined ||
-      source === undefined ||
-      track === undefined ||
-      !isPlayingStatus(this.status)
-    ) {
-      return;
-    }
-
-    if (this.livePosition() >= this.durationSeconds) {
-      this.finishAtEnd();
-      return;
-    }
-
-    // Bound the timelines when getChannelLevels is not polling (e.g. hidden tab).
-    const audibleCutoff = context.currentTime - 1;
-    while (this.levelTimeline.length > 1) {
-      const next = this.levelTimeline[1];
-      if (next === undefined || next.time > audibleCutoff) break;
-      this.levelTimeline.shift();
-    }
-    while (this.voiceTimeline.length > 1) {
-      const next = this.voiceTimeline[1];
-      if (next === undefined || next.time > audibleCutoff) break;
-      this.voiceTimeline.shift();
-    }
-
-    // The studio renderer indexes the DAC tables directly, so only the engine's
-    // output needs a chip level recovered from it. Resolved once per tick rather
-    // than per sample.
-    const recoverChipLevel = this.mode === 'vanilla';
-    const nativeTotal = Math.round(this.durationSeconds * ENGINE_SAMPLE_RATE);
-    while (
-      this.nextScheduleTime < context.currentTime + SCHEDULE_AHEAD_SECONDS &&
-      this.scheduledNativeSample < nativeTotal
-    ) {
-      const count = Math.min(
-        SCHEDULE_CHUNK_SAMPLES,
-        nativeTotal - this.scheduledNativeSample,
-      );
-      const buffer = context.createBuffer(3, count, ENGINE_SAMPLE_RATE);
-      const outputA = buffer.getChannelData(0);
-      const outputB = buffer.getChannelData(1);
-      const outputC = buffer.getChannelData(2);
-      const squared = { A: 0, B: 0, C: 0 };
-      let generatedOffset = 0;
-      while (generatedOffset < count) {
-        const absoluteSample = this.scheduledNativeSample + generatedOffset;
-        const currentFrame = Math.floor(
-          (absoluteSample * track.frameRateHz) / ENGINE_SAMPLE_RATE,
-        );
-        const nextFrameSample = Math.ceil(
-          ((currentFrame + 1) * ENGINE_SAMPLE_RATE) / track.frameRateHz,
-        );
-        const segmentCount = Math.min(
-          count - generatedOffset,
-          Math.max(1, nextFrameSample - absoluteSample),
-        );
-        const generated = source.render(segmentCount);
-        this.voiceTimeline.push({
-          time: this.nextScheduleTime + generatedOffset / ENGINE_SAMPLE_RATE,
-          voices: source.getVoices(),
-        });
-
-        for (let sample = 0; sample < segmentCount; sample += 1) {
-          const base = sample * 3;
-          const outputIndex = generatedOffset + sample;
-          let a = generated[base] ?? 0;
-          let b = generated[base + 1] ?? 0;
-          let c = generated[base + 2] ?? 0;
-          if (recoverChipLevel) {
-            a = applyChipAmplitudeModel(a, track.chipType);
-            b = applyChipAmplitudeModel(b, track.chipType);
-            c = applyChipAmplitudeModel(c, track.chipType);
-          }
-          squared.A += a * a;
-          squared.B += b * b;
-          squared.C += c * c;
-          outputA[outputIndex] = a;
-          outputB[outputIndex] = b;
-          outputC[outputIndex] = c;
-        }
-        generatedOffset += segmentCount;
-      }
-
-      this.levelTimeline.push({
-        time: this.nextScheduleTime,
-        levels: {
-          A: Math.sqrt(squared.A / count),
-          B: Math.sqrt(squared.B / count),
-          C: Math.sqrt(squared.C / count),
-        },
-      });
-      this.startBuffer(context, buffer, chain);
-      this.scheduleRetiringChunk(context, count);
-      this.scheduledNativeSample += count;
-      this.nextScheduleTime += count / ENGINE_SAMPLE_RATE;
-    }
-  }
-
-  /** Keeps the outgoing mode audible across the crossfade window. */
-  private scheduleRetiringChunk(context: AudioContext, count: number): void {
-    const retiring = this.retiring;
-    if (retiring === undefined) return;
-    if (this.scheduledNativeSample >= retiring.untilSample) {
-      this.retiring = undefined;
-      return;
-    }
-    const chain = this.chains[retiring.mode];
-    const source = this.sources[retiring.mode];
-    const track = this.track;
-    if (chain === undefined || source === undefined || track === undefined) {
-      this.retiring = undefined;
-      return;
-    }
-
-    const generated = source.render(count);
-    const buffer = context.createBuffer(3, count, ENGINE_SAMPLE_RATE);
-    const outputA = buffer.getChannelData(0);
-    const outputB = buffer.getChannelData(1);
-    const outputC = buffer.getChannelData(2);
-    const recoverChipLevel = retiring.mode === 'vanilla';
-    for (let sample = 0; sample < count; sample += 1) {
-      const base = sample * 3;
-      let a = generated[base] ?? 0;
-      let b = generated[base + 1] ?? 0;
-      let c = generated[base + 2] ?? 0;
-      if (recoverChipLevel) {
-        a = applyChipAmplitudeModel(a, track.chipType);
-        b = applyChipAmplitudeModel(b, track.chipType);
-        c = applyChipAmplitudeModel(c, track.chipType);
-      }
-      outputA[sample] = a;
-      outputB[sample] = b;
-      outputC[sample] = c;
-    }
-    this.startBuffer(context, buffer, chain);
-  }
-
-  private startBuffer(
-    context: AudioContext,
-    buffer: AudioBuffer,
-    chain: ModeChain,
-  ): void {
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.connect(chain.input);
-    source.addEventListener(
-      'ended',
-      () => {
-        this.scheduledSources.delete(source);
-      },
-      { once: true },
-    );
-    source.start(this.nextScheduleTime);
-    this.scheduledSources.add(source);
-  }
-
-  private finishAtEnd(): void {
-    this.stopScheduling(false);
-    this.pauseSources();
-    this.positionSeconds = this.durationSeconds;
-    this.status = 'ended';
-    this.levelTimeline = [];
-    this.voiceTimeline = [];
-    this.publish();
-  }
-
-  private stopScheduling(stopSources = true): void {
-    if (this.scheduler !== undefined) {
-      globalThis.clearInterval(this.scheduler);
-      this.scheduler = undefined;
-    }
-    if (stopSources) {
-      for (const source of this.scheduledSources) {
-        try {
-          source.stop();
-        } catch {
-          // A source that already ended is harmless.
-        }
-      }
-    }
-    this.scheduledSources.clear();
-    this.retiring = undefined;
-  }
-
-  private pauseSources(): void {
-    for (const mode of playbackModes) {
-      this.sources[mode]?.pause();
-    }
-  }
-
-  private releaseSources(): void {
-    for (const mode of playbackModes) {
-      this.sources[mode]?.free();
-    }
-    this.sources = {};
-  }
-
-  private publish(): void {
-    const snapshot = this.getSnapshot();
-    for (const listener of this.listeners) {
-      listener(snapshot);
-    }
   }
 }

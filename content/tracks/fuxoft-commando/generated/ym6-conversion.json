@@ -1,0 +1,16 @@
+{
+  "tool": "zxmusicfm-ay-capture",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "sourceSha256": "51e49d0413be6c557ef5e2696cfc051dfcd0931bbbfba8029c90ebf69dd6d629",
+  "sourceByteLength": 3205,
+  "subsong": 1,
+  "durationSource": "source",
+  "ym6Sha256": "4a050671d636065c405e3e7401a09c7c92c978e000ad8044d3db1b1952e6035f",
+  "ym6ByteLength": 201714,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 12600,
+  "title": "Commando",
+  "author": "Fuxoft (František Fuka)",
+  "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM"
+}

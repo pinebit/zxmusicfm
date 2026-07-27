@@ -9,21 +9,36 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "48d5bae28242dbad6f34ed062a876d85c9b1ee154bb79693153863c414b3d901",
+  "runtimeSha256": "8fae6365e6823a6542fe771fb8c6a9cdbc2241c47cc516d0037d3ce7d615e041",
   "runtimeByteLength": 192116,
   "frameCount": 12000,
   "durationSeconds": 240,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "05c227ae714fc7563bf959b7bda2d7689fd2fa80cd997098983e4a3f4eab7239",
-  "measuredLoudnessLufs": -8.13,
-  "normalizationGainDb": -0.87,
+  "waveformSha256": "c58cecab7b5b17d91b430f8825e3cbcceb66a39bdf6aaa6804291800f71ed2b3",
+  "measuredLoudnessLufs": -8.14,
+  "normalizationGainDb": -0.86,
   "trackerConversion": null,
+  "ym6Conversion": {
+    "tool": "zxmusicfm-ay-capture",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "8fae6365e6823a6542fe771fb8c6a9cdbc2241c47cc516d0037d3ce7d615e041",
+    "ym6ByteLength": 192116,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 12000,
+    "title": "Ramparts Game Title",
+    "author": "Jason C. Brooke",
+    "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM",
+    "sourceSha256": "05cea8afe185ce96abdc9a6a6bf9d19f1f030919ba894b90225dddd5dcf409d0",
+    "sourceByteLength": 5096,
+    "subsong": 1,
+    "durationSource": "source"
+  },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

@@ -9,29 +9,43 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "8f0c80fb0896fa5a2c1d073ac15b683d2a36cfac6be728aebf3fec1fae878e56",
-  "runtimeByteLength": 75660,
-  "frameCount": 4722,
-  "durationSeconds": 94.44,
+  "runtimeSha256": "ed8288376f721c4f8aaeb39fc0cb9c723b2b706855739b60a21e2e50e10913ae",
+  "runtimeByteLength": 75676,
+  "frameCount": 4723,
+  "durationSeconds": 94.46,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "1ec751c762297031c0962681caabda17e7564a5f790efb278dea5ab3c3d52f44",
-  "measuredLoudnessLufs": -9.06,
-  "normalizationGainDb": 0.06,
+  "waveformSha256": "0749aafe4d19ea16f02e8761e6577b25cd6dd7cdb12c71e084e287bcf593ada2",
+  "measuredLoudnessLufs": -9.27,
+  "normalizationGainDb": 0.27,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "PT3",
     "sourceSha256": "f700874a59588c88a68b9ebfa1b0c79b87790c57b7060282c3c4a7e4a9167021",
-    "psgSha256": "38248571521e47247eec32c867aa73de99e6ca6009c32d4819ff30933398992c",
-    "psgByteLength": 33700
+    "psgSha256": "25042745f2850abc1af2648bc7f5dba5836b48d7e22f26545d084ad736f4916c",
+    "psgByteLength": 127736
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "ed8288376f721c4f8aaeb39fc0cb9c723b2b706855739b60a21e2e50e10913ae",
+    "ym6ByteLength": 75676,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 4723,
+    "title": "Hibernation",
+    "author": "MmcM",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "25042745f2850abc1af2648bc7f5dba5836b48d7e22f26545d084ad736f4916c",
+    "psgByteLength": 127736
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

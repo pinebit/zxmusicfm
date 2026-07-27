@@ -9,21 +9,36 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "892bbd69fb7972a58b68e86be8f51b1fcc917e70043e9d82deb6cf4210ddb50d",
+  "runtimeSha256": "07753cef3064bc17dca33d7c4dfbc980c04580f63774ba27785751a199ce76fb",
   "runtimeByteLength": 143310,
   "frameCount": 8950,
   "durationSeconds": 179,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "dc2bd4ec05a2b8f6927a73980af853edc4d0df04e99d89f609e9d81323911927",
-  "measuredLoudnessLufs": -6.96,
-  "normalizationGainDb": -2.04,
+  "waveformSha256": "1703b09c351a3c7376ee182f539f75dc5e242410190b56d27845a2087ee15868",
+  "measuredLoudnessLufs": -6.94,
+  "normalizationGainDb": -2.06,
   "trackerConversion": null,
+  "ym6Conversion": {
+    "tool": "zxmusicfm-ay-capture",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "07753cef3064bc17dca33d7c4dfbc980c04580f63774ba27785751a199ce76fb",
+    "ym6ByteLength": 143310,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8950,
+    "title": "Feud",
+    "author": "Fuxoft (František Fuka)",
+    "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM",
+    "sourceSha256": "fdf0ca9fe6541d99284fda8b041fdc8e6453cab39f99b10aac3d314a7f967bfc",
+    "sourceByteLength": 2216,
+    "subsong": 1,
+    "durationSource": "source"
+  },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

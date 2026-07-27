@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "d23c920aa338fcbb5d89d60a67512ddcb86c8508cb89125f122772d13ddcdd0d",
+  "psgByteLength": 160890,
+  "ym6Sha256": "6046f50d9603851f489cfd0987ca3cecfe6f1632555e76b6d3002f4ad43fe51e",
+  "ym6ByteLength": 95329,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 5951,
+  "title": "Fragment dh-2018",
+  "author": "MmcM",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

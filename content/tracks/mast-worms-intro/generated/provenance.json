@@ -9,29 +9,44 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "6719cca88e869a400d37964c08107b6db8c78df236375a5c070a607176fa97fc",
+  "runtimeSha256": "587e3f758e32848e69ebb000eed9cce43b68748b4b4d4cd6dd828c90fec95716",
   "runtimeByteLength": 98396,
   "frameCount": 6143,
   "durationSeconds": 122.86,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "9aa231657a2ac14813648d23e24bd48a74cc40f0471b5ef9597c5261e9b64f3d",
-  "measuredLoudnessLufs": -10.61,
-  "normalizationGainDb": 1.61,
+  "waveformSha256": "0c8d6fd3d510896034da114ad2adfc01e13c50ddadc8abd31f19a3185691019a",
+  "measuredLoudnessLufs": -10.74,
+  "normalizationGainDb": 1.07,
+  "peakLimitedFrom": 1.74,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "PT3",
     "sourceSha256": "15d2eece34e43e847b16ee14b570f5f30ba439949af3c5e1d0cb9990c755d2ef",
-    "psgSha256": "f42d14dfa789f08d4f54f442234e2ad770f58fc2c3858348641bde4dd8ee9b9c",
-    "psgByteLength": 48324
+    "psgSha256": "c08ad7dc7f91cb8f0231e90a8899cc80d55d136a3e38aceae24097dd41f1b9d1",
+    "psgByteLength": 164324
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "587e3f758e32848e69ebb000eed9cce43b68748b4b4d4cd6dd828c90fec95716",
+    "ym6ByteLength": 98396,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 6143,
+    "title": "Worms intro",
+    "author": "Mast",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "c08ad7dc7f91cb8f0231e90a8899cc80d55d136a3e38aceae24097dd41f1b9d1",
+    "psgByteLength": 164324
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

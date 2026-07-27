@@ -1,246 +1,360 @@
-import { readFile } from 'node:fs/promises';
-
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createTestAudioContext } from '../test/audioContext.ts';
-import * as engine from './engine.ts';
 import { createProofRuntimeTrack } from './proofFixtures.ts';
-import { ENGINE_SAMPLE_RATE } from './sampleRates.ts';
+import type { RuntimeTrack } from './contracts.ts';
+import type { WorkletCommand, WorkletReply } from './workletMessages.ts';
 import { Ym2149PlaybackAdapter } from './Ym2149PlaybackAdapter.ts';
 
-// Count engine reconstructions while keeping the real implementation. Rewinding
-// renders deterministically from sample zero, so its cost grows with the target
-// position; the guarantee under test is that it happens once, in `play`.
-//
-// These cases have to select vanilla explicitly. Studio is the default mode and
-// its renderer seeks by replaying register writes, so under studio the engine is
-// never rebuilt and every assertion below would hold for the wrong reason.
-vi.mock('./engine.ts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./engine.ts')>();
-  return {
-    ...actual,
-    createEnginePlayerAtSample: vi.fn(actual.createEnginePlayerAtSample),
-  };
+function required<T>(value: T | undefined, label: string): T {
+  if (value === undefined) throw new Error(`Missing ${label}.`);
+  return value;
+}
+
+function commandTypes(
+  messages: readonly { readonly message: unknown }[],
+): string[] {
+  return messages.map(({ message }) => (message as WorkletCommand).type);
+}
+
+async function startLoad(
+  adapter: Ym2149PlaybackAdapter,
+  track: RuntimeTrack,
+  context: ReturnType<typeof createTestAudioContext>,
+): Promise<{ readonly promise: Promise<void> }> {
+  const promise = adapter.load(track, new AbortController().signal);
+  await vi.waitFor(() => expect(context.ports).toHaveLength(1));
+  const port = required(context.ports[0], 'worklet port');
+  await vi.waitFor(() => expect(commandTypes(port.messages)).toContain('init'));
+  port.reply({ type: 'ready' } satisfies WorkletReply);
+  await vi.waitFor(() => expect(commandTypes(port.messages)).toContain('load'));
+  return { promise };
+}
+
+async function finishLoad(
+  promise: Promise<void>,
+  context: ReturnType<typeof createTestAudioContext>,
+  generation: number,
+  frameCount = 100,
+): Promise<void> {
+  required(context.ports[0], 'worklet port').reply({
+    type: 'loaded',
+    generation,
+    frameCount,
+    sampleRate: 48_000,
+  } satisfies WorkletReply);
+  await promise;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-const reconstructions = () =>
-  vi.mocked(engine.createEnginePlayerAtSample).mock.calls;
-
-beforeAll(async () => {
-  await engine.initializeYm2149(
-    new Uint8Array(await readFile('vendor/ym2149/ym2149_wasm_bg.wasm')),
-  );
-});
-
-describe('Ym2149PlaybackAdapter engine reconstruction', () => {
-  it('does not rewind the engine on pause, stop, or a paused seek', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    adapter.setMode('vanilla');
-    await adapter.play();
-    const afterFirstPlay = reconstructions().length;
-
-    clock.setCurrentTime(0.5);
-    adapter.pause();
-    expect(adapter.getSnapshot().status).toBe('paused');
-    expect(reconstructions()).toHaveLength(afterFirstPlay);
-
-    await adapter.seek(1);
-    expect(adapter.getSnapshot().positionSeconds).toBe(1);
-    expect(reconstructions()).toHaveLength(afterFirstPlay);
-
-    adapter.stop();
-    expect(adapter.getSnapshot().positionSeconds).toBe(0);
-    expect(reconstructions()).toHaveLength(afterFirstPlay);
-
-    adapter.dispose();
-  });
-
-  it('rewinds once when playback resumes at the recorded position', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    adapter.setMode('vanilla');
-    await adapter.play();
-
-    clock.setCurrentTime(0.5);
-    adapter.pause();
-    await adapter.seek(1.25);
-    const beforeResume = reconstructions().length;
-
-    await adapter.play();
-    const calls = reconstructions();
-    expect(calls).toHaveLength(beforeResume + 1);
-    // Reconciled against the recorded position, not the further-ahead sample the
-    // scheduler had already generated.
-    expect(calls[calls.length - 1]?.[1]).toBe(
-      Math.round(1.25 * ENGINE_SAMPLE_RATE),
+describe('Ym2149PlaybackAdapter AudioWorklet bridge', () => {
+  it('builds one worklet and sends load/play/pause/seek in order', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
     );
-    expect(adapter.getSnapshot().status).toBe('playing');
-
-    adapter.dispose();
-  });
-
-  it('skips the rewind when resuming exactly where the engine already sits', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    adapter.setMode('vanilla');
-
-    // A freshly loaded engine sits at zero, so starting at zero needs no rewind.
-    const beforeFirstPlay = reconstructions().length;
-    await adapter.play();
-    expect(reconstructions()).toHaveLength(beforeFirstPlay);
-
-    adapter.dispose();
-  });
-
-  it('does not rewind the engine when studio mode is the one playing', async () => {
-    // Studio is the default, so its renderer is what `play` reconciles. The
-    // engine must not be rebuilt for a mode nobody is listening to.
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    const before = reconstructions().length;
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    const { promise: load } = await startLoad(
+      adapter,
+      createProofRuntimeTrack(),
+      context,
+    );
+    await finishLoad(load, context, 1);
 
     await adapter.play();
-    clock.setCurrentTime(0.5);
     adapter.pause();
     await adapter.seek(1.25);
-    await adapter.play();
 
-    expect(reconstructions()).toHaveLength(before);
+    const messages = required(context.ports[0], 'worklet port').messages;
+    expect(commandTypes(messages)).toEqual([
+      'init',
+      'load',
+      'play',
+      'pause',
+      'seek',
+    ]);
+    expect(messages.at(-1)?.message).toMatchObject({
+      type: 'seek',
+      frame: 62,
+    });
+    expect(context.workletModules).toHaveLength(1);
     adapter.dispose();
   });
 
-  it('reconstructs the engine only once when switching to vanilla mid-playback', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    await adapter.play();
-    const before = reconstructions().length;
+  it('ignores stale generation replies from a replaced load', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
+    );
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    const { promise: first } = await startLoad(
+      adapter,
+      createProofRuntimeTrack(),
+      context,
+    );
+    await finishLoad(first, context, 1);
 
-    clock.setCurrentTime(0.2);
-    adapter.setMode('vanilla');
-    expect(reconstructions()).toHaveLength(before + 1);
-
-    // Switching back needs no engine work at all; the synth seeks by replaying
-    // register writes.
-    adapter.setMode('studio');
-    expect(reconstructions()).toHaveLength(before + 1);
-    expect(adapter.getSnapshot().status).toBe('playing');
-
-    adapter.dispose();
-  });
-
-  it('defers reconciliation when the mode changes while paused', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    await adapter.play();
-    clock.setCurrentTime(0.5);
-    adapter.pause();
-    const before = reconstructions().length;
-
-    // Nothing is scheduled, so the switch itself must not rebuild anything.
-    adapter.setMode('vanilla');
-    expect(reconstructions()).toHaveLength(before);
-
-    // `play` then reconciles exactly once, at the recorded position.
-    await adapter.play();
-    expect(reconstructions()).toHaveLength(before + 1);
-
-    adapter.dispose();
-  });
-
-  it('ignores a switch to the mode already selected', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    await adapter.play();
-    const before = reconstructions().length;
-
-    adapter.setMode('studio');
-    adapter.setMode('studio');
-    expect(reconstructions()).toHaveLength(before);
-
-    adapter.dispose();
-  });
-
-  it('builds one chain per mode and only on demand', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    await adapter.play();
-
-    // Studio only: a listener who never leaves it must not pay for vanilla, and
-    // a vanilla listener must not pay for the convolver.
-    expect(clock.convolverCount()).toBe(1);
-
-    adapter.setMode('vanilla');
-    adapter.setMode('studio');
-    adapter.setMode('vanilla');
-    // Chains are memoized, so repeated switching never rebuilds either one.
-    expect(clock.convolverCount()).toBe(1);
-
-    adapter.dispose();
-  });
-
-  it('applies the track loudness match without clipping the output', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    const track = createProofRuntimeTrack();
-    await adapter.load(
-      { ...track, normalizationGainDb: 6 },
+    const second = adapter.load(
+      { ...createProofRuntimeTrack(), id: 'newer' },
       new AbortController().signal,
     );
-    await adapter.play();
-
-    // A +6 dB match must appear as a linear gain of about 2 somewhere in the
-    // chain, and it sits ahead of the limiter so the boost cannot leave the
-    // output over full scale.
-    expect(clock.gainValues().some((value) => Math.abs(value - 2) < 0.01)).toBe(
-      true,
+    await vi.waitFor(() =>
+      expect(
+        commandTypes(required(context.ports[0], 'worklet port').messages),
+      ).toEqual(['init', 'load', 'load']),
     );
+    required(context.ports[0], 'worklet port').reply({
+      type: 'frame',
+      generation: 1,
+      audioTime: 0,
+      frame: 50,
+      rms: [1, 1, 1],
+      registers: new Uint8Array(16),
+    } satisfies WorkletReply);
+    expect(adapter.getChannelLevels()).toEqual({ A: 0, B: 0, C: 0 });
 
+    await finishLoad(second, context, 2);
+    expect(context.ports).toHaveLength(1);
     adapter.dispose();
   });
 
-  it('reads the oscilloscope from the analysers of the active mode', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    await adapter.play();
+  it('gates levels and ZX-clock voices until their audio time', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
+    );
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    const track = {
+      ...createProofRuntimeTrack(),
+      chipClockHz: 1_773_400,
+      normalizationGainDb: 6,
+    };
+    const { promise: load } = await startLoad(adapter, track, context);
+    await finishLoad(load, context, 1);
+    adapter.setVolume(0.5);
 
-    // Studio's analysers sit after the per-channel processing, which is what
-    // makes the lenses show the smoothed waveform rather than the raw chip edges.
-    const studio = adapter.getOscilloscopeSamples();
-    expect(Object.keys(studio)).toEqual(['A', 'B', 'C']);
-    adapter.setMode('vanilla');
-    expect(Object.keys(adapter.getOscilloscopeSamples())).toEqual([
-      'A',
-      'B',
-      'C',
+    const registers = new Uint8Array(16);
+    registers[0] = 100;
+    registers[2] = 150;
+    registers[4] = 200;
+    registers[7] = 0x38;
+    registers[8] = 15;
+    registers[9] = 12;
+    registers[10] = 9;
+    required(context.ports[0], 'worklet port').reply({
+      type: 'frame',
+      generation: 1,
+      audioTime: 2,
+      frame: 50,
+      rms: [0.2, 0.1, 0.05],
+      registers,
+    } satisfies WorkletReply);
+
+    context.setCurrentTime(1.99);
+    expect(adapter.getChannelLevels()).toEqual({ A: 0, B: 0, C: 0 });
+    expect(adapter.getChannelVoices()).toEqual({
+      A: null,
+      B: null,
+      C: null,
+    });
+
+    context.setCurrentTime(2);
+    expect(adapter.getChannelLevels().A).toBeCloseTo(
+      0.2 * 0.5 * Math.pow(10, 6 / 20),
+    );
+    const voices = adapter.getChannelVoices();
+    expect(voices.A?.midiNote).toBeCloseTo(
+      69 + 12 * Math.log2(1_773_400 / (16 * 100) / 440),
+    );
+    expect(voices.A?.amplitude).toBe(1);
+    adapter.dispose();
+  });
+
+  it('reads an envelope-driven voice on the same scale as a volume-driven one', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
+    );
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    const { promise: load } = await startLoad(
+      adapter,
+      createProofRuntimeTrack(),
+      context,
+    );
+    await finishLoad(load, context, 1);
+
+    const registers = new Uint8Array(16);
+    registers[0] = 100;
+    registers[2] = 100;
+    registers[7] = 0x38;
+    registers[8] = 0x10; // channel A follows the envelope
+    registers[9] = 8; // channel B holds register level 8
+    required(context.ports[0], 'worklet port').reply({
+      type: 'frame',
+      generation: 1,
+      audioTime: 0,
+      // Channel A sits at the AY DAC amplitude of register level 8.
+      rms: [0.126_588_85, 0, 0],
+      frame: 0,
+      registers,
+    } satisfies WorkletReply);
+
+    const voices = adapter.getChannelVoices();
+    // The envelope level is generator state no register carries, so it has to be
+    // read from the rendered level. Both channels are at the same chip level and
+    // must therefore shade their keys alike, within one DAC step of each other.
+    expect(voices.A?.amplitude).toBeCloseTo(0.63, 2);
+    expect(voices.B?.amplitude).toBeCloseTo(8 / 15, 2);
+    expect(
+      Math.abs((voices.A?.amplitude ?? 0) - (voices.B?.amplitude ?? 0)),
+    ).toBeLessThan(0.1);
+    adapter.dispose();
+  });
+
+  it('leaves noise-mixing channels off the piano', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
+    );
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    const { promise: load } = await startLoad(
+      adapter,
+      createProofRuntimeTrack(),
+      context,
+    );
+    await finishLoad(load, context, 1);
+
+    const registers = new Uint8Array(16);
+    registers[0] = 100;
+    registers[2] = 100;
+    registers[4] = 100;
+    // R7 is active low, noise in bits 3-5 and tone in bits 0-2: A is tone only,
+    // B mixes tone with noise, C is noise only.
+    registers[7] = 0b00_001_100;
+    registers[8] = 15;
+    registers[9] = 15;
+    registers[10] = 15;
+    required(context.ports[0], 'worklet port').reply({
+      type: 'frame',
+      generation: 1,
+      audioTime: 0,
+      rms: [0.5, 0.5, 0.5],
+      frame: 0,
+      registers,
+    } satisfies WorkletReply);
+
+    const voices = adapter.getChannelVoices();
+    expect(voices.A?.midiNote).toBeGreaterThan(0);
+    // A percussion channel's tone period is usually a leftover value, so a note
+    // drawn from it would light an arbitrary key.
+    expect(voices.B).toBeNull();
+    expect(voices.C).toBeNull();
+    adapter.dispose();
+  });
+
+  it('ramps the ABC/ACB/BAC routing and plain normalization gains', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
+    );
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    const track = {
+      ...createProofRuntimeTrack(),
+      normalizationGainDb: -3,
+    };
+    const { promise: load } = await startLoad(adapter, track, context);
+    await finishLoad(load, context, 1);
+
+    expect(context.gainValues().slice(2)).toEqual([
+      Math.pow(10, -3 / 20),
+      0.5,
+      0,
+      0.5 * Math.SQRT1_2,
+      0.5 * Math.SQRT1_2,
+      0,
+      0.5,
     ]);
 
+    adapter.setChannelOrder('BAC');
+    expect(context.gainValues().slice(-6)).toEqual([
+      0.5 * Math.SQRT1_2,
+      0.5 * Math.SQRT1_2,
+      0.5,
+      0,
+      0,
+      0.5,
+    ]);
+    adapter.setChannelOrder('ACB');
+    expect(context.gainValues().slice(-6)).toEqual([
+      0.5,
+      0,
+      0,
+      0.5,
+      0.5 * Math.SQRT1_2,
+      0.5 * Math.SQRT1_2,
+    ]);
     adapter.dispose();
   });
 
-  it('reports rest until a scheduled chunk becomes audible', async () => {
-    const clock = createTestAudioContext();
-    const adapter = new Ym2149PlaybackAdapter(clock.context);
-    await adapter.load(createProofRuntimeTrack(), new AbortController().signal);
-    await adapter.play();
+  it('keeps the listener stereo order across worklet build and track load', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(new Uint8Array([0]), { status: 200 })),
+      ),
+    );
+    vi.spyOn(WebAssembly, 'compile').mockResolvedValue({});
+    const context = createTestAudioContext();
+    const adapter = new Ym2149PlaybackAdapter(context.context);
+    // The controller applies the stored preference before anything is loaded,
+    // so it lands while the routing nodes do not exist yet.
+    adapter.setChannelOrder('BAC');
 
-    // Buffers are queued ahead of the playhead; levels must not run ahead of the
-    // sound, matching the gate `getChannelVoices` applies.
-    expect(adapter.getChannelLevels()).toEqual({ A: 0, B: 0, C: 0 });
-    clock.setCurrentTime(0.02);
-    expect(
-      Object.values(adapter.getChannelLevels()).some((level) => level > 0),
-    ).toBe(true);
+    const { promise: load } = await startLoad(
+      adapter,
+      { ...createProofRuntimeTrack(), channelLayout: 'ACB' },
+      context,
+    );
+    await finishLoad(load, context, 1);
 
+    // BAC: B left, A centre, C right. The track's own `channelLayout` is curator
+    // metadata and must not overwrite what the listener chose.
+    expect(context.gainValues().slice(-6)).toEqual([
+      0.5 * Math.SQRT1_2,
+      0.5 * Math.SQRT1_2,
+      0.5,
+      0,
+      0,
+      0.5,
+    ]);
     adapter.dispose();
   });
 });

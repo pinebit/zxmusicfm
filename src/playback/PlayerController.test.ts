@@ -6,7 +6,6 @@ import type {
   PlaybackAdapter,
   PlaybackAdapterListener,
   PlaybackAdapterSnapshot,
-  PlaybackMode,
   RuntimeTrack,
 } from './contracts.ts';
 import { PlayerController } from './PlayerController.ts';
@@ -40,6 +39,7 @@ const catalog: GeneratedCatalog = {
     chipClockHz: 1_773_400,
     frameRateHz: 50,
     channelLayout: 'ABC',
+    measuredLoudnessLufs: -9,
     normalizationGainDb: 0,
     waveformByteOffset: 32 + index * 12_288,
     waveformByteLength: 12_288,
@@ -69,7 +69,6 @@ class FakeAdapter implements PlaybackAdapter {
   };
   readonly loads: string[] = [];
   readonly channelOrders: ChannelOrder[] = [];
-  readonly modes: PlaybackMode[] = [];
   readonly listeners = new Set<PlaybackAdapterListener>();
   readonly dispose = vi.fn();
 
@@ -109,20 +108,12 @@ class FakeAdapter implements PlaybackAdapter {
     this.channelOrders.push(channelOrder);
   }
 
-  setMode(mode: PlaybackMode): void {
-    this.modes.push(mode);
-  }
-
   getChannelLevels() {
     return { A: 0, B: 0, C: 0 } as const;
   }
 
   getChannelVoices() {
     return { A: null, B: null, C: null } as const;
-  }
-
-  renderOffline(): Promise<never> {
-    throw new Error('Not used by controller tests.');
   }
 
   getSnapshot(): PlaybackAdapterSnapshot {
@@ -199,54 +190,6 @@ describe('PlayerController async ownership', () => {
     controller.setChannelOrder('ACB');
     expect(adapter.channelOrders).toEqual(['BAC', 'ACB']);
     expect(controller.getSnapshot().preferences.channelOrder).toBe('ACB');
-    controller.dispose();
-  });
-
-  it('applies a persisted playback mode when creating the adapter and switches it live', async () => {
-    const adapter = new FakeAdapter();
-    const controller = new PlayerController(
-      catalog,
-      dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
-    );
-    // Studio is the default, so choosing vanilla before any adapter exists is
-    // what a returning listener's stored preference looks like.
-    controller.setMode('vanilla');
-    expect(controller.getSnapshot().preferences.mode).toBe('vanilla');
-    controller.playSelected();
-
-    await vi.waitFor(() =>
-      expect(controller.getSnapshot().status).toBe('playing'),
-    );
-    expect(adapter.modes).toEqual(['vanilla']);
-
-    controller.setMode('studio');
-    expect(adapter.modes).toEqual(['vanilla', 'studio']);
-    expect(controller.getSnapshot().preferences.mode).toBe('studio');
-
-    // Selecting the mode already active must not disturb the adapter.
-    controller.setMode('studio');
-    expect(adapter.modes).toEqual(['vanilla', 'studio']);
-    controller.dispose();
-  });
-
-  it('persists a mode change immediately rather than coalescing it', () => {
-    const writes: string[] = [];
-    const adapter = new FakeAdapter();
-    const controller = new PlayerController(catalog, {
-      ...dependencies(adapter, () => Promise.resolve(new Uint8Array([1]))),
-      storage: {
-        getItem: () => null,
-        setItem: (_key: string, value: string) => writes.push(value),
-      },
-    });
-    controller.setMode('vanilla');
-
-    // Only continuous controls coalesce; a discrete toggle has to survive an
-    // immediate reload.
-    expect(writes.length).toBeGreaterThan(0);
-    expect(JSON.parse(writes[writes.length - 1] ?? '{}')).toMatchObject({
-      mode: 'vanilla',
-    });
     controller.dispose();
   });
 

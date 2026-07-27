@@ -9,29 +9,44 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ACB",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "5f303b0435aecbb5fa94574cb45161594a30a84a12235acf85d31fab7cafa2f5",
+  "runtimeSha256": "59d8bcc7e9d3440ea2b8c1ad239c89e60d8f73a771ea9085a1f765086fa00dfd",
   "runtimeByteLength": 131169,
   "frameCount": 8191,
   "durationSeconds": 163.82,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "ee23077a093c3847c4f57dfbddb9257cb62239bc076346fe9720eb116ed04fa7",
-  "measuredLoudnessLufs": -13.51,
-  "normalizationGainDb": 4.51,
+  "waveformSha256": "485dab2cff324a6e9b05f73aa3f202e83731f7ed306bc4f56ddfce3e15ccb4fe",
+  "measuredLoudnessLufs": -13.68,
+  "normalizationGainDb": 3.7,
+  "peakLimitedFrom": 4.68,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "STC",
     "sourceSha256": "6753799e18b6b92dbda298832a20fbd94b1cfa29b4e48ad0517a277bf8d7bb37",
-    "psgSha256": "0e67be62b560b91f78f86deced27d7fe7725cc97e37fab793e523a9fe9297a6a",
-    "psgByteLength": 89798
+    "psgSha256": "7dddbd0af20284d6b08be874147c46772ad3b58a645986dc9f6c36ffa36b39e9",
+    "psgByteLength": 172524
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "59d8bcc7e9d3440ea2b8c1ad239c89e60d8f73a771ea9085a1f765086fa00dfd",
+    "ym6ByteLength": 131169,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8191,
+    "title": "Lyra II part 3",
+    "author": "Ziutek",
+    "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "7dddbd0af20284d6b08be874147c46772ad3b58a645986dc9f6c36ffa36b39e9",
+    "psgByteLength": 172524
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

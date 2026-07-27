@@ -1,14 +1,5 @@
 import type { RuntimeTrack } from './contracts.ts';
-import {
-  createEnginePlayer,
-  generateEngineChannels,
-  initializeYm2149,
-} from './engine.ts';
 import { createYm6, type RegisterFrame, type Ym6Options } from './formats.ts';
-import { ENGINE_SAMPLE_RATE } from './sampleRates.ts';
-
-const AY_FRAME_RATE = 50;
-const AY_CHIP_CLOCK = 2_000_000;
 
 function writeU16BE(target: Uint8Array, offset: number, value: number): void {
   new DataView(target.buffer).setUint16(offset, value, false);
@@ -49,20 +40,6 @@ export function createSyntheticFrames(
     frame[13] = 0xff;
     return frame;
   });
-}
-
-export function createSyntheticYm3(
-  frames: readonly RegisterFrame[],
-): Uint8Array {
-  const result = new Uint8Array(4 + frames.length * 14);
-  result.set(new TextEncoder().encode('YM3!'));
-  for (let register = 0; register < 14; register += 1) {
-    for (let frame = 0; frame < frames.length; frame += 1) {
-      result[4 + register * frames.length + frame] =
-        frames[frame]?.[register] ?? 0;
-    }
-  }
-  return result;
 }
 
 export function createSyntheticPsg(): Uint8Array {
@@ -141,34 +118,6 @@ export function createSyntheticAy(looping: boolean): Uint8Array {
   result.set(code, 128);
   result[128 + 256] = 0xc9;
   return result;
-}
-
-export async function captureSyntheticAyAsYm6(
-  source: Uint8Array,
-  frameCount: number,
-): Promise<Uint8Array> {
-  await initializeYm2149();
-  const player = createEnginePlayer(source);
-  const frames: RegisterFrame[] = [];
-  try {
-    player.play();
-    const samplesPerFrame = ENGINE_SAMPLE_RATE / AY_FRAME_RATE;
-    for (let frame = 0; frame < frameCount; frame += 1) {
-      generateEngineChannels(player, samplesPerFrame);
-      const registers = player.get_registers();
-      registers[13] = 0xff;
-      frames.push(registers);
-    }
-  } finally {
-    player.free();
-  }
-  return createYm6(frames, {
-    chipClockHz: AY_CHIP_CLOCK,
-    frameRateHz: AY_FRAME_RATE,
-    title: 'Synthetic AY capture',
-    author: 'ZX-MUSIC.FM',
-    comment: 'Phase 2 deterministic capture',
-  });
 }
 
 export function createProofRuntimeTrack(

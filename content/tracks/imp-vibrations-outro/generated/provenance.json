@@ -9,29 +9,44 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ACB",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "f0f5887caa91fcf53ce23cdf07b076a0252299dc80155f4378f074713ee4adb3",
+  "runtimeSha256": "630aa81b93d863e1ad680d7f59ad532aa50c61cc2a78daeb1bfc6c849b1d18ef",
   "runtimeByteLength": 147552,
   "frameCount": 9215,
   "durationSeconds": 184.3,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "21112a1793635a489d152652ce02dd800f121d9010e014bdcaf0040c22801a94",
-  "measuredLoudnessLufs": -12.01,
-  "normalizationGainDb": 3.01,
+  "waveformSha256": "90b065c6de188ccac7ce1ac677ff1cfd21c5026685988745cf6f178f5e23e7bb",
+  "measuredLoudnessLufs": -11.99,
+  "normalizationGainDb": 2.95,
+  "peakLimitedFrom": 2.99,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "STC",
     "sourceSha256": "f613edf4b2b664926de590b29db246af0c1a0bd0854be0abaa0e5181812a73d6",
-    "psgSha256": "192241d4f74e29a7ec0be276ede5312c99c3419b70d6c4c72d83147a324671b2",
-    "psgByteLength": 82682
+    "psgSha256": "a67bfc9205a46668c1f934af5a0dfa956d5b520f4faf3bc2c9b964eb5028dffa",
+    "psgByteLength": 187596
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "630aa81b93d863e1ad680d7f59ad532aa50c61cc2a78daeb1bfc6c849b1d18ef",
+    "ym6ByteLength": 147552,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 9215,
+    "title": "Vibrations Outro",
+    "author": "IMP",
+    "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "a67bfc9205a46668c1f934af5a0dfa956d5b520f4faf3bc2c9b964eb5028dffa",
+    "psgByteLength": 187596
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

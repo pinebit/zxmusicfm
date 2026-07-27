@@ -9,29 +9,43 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ACB",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "2c8d274a958395ac747fbe123bab0d7e5772bed1da4c42310c47f978a52fc659",
+  "runtimeSha256": "000057262575c56777e37b9eee76ec734c8eda8b0ecb82834ca0295cf1f4e92a",
   "runtimeByteLength": 196703,
   "frameCount": 12287,
   "durationSeconds": 245.74,
   "durationSource": "source",
   "durationOverride": null,
-  "waveformSha256": "29091411839855d56d570e44bdbcca9e1f8968ccf8e2602a3a49ebdead4fedf1",
-  "measuredLoudnessLufs": -9.21,
-  "normalizationGainDb": 0.21,
+  "waveformSha256": "ff498bda4ba9d3938b74fe1b2fdf340d081a0db89b43c6cfd8f5696f5a008b88",
+  "measuredLoudnessLufs": -9.2,
+  "normalizationGainDb": 0.2,
   "trackerConversion": {
     "tool": "zxtune123",
     "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
     "mode": "psg",
+    "optimization": 0,
     "sourceFormat": "STC",
     "sourceSha256": "f2bd51a990058c15ff7600b75262d5d96570517e8535bec7c1cbdda2837a593f",
-    "psgSha256": "9fb0fb1375ae6eee2a8c26aa09963bd21ece1619583e5b33eb907629d215f418",
-    "psgByteLength": 147164
+    "psgSha256": "05366307a16a877893a5865aa88917c251b658c6e8bf47dfcca0bad14c281f65",
+    "psgByteLength": 252402
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "000057262575c56777e37b9eee76ec734c8eda8b0ecb82834ca0295cf1f4e92a",
+    "ym6ByteLength": 196703,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 12287,
+    "title": "Satisfaction 9",
+    "author": "Klav",
+    "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "05366307a16a877893a5865aa88917c251b658c6e8bf47dfcca0bad14c281f65",
+    "psgByteLength": 252402
   },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "d7c456283c7f80517ca8be20a6d8604414984cabcbbc775191023d9590b053e1",
+  "psgByteLength": 253602,
+  "ym6Sha256": "56d0216dbe1ae4e9d37eed6282318c5e404bfda11beb8bdd14e0906f4c286163",
+  "ym6ByteLength": 170329,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 10639,
+  "title": "HI!!!",
+  "author": "Dreamer",
+  "comment": "Converted from ASC through ZXTune PSG by ZX-MUSIC.FM"
+}

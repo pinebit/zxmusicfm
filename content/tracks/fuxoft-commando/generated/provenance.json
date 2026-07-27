@@ -9,21 +9,36 @@
   "chipClockHz": 1773400,
   "frameRateHz": 50,
   "channelLayout": "ABC",
-  "runtimeMode": "convert",
   "runtimeFormat": "YM6",
-  "runtimeSha256": "6db79e4e1e0246b4faf622652283326e5a38b0bba172f911fb0dcca0d494dc28",
+  "runtimeSha256": "4a050671d636065c405e3e7401a09c7c92c978e000ad8044d3db1b1952e6035f",
   "runtimeByteLength": 201714,
   "frameCount": 12600,
   "durationSeconds": 252,
   "durationSource": "source",
   "durationOverride": null,
   "waveformSha256": "dab47f5ff010155a012d1e2fdcf18d7e54e0fb64223266b39f120016c904bd83",
-  "measuredLoudnessLufs": -6.51,
-  "normalizationGainDb": -2.49,
+  "measuredLoudnessLufs": -6.49,
+  "normalizationGainDb": -2.51,
   "trackerConversion": null,
+  "ym6Conversion": {
+    "tool": "zxmusicfm-ay-capture",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "4a050671d636065c405e3e7401a09c7c92c978e000ad8044d3db1b1952e6035f",
+    "ym6ByteLength": 201714,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 12600,
+    "title": "Commando",
+    "author": "Fuxoft (František Fuka)",
+    "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM",
+    "sourceSha256": "51e49d0413be6c557ef5e2696cfc051dfcd0931bbbfba8029c90ebf69dd6d629",
+    "sourceByteLength": 3205,
+    "subsong": 1,
+    "durationSource": "source"
+  },
   "preparationTool": "zxmusicfm-content-v1",
   "engine": {
     "name": "ym2149-rs",
-    "commit": "b3096aac0dcab6dd1d82c0209f579761943aadc6"
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
   }
 }

@@ -5,13 +5,6 @@ export type ParsedPsg = {
   readonly frameCount: number;
 };
 
-export type YmRuntimePreparation = {
-  readonly bytes: Uint8Array;
-  readonly format: 'YM6';
-  readonly mode: 'copy' | 'normalize';
-  readonly frames: readonly RegisterFrame[];
-};
-
 export type Ym6Options = {
   readonly chipClockHz: number;
   readonly frameRateHz: number;
@@ -29,7 +22,7 @@ const AY_SONG_ENTRY_LENGTH = 4;
 const REGISTER_COUNT = 16;
 const YM6_HEADER_LENGTH = 34;
 const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder('windows-1252');
+const textDecoder = new TextDecoder();
 
 function fail(message: string): never {
   throw new Error(message);
@@ -104,16 +97,6 @@ function safeMetadata(value: string | undefined, field: string): Uint8Array {
   return textEncoder.encode(normalized);
 }
 
-function pushFrame(
-  frames: RegisterFrame[],
-  registers: Uint8Array,
-  envelopeShape: number | undefined,
-): void {
-  const frame = registers.slice();
-  frame[13] = envelopeShape ?? 0xff;
-  frames.push(frame);
-}
-
 /** Select one song from a multi-song ZXAY container without changing the source bytes. */
 export function selectAySubsong(
   bytes: Uint8Array,
@@ -182,22 +165,14 @@ export function parsePsg(bytes: Uint8Array): ParsedPsg {
   const registers = new Uint8Array(REGISTER_COUNT);
   const frames: RegisterFrame[] = [];
   let offset = PSG_HEADER_LENGTH;
-  const state = { timelineStarted: false };
-  let envelopeShape: number | undefined;
-  let wroteSinceBoundary = false;
   let ended = false;
 
-  const commitDelay = (frameCount: number) => {
-    if (!state.timelineStarted) {
-      state.timelineStarted = true;
-      return;
-    }
-
+  const appendFrames = (frameCount: number) => {
     for (let frame = 0; frame < frameCount; frame += 1) {
-      pushFrame(frames, registers, frame === 0 ? envelopeShape : undefined);
+      const snapshot = registers.slice();
+      snapshot[13] = 0xff;
+      frames.push(snapshot);
     }
-    envelopeShape = undefined;
-    wroteSinceBoundary = false;
   };
 
   while (offset < bytes.length) {
@@ -210,7 +185,8 @@ export function parsePsg(bytes: Uint8Array): ParsedPsg {
     offset += 1;
 
     if (command <= 0x0f) {
-      if (!state.timelineStarted) {
+      const current = frames.at(-1);
+      if (current === undefined) {
         fail(
           `PSG register write at byte offset ${commandOffset} precedes the first frame marker.`,
         );
@@ -223,15 +199,12 @@ export function parsePsg(bytes: Uint8Array): ParsedPsg {
       }
       offset += 1;
       registers[command] = value;
-      if (command === 13) {
-        envelopeShape = value & 0x0f;
-      }
-      wroteSinceBoundary = true;
+      current[command] = value;
       continue;
     }
 
     if (command === 0xff) {
-      commitDelay(1);
+      appendFrames(1);
       continue;
     }
 
@@ -246,14 +219,11 @@ export function parsePsg(bytes: Uint8Array): ParsedPsg {
         fail(`PSG extended delay at byte offset ${commandOffset} is zero.`);
       }
       offset += 1;
-      commitDelay(delay * 4);
+      appendFrames(delay * 4);
       continue;
     }
 
     if (command === 0xfd) {
-      if (wroteSinceBoundary) {
-        pushFrame(frames, registers, envelopeShape);
-      }
       ended = true;
       break;
     }
@@ -265,9 +235,6 @@ export function parsePsg(bytes: Uint8Array): ParsedPsg {
 
   if (ended && offset !== bytes.length) {
     fail(`PSG input contains trailing data after byte offset ${offset - 1}.`);
-  }
-  if (!state.timelineStarted) {
-    fail('PSG input contains no frame marker.');
   }
   if (frames.length === 0) {
     fail('PSG input contains no complete audio frames.');
@@ -294,6 +261,18 @@ export function createYm6(
     fail('YM6 frameRateHz must be an integer in 1...65535.');
   }
   frames.forEach(assertRegisterFrame);
+  const normalizedFrames = frames.map((source) => {
+    const frame = Uint8Array.from(source);
+    for (const register of [1, 3, 5])
+      frame[register] = (frame[register] ?? 0) & 0x0f;
+    frame[6] = (frame[6] ?? 0) & 0x1f;
+    for (const register of [8, 9, 10])
+      frame[register] = (frame[register] ?? 0) & 0x1f;
+    if (frame[13] !== 0xff) frame[13] = (frame[13] ?? 0) & 0x0f;
+    frame[14] = 0;
+    frame[15] = 0;
+    return frame;
+  });
 
   const metadata = [
     safeMetadata(options.title, 'YM6 title'),
@@ -310,11 +289,11 @@ export function createYm6(
 
   result.set(textEncoder.encode('YM6!LeOnArD!'), 0);
   writeU32BE(result, 12, frames.length);
-  writeU32BE(result, 16, 0);
+  writeU32BE(result, 16, 1);
   writeU16BE(result, 20, 0);
   writeU32BE(result, 22, options.chipClockHz);
   writeU16BE(result, 26, options.frameRateHz);
-  writeU32BE(result, 28, 0xffff_ffff);
+  writeU32BE(result, 28, 0);
   writeU16BE(result, 32, 0);
 
   let offset = YM6_HEADER_LENGTH;
@@ -322,9 +301,11 @@ export function createYm6(
     result.set(field, offset);
     offset += field.length + 1;
   }
-  for (const frame of frames) {
-    result.set(frame, offset);
-    offset += REGISTER_COUNT;
+  for (let register = 0; register < REGISTER_COUNT; register += 1) {
+    for (const frame of normalizedFrames) {
+      result[offset] = frame[register] ?? 0;
+      offset += 1;
+    }
   }
   result.set(textEncoder.encode('End!'), offset);
   return result;
@@ -371,9 +352,15 @@ export function parseYm6(bytes: Uint8Array): {
   if (frameCount === 0 || frameCount > 100_000) {
     fail(`YM6 frame count ${frameCount} is outside 1...100000.`);
   }
-  if (attributes !== 0 || digidrumCount !== 0 || extraDataSize !== 0) {
+  const loopFrame = readU32BE(bytes, 28);
+  if (
+    attributes !== 1 ||
+    digidrumCount !== 0 ||
+    loopFrame !== 0 ||
+    extraDataSize !== 0
+  ) {
     fail(
-      'YM6 runtime input uses unsupported attributes, digidrums, or extra data.',
+      'YM6 runtime input must use only register interleaving, no loop, no digidrums, and no extra data.',
     );
   }
   if (chipClockHz === 0 || frameRateHz === 0) {
@@ -394,8 +381,26 @@ export function parseYm6(bytes: Uint8Array): {
 
   const frames: RegisterFrame[] = [];
   for (let frame = 0; frame < frameCount; frame += 1) {
-    const offset = comment.offset + frame * REGISTER_COUNT;
-    frames.push(bytes.slice(offset, offset + REGISTER_COUNT));
+    const registers = new Uint8Array(REGISTER_COUNT);
+    for (let register = 0; register < REGISTER_COUNT; register += 1) {
+      registers[register] =
+        bytes[comment.offset + register * frameCount + frame] ?? 0;
+    }
+    if (
+      (registers[1] ?? 0) > 0x0f ||
+      (registers[3] ?? 0) > 0x0f ||
+      (registers[5] ?? 0) > 0x0f ||
+      (registers[6] ?? 0) > 0x1f ||
+      (registers[8] ?? 0) > 0x1f ||
+      (registers[9] ?? 0) > 0x1f ||
+      (registers[10] ?? 0) > 0x1f ||
+      ((registers[13] ?? 0) !== 0xff && (registers[13] ?? 0) > 0x0f) ||
+      registers[14] !== 0 ||
+      registers[15] !== 0
+    ) {
+      fail(`YM6 runtime frame ${frame} violates the strict ZX AY profile.`);
+    }
+    frames.push(registers);
   }
 
   return {
@@ -406,61 +411,4 @@ export function parseYm6(bytes: Uint8Array): {
     author: author.value,
     comment: comment.value,
   };
-}
-
-export function parseYm3(bytes: Uint8Array): readonly RegisterFrame[] {
-  if (!hasMagic(bytes, 'YM3!')) {
-    fail('YM3 input has an invalid header.');
-  }
-  const payloadLength = bytes.length - 4;
-  if (payloadLength <= 0 || payloadLength % 14 !== 0) {
-    fail(
-      `YM3 payload length ${payloadLength} is not a positive multiple of 14.`,
-    );
-  }
-  const frameCount = payloadLength / 14;
-  const frames: RegisterFrame[] = [];
-  for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-    const frame = new Uint8Array(REGISTER_COUNT);
-    for (let register = 0; register < 14; register += 1) {
-      frame[register] = bytes[4 + register * frameCount + frameIndex] ?? 0;
-    }
-    frames.push(frame);
-  }
-  return frames;
-}
-
-export function prepareYmRuntime(
-  bytes: Uint8Array,
-  options: Ym6Options,
-): YmRuntimePreparation {
-  if (hasMagic(bytes, 'YM6!')) {
-    const parsed = parseYm6(bytes);
-    if (
-      parsed.chipClockHz !== options.chipClockHz ||
-      parsed.frameRateHz !== options.frameRateHz
-    ) {
-      fail(
-        'YM6 embedded clock or frame rate conflicts with the requested runtime.',
-      );
-    }
-    return {
-      bytes: bytes.slice(),
-      format: 'YM6',
-      mode: 'copy',
-      frames: parsed.frames,
-    };
-  }
-
-  if (hasMagic(bytes, 'YM3!')) {
-    const frames = parseYm3(bytes);
-    return {
-      bytes: createYm6(frames, options),
-      format: 'YM6',
-      mode: 'normalize',
-      frames,
-    };
-  }
-
-  fail('Unsupported YM input; only YM3 and compliant YM6 are accepted.');
 }

@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "engine:verify": "node scripts/playback/verify-engine-artifacts.ts",
     "engine:rebuild": "bash scripts/playback/rebuild-engine.sh",
+    "engine:install-converter": "bash scripts/playback/install-converter.sh",
     "content:import": "node scripts/content/cli.ts import",
     "content:update": "node scripts/content/cli.ts update",
     "content:remove": "node scripts/content/cli.ts remove",

@@ -8,8 +8,7 @@ import { formatTime } from './formatTime.ts';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion.ts';
 
 type WaveformSeekProps = {
-  readonly adapter?:
-    Pick<PlaybackAdapter, 'getSnapshot' | 'getOscilloscopeSamples'> | undefined;
+  readonly adapter?: Pick<PlaybackAdapter, 'getSnapshot'> | undefined;
   readonly playing?: boolean;
   readonly waveform: DecodedWaveform | undefined;
   readonly duration: number;
@@ -26,16 +25,9 @@ const waveformPalette = {
   divider: '#34383d',
   playhead: '#f4e7c3',
   unplayed: '#111315',
-  lensBackground: '#0b0d0f',
-  lensBorder: '#c9a956',
 } as const;
 
 const CHANNELS = ['A', 'B', 'C'] as const;
-
-// Matches `.waveform-canvas`'s border-radius (0.4rem at the default 16px root)
-// in styles.css, so the lens reads as flush with the canvas's own rounded
-// corners when it sits at the left or right extreme.
-const LENS_CORNER_RADIUS_CSS_PX = 6.4;
 
 // The subset of the 2D context that lane drawing needs, so the same routine can
 // target the visible canvas or an offscreen cache.
@@ -207,117 +199,8 @@ export function WaveformSeek({
       context.globalAlpha = 1;
       context.fillStyle = waveformPalette.playhead;
       context.fillRect(progress * width - ratio, 0, ratio * 2, height);
-
-      const lensSize = Math.min(height, width);
-      const lensX = Math.min(
-        width - lensSize,
-        Math.max(0, progress * width - lensSize / 2),
-      );
-      const lensY = 0;
-      const lensLaneHeight = lensSize / CHANNELS.length;
-      const oscilloscopeSamples = adapter?.getOscilloscopeSamples?.();
-      const lensRadius = Math.min(
-        lensSize / 2,
-        LENS_CORNER_RADIUS_CSS_PX * ratio,
-      );
-
-      context.save();
-      context.globalAlpha = 1;
-      context.shadowColor = 'rgb(0 0 0 / 55%)';
-      context.shadowBlur = ratio * 4;
-      context.fillStyle = waveformPalette.lensBackground;
-      context.beginPath();
-      context.roundRect(lensX, lensY, lensSize, lensSize, lensRadius);
-      context.fill();
-      context.restore();
-
-      context.save();
-      context.beginPath();
-      context.roundRect(lensX, lensY, lensSize, lensSize, lensRadius);
-      context.clip();
-
-      for (const [index, channel] of CHANNELS.entries()) {
-        const center = lensY + lensLaneHeight * (index + 0.5);
-        const amplitude = lensLaneHeight * 0.37;
-        if (index > 0) {
-          context.globalAlpha = 1;
-          context.strokeStyle = waveformPalette.divider;
-          context.lineWidth = Math.max(1, ratio * 0.75);
-          context.beginPath();
-          context.moveTo(lensX, lensY + lensLaneHeight * index);
-          context.lineTo(lensX + lensSize, lensY + lensLaneHeight * index);
-          context.stroke();
-        }
-
-        context.globalAlpha = 0.45;
-        context.strokeStyle = waveformPalette.baseline;
-        context.lineWidth = Math.max(1, ratio * 0.5);
-        context.beginPath();
-        context.moveTo(lensX, center);
-        context.lineTo(lensX + lensSize, center);
-        context.stroke();
-
-        const samples = oscilloscopeSamples?.[channel];
-        if (samples !== undefined) {
-          const sampleCount = Math.min(256, samples.length);
-          const latestStart = samples.length - sampleCount;
-          const triggerSearchStart = Math.max(1, latestStart - sampleCount);
-          let sampleStart = latestStart;
-          for (
-            let sample = triggerSearchStart;
-            sample <= latestStart;
-            sample += 1
-          ) {
-            const previous = samples[sample - 1] ?? 0;
-            const current = samples[sample] ?? 0;
-            if (previous <= 0 && current > 0) {
-              sampleStart = sample;
-              break;
-            }
-          }
-          context.globalAlpha = 1;
-          context.strokeStyle = waveformPalette[channel];
-          context.lineWidth = Math.max(1, ratio);
-          context.beginPath();
-          for (let sample = 0; sample < sampleCount; sample += 1) {
-            const x = lensX + (sample / (sampleCount - 1)) * lensSize;
-            const value = samples[sampleStart + sample] ?? 0;
-            const y = center - value * amplitude;
-            if (sample === 0) context.moveTo(x, y);
-            else context.lineTo(x, y);
-          }
-          context.stroke();
-        }
-      }
-
-      const lensPlayheadX = Math.min(
-        lensX + lensSize,
-        Math.max(lensX, progress * width),
-      );
-      context.globalAlpha = 1;
-      context.fillStyle = waveformPalette.playhead;
-      context.fillRect(
-        lensPlayheadX - ratio * 0.75,
-        lensY,
-        ratio * 1.5,
-        lensSize,
-      );
-      context.restore();
-
-      context.globalAlpha = 1;
-      context.strokeStyle = waveformPalette.lensBorder;
-      context.lineWidth = Math.max(1, ratio);
-      context.beginPath();
-      context.roundRect(
-        lensX + ratio * 0.5,
-        lensY + ratio * 0.5,
-        lensSize - ratio,
-        lensSize - ratio,
-        Math.max(0, lensRadius - ratio * 0.5),
-      );
-      context.stroke();
     },
-    [adapter, duration, showPosition, visualWaveform],
+    [duration, showPosition, visualWaveform],
   );
 
   // Redraw when the rendered size changes, including after the track list is

@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "upstream": "https://github.com/slippyex/ym2149-rs",
+  "upstream": "https://github.com/pinebit/ym2149-rs",
   "release": "v0.9.1",
-  "revision": "b3096aac0dcab6dd1d82c0209f579761943aadc6",
-  "rustToolchain": "1.88.0",
+  "revision": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "rustToolchain": "1.95.0",
   "wasmBindgen": "0.2.105",
   "files": {
-    "Cargo.lock": "32c7c3e4c859a550584766cb66c26b9919f3926fe5f9edb900da536c01576120",
+    "Cargo.lock": "fdf00ad2813c583c67044ce8d126ceb2210a0791521353eb4b52fdbedd437ac9",
     "LICENSE": "08553388cef2a01b79813ce167b7cca8bd6b5db5427ca01b713e1911329f391f",
-    "ym2149_wasm.js": "f5e081385bda611984528cc7f3abe5e34ae2e8efc4f03741f908662ae3b122eb",
-    "ym2149_wasm.d.ts": "be21e2fa0d4fb3206337fd8e04811f06be8dbdb91067adab3908a9ad9e3b72ef",
-    "ym2149_wasm_bg.wasm": "c5b064a9f75b6f38ada5a8de3ced9b0ca48dc9d5049ee71713dd1c6f0e10aedf",
-    "ym2149_wasm_bg.wasm.d.ts": "02521aa9c2e5ed0a61579f8ec49b077614cbba5407f440ecd60f448dc1e27648"
+    "ym2149_wasm.js": "90f2bb7913dd5c241ab18faadb3729ad8702dfb6ad2c863d28c1774a517e7573",
+    "ym2149_wasm.d.ts": "1897b9409a2476cc16ad76d5f88fb63f7210eb182254561fe099bfde6f76d9b5",
+    "ym2149_wasm_bg.wasm": "0957c5c23b35710f3a53de153ad358dd1f53efa3ed536ae435229482a4c74db4",
+    "ym2149_wasm_bg.wasm.d.ts": "3f61d0b1e1256f8e27165de809524e319afc6fa68c321ba45e5e86eabfb31f7a"
   }
 }

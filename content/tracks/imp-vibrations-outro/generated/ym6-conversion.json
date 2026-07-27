@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "a67bfc9205a46668c1f934af5a0dfa956d5b520f4faf3bc2c9b964eb5028dffa",
+  "psgByteLength": 187596,
+  "ym6Sha256": "630aa81b93d863e1ad680d7f59ad532aa50c61cc2a78daeb1bfc6c849b1d18ef",
+  "ym6ByteLength": 147552,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 9215,
+  "title": "Vibrations Outro",
+  "author": "IMP",
+  "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM"
+}

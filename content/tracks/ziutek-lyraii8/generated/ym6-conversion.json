@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "b29321290179940b9e176e4fb4ea3c6a3b9d6f3b715f0814906c722e54d356a1",
+  "psgByteLength": 177766,
+  "ym6Sha256": "c7b905e3028ab7acfdfcaa0a274cb97de768bf930745ce67268d35bc6920ba8e",
+  "ym6ByteLength": 135265,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8447,
+  "title": "Lyra II part 8",
+  "author": "Ziutek",
+  "comment": "Converted from STC through ZXTune PSG by ZX-MUSIC.FM"
+}

@@ -1,0 +1,16 @@
+{
+  "tool": "zxmusicfm-ay-capture",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "sourceSha256": "fdf0ca9fe6541d99284fda8b041fdc8e6453cab39f99b10aac3d314a7f967bfc",
+  "sourceByteLength": 2216,
+  "subsong": 1,
+  "durationSource": "source",
+  "ym6Sha256": "07753cef3064bc17dca33d7c4dfbc980c04580f63774ba27785751a199ce76fb",
+  "ym6ByteLength": 143310,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8950,
+  "title": "Feud",
+  "author": "Fuxoft (František Fuka)",
+  "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM"
+}

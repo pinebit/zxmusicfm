@@ -1,0 +1,16 @@
+{
+  "tool": "zxmusicfm-ay-capture",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "sourceSha256": "7d2f5f03eb432676229fdd93f1339982fc76d0596d8e7c6ccbcc59fcbbd024e4",
+  "sourceByteLength": 7532,
+  "subsong": 1,
+  "durationSource": "source",
+  "ym6Sha256": "65dab36f3db9707d14d31c045caf1ef278f93ddf9755e46c18f561b7b55fc375",
+  "ym6ByteLength": 106505,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 6650,
+  "title": "Batman The Movie I",
+  "author": "Matty",
+  "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM"
+}

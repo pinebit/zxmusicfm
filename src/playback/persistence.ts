@@ -1,4 +1,4 @@
-import type { ChannelOrder, PlaybackMode } from './contracts.ts';
+import type { ChannelOrder } from './contracts.ts';
 
 export const PLAYER_STORAGE_KEY = 'zxmusicfm.player.v1';
 // Key used before the site was renamed. `loadPlayerPreferences` migrates it once
@@ -17,7 +17,6 @@ export type PlayerPreferences = {
   readonly volume: number;
   readonly shuffle: boolean;
   readonly channelOrder: ChannelOrder;
-  readonly mode: PlaybackMode;
 };
 
 export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
@@ -27,10 +26,6 @@ export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
   volume: 0.8,
   shuffle: false,
   channelOrder: 'ABC',
-  // New listeners hear the produced presentation; vanilla is the deliberate
-  // "show me the raw chip" choice. Absent from preferences written before the
-  // mode existed, which is why this needs no schemaVersion bump.
-  mode: 'studio',
 };
 
 type TrackDuration = {
@@ -95,10 +90,6 @@ export function parsePlayerPreferences(
       value.channelOrder === 'BAC'
         ? value.channelOrder
         : DEFAULT_PLAYER_PREFERENCES.channelOrder,
-    mode:
-      value.mode === 'vanilla' || value.mode === 'studio'
-        ? value.mode
-        : DEFAULT_PLAYER_PREFERENCES.mode,
   };
 }
 

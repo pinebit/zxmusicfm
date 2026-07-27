@@ -646,31 +646,6 @@ function PlayerApplication({
                   Shuffle needs at least two tracks.
                 </span>
               ) : null}
-              <button
-                type="button"
-                className="deck-button deck-toggle"
-                aria-label="Studio sound"
-                aria-pressed={snapshot.preferences.mode === 'studio'}
-                title={
-                  snapshot.preferences.mode === 'studio'
-                    ? 'Studio sound on - switch to the raw chip'
-                    : 'Studio sound off - playing the raw chip'
-                }
-                onClick={() =>
-                  controller.setMode(
-                    snapshot.preferences.mode === 'studio'
-                      ? 'vanilla'
-                      : 'studio',
-                  )
-                }
-              >
-                <span className="deck-led" aria-hidden="true" />
-                <span className="deck-toggle-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z" />
-                  </svg>
-                </span>
-              </button>
             </div>
 
             <div className="transport">

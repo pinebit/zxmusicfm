@@ -15,38 +15,29 @@ import {
   generatedProvenanceSchema,
   trackerConversionSchema,
   trackSidecarSchema,
+  ym6ConversionSchema,
   type GeneratedCatalog,
   type GeneratedProvenance,
   type TrackerConversionProvenance,
   type TrackSidecar,
+  type Ym6ConversionProvenance,
 } from '../../src/content/schemas.ts';
 import type { RuntimeTrack } from '../../src/playback/contracts.ts';
 import { ENGINE_COMMIT } from '../../src/playback/enginePin.ts';
-import {
-  createEnginePlayer,
-  createEnginePlayerAtSample,
-  fastForwardEngine,
-  generateEngineChannels,
-  initializeYm2149,
-} from '../../src/playback/engine.ts';
 import { measureLoudnessLufs } from '../../src/playback/loudness.ts';
-import { ENGINE_SAMPLE_RATE } from '../../src/playback/sampleRates.ts';
-import {
-  createYm6,
-  parsePsg,
-  parseYm3,
-  parseYm6,
-  prepareYmRuntime,
-  selectAySubsong,
-  type RegisterFrame,
-} from '../../src/playback/formats.ts';
+import { createYm6, parsePsg, parseYm6 } from '../../src/playback/formats.ts';
 import {
   encodeWaveformPayload,
   WAVEFORM_BUCKET_COUNT,
   WAVEFORM_BYTES_PER_TRACK,
   WAVEFORM_CHANNEL_COUNT,
 } from '../../src/playback/waveform.ts';
-import { Ym2149PlaybackAdapter } from '../../src/playback/Ym2149PlaybackAdapter.ts';
+import {
+  captureAyFrames,
+  initializeOfflineEngine,
+  renderOffline,
+} from './offlineRender.ts';
+import { convertPsgToYm6 } from './psg2ym6.ts';
 import {
   convertTrackerToPsg,
   ZXTUNE_COMMIT,
@@ -56,7 +47,6 @@ import {
 const waveformMagic = Buffer.from('ZXWF', 'ascii');
 const waveformHeaderLength = 16;
 const waveformEncoding = 1;
-const comparisonTolerance = 0.000_001;
 
 export type ValidationResult = {
   readonly trackCount: number;
@@ -68,7 +58,7 @@ export type TrackInput = {
   readonly directory: string;
   readonly sourcePath: string;
   readonly sourceExtension:
-    '.ay' | '.psg' | '.ym' | '.pt3' | '.stc' | '.asc' | '.stp' | '.ftc';
+    '.ay' | '.psg' | '.pt3' | '.stc' | '.asc' | '.stp' | '.ftc';
   readonly sidecar: TrackSidecar;
 };
 
@@ -162,7 +152,7 @@ export async function discoverTrackInputs(root: string): Promise<TrackInput[]> {
     }
 
     const sourceFiles = (await readdir(directory)).filter((fileName) =>
-      /^source\.(?:ay|psg|ym|pt3|stc|asc|stp|ftc)$/u.test(fileName),
+      /^source\.(?:ay|psg|pt3|stc|asc|stp|ftc)$/u.test(fileName),
     );
     if (sourceFiles.length !== 1) {
       throw new Error(
@@ -252,6 +242,7 @@ async function generateTrackerConversions(
       tool: 'zxtune123',
       commit: ZXTUNE_COMMIT,
       mode: 'psg',
+      optimization: 0,
       sourceFormat: conversion.sourceFormat,
       sourceSha256: conversion.sourceSha256,
       psgSha256: conversion.psgSha256,
@@ -303,89 +294,207 @@ async function readTrackerConversion(
   return { psg, metadata };
 }
 
-async function initializeContentEngine(root: string): Promise<void> {
-  const wasm = await readFile(
-    path.join(root, 'vendor', 'ym2149', 'ym2149_wasm_bg.wasm'),
-  );
-  await initializeYm2149(wasm);
-}
-
-function compareFrames(
-  expected: readonly RegisterFrame[],
-  actual: readonly RegisterFrame[],
-  trackId: string,
-): void {
-  if (expected.length !== actual.length) {
+async function readYm6Conversion(
+  input: TrackInput,
+  source: Uint8Array,
+  psg: Uint8Array | undefined,
+): Promise<{
+  readonly runtime: Buffer;
+  readonly metadata: Ym6ConversionProvenance;
+}> {
+  const generated = path.join(input.directory, 'generated');
+  let runtime: Buffer;
+  let metadata: Ym6ConversionProvenance;
+  try {
+    runtime = await readFile(path.join(generated, 'playback.ym'));
+    metadata = ym6ConversionSchema.parse(
+      JSON.parse(
+        await readFile(path.join(generated, 'ym6-conversion.json'), 'utf8'),
+      ) as unknown,
+    );
+  } catch (error) {
     throw new Error(
-      `${trackId}: conversion frame count differs (${expected.length} source, ${actual.length} runtime).`,
+      `${input.sourcePath}: missing or invalid YM6 conversion; run npm run content:generate with the pinned converter available.`,
+      { cause: error },
     );
   }
-  for (let frame = 0; frame < expected.length; frame += 1) {
-    for (let register = 0; register < 16; register += 1) {
-      const sourceValue = expected[frame]?.[register];
-      const runtimeValue = actual[frame]?.[register];
-      if (sourceValue !== runtimeValue) {
-        throw new Error(
-          `${trackId}: conversion mismatch at frame ${frame}, register ${register}: expected ${sourceValue}, actual ${runtimeValue}.`,
-        );
-      }
-    }
+
+  const chipClockHz = requiredPlaybackField(input, 'chipClockHz');
+  const frameRateHz = requiredPlaybackField(input, 'frameRateHz');
+  const parsed = parseYm6(runtime);
+  const commonMatches =
+    metadata.ym6Sha256 === sha256(runtime) &&
+    metadata.ym6ByteLength === runtime.length &&
+    metadata.clockHz === chipClockHz &&
+    metadata.frameRateHz === frameRateHz &&
+    metadata.frameCount === parsed.frames.length &&
+    metadata.title === input.sidecar.title &&
+    metadata.author === input.sidecar.author &&
+    parsed.chipClockHz === chipClockHz &&
+    parsed.frameRateHz === frameRateHz &&
+    parsed.title === input.sidecar.title &&
+    parsed.author === input.sidecar.author;
+  const inputMatches =
+    input.sourceExtension === '.ay'
+      ? metadata.tool === 'zxmusicfm-ay-capture' &&
+        metadata.sourceSha256 === sha256(source) &&
+        metadata.sourceByteLength === source.length &&
+        metadata.subsong === input.sidecar.subsong
+      : metadata.tool === 'ym2149-psg2ym6' &&
+        psg !== undefined &&
+        metadata.psgSha256 === sha256(psg) &&
+        metadata.psgByteLength === psg.length &&
+        metadata.frameCount === parsePsg(psg).frameCount;
+  if (!commonMatches || !inputMatches) {
+    throw new Error(
+      `${input.sourcePath}: YM6 conversion is stale or inconsistent; run npm run content:generate with the pinned converter available.`,
+    );
   }
+  return { runtime, metadata };
 }
 
-function validateRuntimeSeeks(
-  runtime: Uint8Array,
-  durationSeconds: number,
-  trackId: string,
-): void {
-  const positions = [
-    0,
-    durationSeconds * 0.25,
-    durationSeconds * 0.5,
-    durationSeconds * 0.75,
-    Math.max(0, durationSeconds - 1),
-  ];
-  for (const position of new Set(
-    positions.map((value) => Math.min(value, durationSeconds)),
-  )) {
-    const sample = Math.round(position * ENGINE_SAMPLE_RATE);
-    const remaining = Math.max(
-      0,
-      Math.round(durationSeconds * ENGINE_SAMPLE_RATE) - sample,
-    );
-    const count = Math.min(ENGINE_SAMPLE_RATE, remaining);
-    if (count === 0) continue;
-    const uninterrupted = createEnginePlayer(runtime);
-    const restored = createEnginePlayerAtSample(runtime, sample);
-    try {
-      uninterrupted.play();
-      fastForwardEngine(uninterrupted, sample);
-      const expected = generateEngineChannels(uninterrupted, count);
-      const actual = generateEngineChannels(restored, count);
-      for (let index = 0; index < actual.mono.length; index += 1) {
-        const difference = Math.abs(
-          (expected.mono[index] ?? 0) - (actual.mono[index] ?? 0),
-        );
-        if (difference > comparisonTolerance) {
-          throw new Error(
-            `${trackId}: seek mix mismatch at ${position.toFixed(6)}s, sample ${index}; difference ${difference} exceeds ${comparisonTolerance}.`,
-          );
-        }
-      }
-      for (let index = 0; index < actual.channels.length; index += 1) {
-        const difference = Math.abs(
-          (expected.channels[index] ?? 0) - (actual.channels[index] ?? 0),
-        );
-        if (difference > comparisonTolerance) {
-          throw new Error(
-            `${trackId}: seek mismatch at ${position.toFixed(6)}s, channel ${index % 3}, sample ${Math.floor(index / 3)}; difference ${difference} exceeds ${comparisonTolerance}.`,
-          );
-        }
-      }
-    } finally {
-      uninterrupted.free();
-      restored.free();
+async function resolvePsgInput(
+  input: TrackInput,
+  source: Uint8Array,
+): Promise<{
+  readonly psg: Uint8Array;
+  readonly trackerConversion: TrackerConversionProvenance | null;
+}> {
+  const trackerExtension = asTrackerExtension(input.sourceExtension);
+  if (trackerExtension === undefined) {
+    if (input.sourceExtension !== '.psg') {
+      throw new Error(`${input.sourcePath}: expected a PSG-backed source.`);
     }
+    parsePsg(source);
+    if (source[source.length - 1] === 0xfd) {
+      return { psg: source, trackerConversion: null };
+    }
+    // Some valid legacy PSG streams end immediately after a frame boundary.
+    // The pinned Rust converter requires the explicit end marker, so normalize
+    // only its derived input while preserving the authoritative source bytes.
+    const endsAtFrameBoundary = source[source.length - 1] === 0xff;
+    const terminated = endsAtFrameBoundary
+      ? Uint8Array.from(source)
+      : new Uint8Array(source.length + 1);
+    if (!endsAtFrameBoundary) terminated.set(source);
+    terminated[terminated.length - 1] = 0xfd;
+    return { psg: terminated, trackerConversion: null };
+  }
+  const converted = await readTrackerConversion(input, source);
+  parsePsg(converted.psg);
+  return {
+    psg: converted.psg,
+    trackerConversion: converted.metadata,
+  };
+}
+
+async function generateYm6Conversions(
+  root: string,
+  inputs: readonly TrackInput[],
+): Promise<void> {
+  if (inputs.length > 0) await initializeOfflineEngine(root);
+  for (const input of inputs) {
+    const source = await readFile(input.sourcePath);
+    const generated = path.join(input.directory, 'generated');
+    let runtime: Uint8Array;
+    let metadata: Ym6ConversionProvenance;
+
+    if (input.sourceExtension === '.ay') {
+      try {
+        await readYm6Conversion(input, source, undefined);
+        continue;
+      } catch {
+        // Missing or stale AY captures are rebuilt below.
+      }
+      const frameRateHz = requiredPlaybackField(input, 'frameRateHz');
+      const chipClockHz = requiredPlaybackField(input, 'chipClockHz');
+      if (frameRateHz !== 50) {
+        throw new Error(
+          `${input.sidecar.id}: the strict ZX AY YM6 profile requires 50 Hz frames.`,
+        );
+      }
+      const captured = captureAyFrames(
+        source,
+        input.sidecar.subsong,
+        frameRateHz,
+        input.sidecar.durationOverrideSeconds,
+        input.sidecar.id,
+      );
+      const comment = `Captured from AY subsong ${input.sidecar.subsong} by ZX-MUSIC.FM`;
+      runtime = createYm6(captured.frames, {
+        chipClockHz,
+        frameRateHz,
+        title: input.sidecar.title,
+        author: input.sidecar.author,
+        comment,
+      });
+      metadata = {
+        tool: 'zxmusicfm-ay-capture',
+        commit: ENGINE_COMMIT,
+        sourceSha256: sha256(source),
+        sourceByteLength: source.length,
+        subsong: input.sidecar.subsong,
+        durationSource: captured.durationSource,
+        ym6Sha256: sha256(runtime),
+        ym6ByteLength: runtime.length,
+        clockHz: chipClockHz,
+        frameRateHz,
+        frameCount: captured.frames.length,
+        title: input.sidecar.title,
+        author: input.sidecar.author,
+        comment,
+      };
+    } else {
+      const { psg, trackerConversion } = await resolvePsgInput(input, source);
+      try {
+        await readYm6Conversion(input, source, psg);
+        continue;
+      } catch {
+        // Missing or stale PSG conversions are rebuilt below.
+      }
+      const chipClockHz = requiredPlaybackField(input, 'chipClockHz');
+      const frameRateHz = requiredPlaybackField(input, 'frameRateHz');
+      if (frameRateHz !== 50) {
+        throw new Error(
+          `${input.sidecar.id}: the pinned PSG converter requires 50 Hz frames.`,
+        );
+      }
+      const parsedPsg = parsePsg(psg);
+      const comment =
+        trackerConversion === null
+          ? `Converted from ${path.basename(input.sourcePath)} by ZX-MUSIC.FM`
+          : `Converted from ${trackerConversion.sourceFormat} through ZXTune PSG by ZX-MUSIC.FM`;
+      const converted = await convertPsgToYm6(psg, {
+        clockHz: chipClockHz,
+        frameRateHz,
+        title: input.sidecar.title,
+        author: input.sidecar.author,
+        comment,
+      });
+      runtime = converted.bytes;
+      metadata = {
+        tool: 'ym2149-psg2ym6',
+        commit: ENGINE_COMMIT,
+        psgSha256: sha256(psg),
+        psgByteLength: psg.length,
+        ym6Sha256: sha256(runtime),
+        ym6ByteLength: runtime.length,
+        clockHz: chipClockHz,
+        frameRateHz,
+        frameCount: parsedPsg.frameCount,
+        title: input.sidecar.title,
+        author: input.sidecar.author,
+        comment,
+      };
+    }
+
+    parseYm6(runtime);
+    ym6ConversionSchema.parse(metadata);
+    await atomicWrite(path.join(generated, 'playback.ym'), runtime);
+    await atomicWrite(
+      path.join(generated, 'ym6-conversion.json'),
+      Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`),
+    );
   }
 }
 
@@ -394,71 +503,18 @@ function detectSourceFormat(
 ): GeneratedProvenance['sourceFormat'] {
   if (hasMagic(bytes, 'PSG') && bytes[3] === 0x1a) return 'PSG';
   if (hasMagic(bytes, 'ZXAYEMUL')) return 'AY';
-  if (hasMagic(bytes, 'YM6!')) return 'YM6';
-  if (hasMagic(bytes, 'YM3!')) return 'YM3';
-  throw new Error(
-    'unsupported source signature; expected PSG, ZXAY/EMUL, YM3, or YM6',
-  );
+  throw new Error('unsupported source signature; expected PSG or ZXAY/EMUL');
 }
 
 function assertExtensionMatches(
   input: TrackInput,
   sourceFormat: GeneratedProvenance['sourceFormat'],
 ): void {
-  const expected =
-    sourceFormat === 'PSG' ? '.psg' : sourceFormat === 'AY' ? '.ay' : '.ym';
+  const expected = sourceFormat === 'PSG' ? '.psg' : '.ay';
   if (input.sourceExtension !== expected) {
     throw new Error(
       `${input.sourcePath}: extension ${input.sourceExtension} does not match detected ${sourceFormat} format.`,
     );
-  }
-}
-
-function captureAy(
-  source: Uint8Array,
-  input: TrackInput,
-  frameRateHz: number,
-): {
-  readonly frames: readonly RegisterFrame[];
-  readonly durationSource: 'source' | 'override';
-} {
-  const player = createEnginePlayer(
-    selectAySubsong(source, input.sidecar.subsong),
-  );
-  try {
-    const reliable = player.hasDurationInfo() && player.duration_seconds() > 0;
-    const override = input.sidecar.durationOverrideSeconds;
-    if (reliable && override !== undefined) {
-      throw new Error(
-        `${input.sidecar.id}: durationOverrideSeconds is not allowed on a reliably finite AY source.`,
-      );
-    }
-    if (!reliable && override === undefined) {
-      throw new Error(
-        `${input.sidecar.id}: looping or unreliable AY source requires durationOverrideSeconds.`,
-      );
-    }
-    const requestedDuration = reliable
-      ? player.duration_seconds()
-      : (override ?? 0);
-    const frameCount = Math.ceil(requestedDuration * frameRateHz);
-    const samplesPerFrame = ENGINE_SAMPLE_RATE / frameRateHz;
-    if (!Number.isInteger(samplesPerFrame)) {
-      throw new Error(
-        `${input.sidecar.id}: frame rate ${frameRateHz} does not divide the engine sample rate.`,
-      );
-    }
-    const frames: RegisterFrame[] = [];
-    player.play();
-    for (let frame = 0; frame < frameCount; frame += 1) {
-      player.generateSamples(samplesPerFrame);
-      const registers = player.get_registers();
-      registers[13] = 0xff;
-      frames.push(registers);
-    }
-    return { frames, durationSource: reliable ? 'source' : 'override' };
-  } finally {
-    player.free();
   }
 }
 
@@ -479,24 +535,48 @@ async function originalFileName(input: TrackInput): Promise<string> {
     'generated',
     'provenance.json',
   );
-  try {
-    const parsed = generatedProvenanceSchema.parse(
-      JSON.parse(await readFile(provenancePath, 'utf8')) as unknown,
-    );
-    return parsed.originalFileName;
-  } catch {
-    return path.basename(input.sourcePath);
-  }
+  return (
+    (await readRecordedOriginalFileName(provenancePath)) ??
+    path.basename(input.sourcePath)
+  );
 }
 
-// Set near the median of the measured catalog (-9.3 LUFS across the current 24
-// tracks, spanning -5.7 to -11.7) rather than at a broadcast reference. That
-// removes the track-to-track jump while leaving the site's overall level where
-// listeners already have it, and keeps every derived gain inside a few dB so the
-// clamp never has to bite. Dense square waves measure loud at a modest peak, so
-// a figure this high is expected here.
+/**
+ * Reads the curator's original filename out of an existing provenance document.
+ *
+ * Deliberately reads the one field rather than validating the whole document:
+ * this value survives nowhere else, so parsing against the current schema would
+ * silently replace it with `source.<ext>` for every track the first time the
+ * schema gains or drops any other field. Exported so that stays table-tested.
+ */
+export async function readRecordedOriginalFileName(
+  provenancePath: string,
+): Promise<string | undefined> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(provenancePath, 'utf8'));
+  } catch {
+    return undefined;
+  }
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('originalFileName' in parsed) ||
+    typeof parsed.originalFileName !== 'string' ||
+    parsed.originalFileName.trim() === ''
+  ) {
+    return undefined;
+  }
+  return parsed.originalFileName;
+}
+
+// Set near the catalog's measured median rather than at a broadcast reference.
+// Dense square waves measure loud at a modest peak, so a figure this high is
+// expected here. The separate peak ceiling below is what makes this safe without
+// a limiter in the browser graph.
 const LOUDNESS_TARGET_LUFS = -9;
 const MAX_NORMALIZATION_GAIN_DB = 6;
+const PLAYBACK_PEAK_CEILING_DB = -0.3;
 
 /**
  * Measures the dry offline mix and derives the gain that brings it to the
@@ -506,10 +586,12 @@ const MAX_NORMALIZATION_GAIN_DB = 6;
 function measureLoudness(
   mix: Float32Array,
   sampleRate: number,
+  worstEarPeak: number,
   trackId: string,
 ): {
   readonly measuredLoudnessLufs: number;
   readonly normalizationGainDb: number;
+  readonly peakLimitedFrom?: number;
 } {
   const measured = measureLoudnessLufs(mix, sampleRate);
   if (measured === null) {
@@ -518,99 +600,64 @@ function measureLoudness(
     );
   }
   const round = (value: number) => Math.round(value * 100) / 100;
-  const gain = Math.max(
+  const loudnessGain = Math.max(
     -MAX_NORMALIZATION_GAIN_DB,
     Math.min(MAX_NORMALIZATION_GAIN_DB, LOUDNESS_TARGET_LUFS - measured),
   );
+  const peakGain =
+    worstEarPeak > 0
+      ? 20 * Math.log10(10 ** (PLAYBACK_PEAK_CEILING_DB / 20) / worstEarPeak)
+      : MAX_NORMALIZATION_GAIN_DB;
+  const gain = Math.min(loudnessGain, peakGain);
+  const peakLimited = gain < loudnessGain;
+  // A peak-limited gain is rounded toward safety so serialization cannot move
+  // it a hundredth of a decibel back above the ceiling.
+  const serializedGain = peakLimited
+    ? Math.floor(gain * 100) / 100
+    : round(gain);
   return {
     measuredLoudnessLufs: round(measured),
-    normalizationGainDb: round(gain),
+    normalizationGainDb: serializedGain,
+    ...(peakLimited ? { peakLimitedFrom: round(loudnessGain) } : {}),
   };
 }
 
-async function prepareTrack(
-  root: string,
-  input: TrackInput,
-): Promise<PreparedTrack> {
+async function prepareTrack(input: TrackInput): Promise<PreparedTrack> {
   const source = await readFile(input.sourcePath);
   if (source.length === 0)
     throw new Error(`${input.sourcePath}: source is empty.`);
   const trackerExtension = asTrackerExtension(input.sourceExtension);
   let sourceFormat: GeneratedProvenance['sourceFormat'];
-  let playableSource: Uint8Array = source;
   let trackerConversion: TrackerConversionProvenance | null = null;
+  let psg: Uint8Array | undefined;
   if (trackerExtension === undefined) {
     sourceFormat = detectSourceFormat(source);
     assertExtensionMatches(input, sourceFormat);
+    if (sourceFormat === 'PSG') {
+      psg = (await resolvePsgInput(input, source)).psg;
+    }
   } else {
     const converted = await readTrackerConversion(input, source);
     sourceFormat = converted.metadata.sourceFormat;
-    playableSource = converted.psg;
+    psg = converted.psg;
     trackerConversion = converted.metadata;
   }
 
   const chipType = requiredPlaybackField(input, 'chipType');
-  let chipClockHz = requiredPlaybackField(input, 'chipClockHz');
-  let frameRateHz = requiredPlaybackField(input, 'frameRateHz');
+  const chipClockHz = requiredPlaybackField(input, 'chipClockHz');
+  const frameRateHz = requiredPlaybackField(input, 'frameRateHz');
   const channelLayout = requiredPlaybackField(input, 'channelLayout');
-  let frames: readonly RegisterFrame[];
-  let runtime: Uint8Array;
-  let runtimeMode: GeneratedProvenance['runtimeMode'];
-  let durationSource: GeneratedProvenance['durationSource'] = 'source';
-
-  if (sourceFormat === 'PSG' || trackerConversion !== null) {
-    frames = parsePsg(playableSource).frames;
-    runtime = createYm6(frames, {
-      chipClockHz,
-      frameRateHz,
-      title: input.sidecar.title,
-      author: input.sidecar.author,
-      comment:
-        trackerConversion === null
-          ? `Converted from ${path.basename(input.sourcePath)} by ZX-MUSIC.FM`
-          : `Converted from ${sourceFormat} through ZXTune PSG by ZX-MUSIC.FM`,
-    });
-    runtimeMode = 'convert';
-  } else if (sourceFormat === 'AY') {
-    const captured = captureAy(source, input, frameRateHz);
-    frames = captured.frames;
-    durationSource = captured.durationSource;
-    runtime = createYm6(frames, {
-      chipClockHz,
-      frameRateHz,
-      title: input.sidecar.title,
-      author: input.sidecar.author,
-      comment: `Captured from AY subsong ${input.sidecar.subsong} by ZX-MUSIC.FM`,
-    });
-    runtimeMode = 'convert';
-  } else {
-    if (sourceFormat === 'YM6') {
-      const embedded = parseYm6(source);
-      if (
-        embedded.chipClockHz !== chipClockHz ||
-        embedded.frameRateHz !== frameRateHz
-      ) {
-        throw new Error(
-          `${input.sidecar.id}: sidecar clock or frame rate conflicts with unambiguous YM6 metadata.`,
-        );
-      }
-    }
-    const prepared = prepareYmRuntime(source, {
-      chipClockHz,
-      frameRateHz,
-      title: input.sidecar.title,
-      author: input.sidecar.author,
-      comment: 'Normalized by ZX-MUSIC.FM',
-    });
-    frames = prepared.frames;
-    runtime = prepared.bytes;
-    runtimeMode = prepared.mode === 'copy' ? 'copy' : 'normalize';
-  }
-
+  const { runtime, metadata: ym6Conversion } = await readYm6Conversion(
+    input,
+    source,
+    psg,
+  );
   const parsedRuntime = parseYm6(runtime);
-  chipClockHz = parsedRuntime.chipClockHz;
-  frameRateHz = parsedRuntime.frameRateHz;
-  compareFrames(frames, parsedRuntime.frames, input.sidecar.id);
+  const frames = parsedRuntime.frames;
+  const durationSource: GeneratedProvenance['durationSource'] =
+    ym6Conversion.tool === 'zxmusicfm-ay-capture'
+      ? ym6Conversion.durationSource
+      : 'source';
   const durationSeconds = parsedRuntime.frames.length / frameRateHz;
   const runtimeTrack: RuntimeTrack = {
     id: input.sidecar.id,
@@ -621,17 +668,12 @@ async function prepareTrack(
     frameRateHz,
     channelLayout,
   };
-  validateRuntimeSeeks(runtime, durationSeconds, input.sidecar.id);
-  const adapter = new Ym2149PlaybackAdapter();
-  const render = await adapter.renderOffline(
-    runtimeTrack,
-    new AbortController().signal,
-  );
-  adapter.dispose();
+  const render = renderOffline(runtimeTrack, new AbortController().signal);
   const waveform = encodeWaveformPayload(render);
   const loudness = measureLoudness(
     render.mix,
     render.sampleRate,
+    render.worstEarPeak,
     input.sidecar.id,
   );
   const runtimeHash = sha256(runtime);
@@ -657,7 +699,6 @@ async function prepareTrack(
     chipClockHz,
     frameRateHz,
     channelLayout,
-    runtimeMode,
     runtimeFormat: 'YM6',
     runtimeSha256: runtimeHash,
     runtimeByteLength: runtime.length,
@@ -668,7 +709,11 @@ async function prepareTrack(
     waveformSha256: sha256(waveform),
     measuredLoudnessLufs: loudness.measuredLoudnessLufs,
     normalizationGainDb: loudness.normalizationGainDb,
+    ...(loudness.peakLimitedFrom === undefined
+      ? {}
+      : { peakLimitedFrom: loudness.peakLimitedFrom }),
     trackerConversion,
+    ym6Conversion,
     preparationTool: 'zxmusicfm-content-v1',
     engine: { name: 'ym2149-rs', commit: ENGINE_COMMIT },
   };
@@ -689,7 +734,11 @@ async function prepareTrack(
     chipClockHz,
     frameRateHz,
     channelLayout,
+    measuredLoudnessLufs: loudness.measuredLoudnessLufs,
     normalizationGainDb: loudness.normalizationGainDb,
+    ...(loudness.peakLimitedFrom === undefined
+      ? {}
+      : { peakLimitedFrom: loudness.peakLimitedFrom }),
     waveformByteLength: WAVEFORM_BYTES_PER_TRACK,
     ...(input.sidecar.year === undefined ? {} : { year: input.sidecar.year }),
     ...(input.sidecar.notes === undefined
@@ -716,9 +765,9 @@ function createWaveformPack(payloads: readonly Uint8Array[]): Buffer {
 
 async function prepareContent(root: string): Promise<PreparedContent> {
   const inputs = await discoverTrackInputs(root);
-  if (inputs.length > 0) await initializeContentEngine(root);
+  if (inputs.length > 0) await initializeOfflineEngine(root);
   const tracks: PreparedTrack[] = [];
-  for (const input of inputs) tracks.push(await prepareTrack(root, input));
+  for (const input of inputs) tracks.push(await prepareTrack(input));
   const waveformBytes = createWaveformPack(
     tracks.map(({ waveform }) => waveform),
   );
@@ -781,7 +830,9 @@ async function cleanHashedAssets(
 }
 
 export async function generateFoundationContent(root: string): Promise<void> {
-  await generateTrackerConversions(await discoverTrackInputs(root));
+  const inputs = await discoverTrackInputs(root);
+  await generateTrackerConversions(inputs);
+  await generateYm6Conversions(root, inputs);
   const prepared = await prepareContent(root);
   const publicDirectory = path.join(root, 'public', 'generated');
   const publicTracks = path.join(publicDirectory, 'tracks');
@@ -966,8 +1017,7 @@ export function detectSupportedSource(
     : '';
   try {
     const format = detectSourceFormat(bytes);
-    const extension =
-      format === 'AY' ? '.ay' : format === 'PSG' ? '.psg' : '.ym';
+    const extension = format === 'AY' ? '.ay' : '.psg';
     if (suppliedExtension !== '' && suppliedExtension !== extension) {
       throw new Error(
         `${originalFileName}: extension ${suppliedExtension} does not match detected ${format} format.`,
@@ -992,6 +1042,5 @@ export function detectSupportedSource(
 
 export function extractYmFrameCount(bytes: Uint8Array): number {
   if (hasMagic(bytes, 'YM6!')) return parseYm6(bytes).frames.length;
-  if (hasMagic(bytes, 'YM3!')) return parseYm3(bytes).length;
-  throw new Error('not a supported YM source');
+  throw new Error('not a supported YM6 runtime');
 }

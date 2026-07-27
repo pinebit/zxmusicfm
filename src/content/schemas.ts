@@ -47,14 +47,8 @@ const sourceFormatSchema = z.enum([
   'ASC',
   'STP',
   'FTC',
-  'YM2',
-  'YM3',
-  'YM3b',
-  'YM4',
-  'YM5',
-  'YM6',
 ]);
-const runtimeFormatSchema = z.enum(['YM2', 'YM3', 'YM3b', 'YM4', 'YM5', 'YM6']);
+const runtimeFormatSchema = z.literal('YM6');
 
 // Clamped when derived, so a pathological measurement cannot ship a gain that
 // swamps the volume knob in either direction.
@@ -84,6 +78,7 @@ export const trackerConversionSchema = z.strictObject({
   tool: z.literal('zxtune123'),
   commit: z.literal('8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a'),
   mode: z.literal('psg'),
+  optimization: z.literal(0),
   sourceFormat: z.enum(['PT3', 'STC', 'ASC', 'STP', 'FTC']),
   sourceSha256: sha256Schema,
   psgSha256: sha256Schema,
@@ -92,6 +87,36 @@ export const trackerConversionSchema = z.strictObject({
 export type TrackerConversionProvenance = z.infer<
   typeof trackerConversionSchema
 >;
+
+const ym6ConversionCommon = {
+  commit: z.literal(ENGINE_COMMIT),
+  ym6Sha256: sha256Schema,
+  ym6ByteLength: z.number().int().positive(),
+  clockHz: z.number().int().min(1).max(4_294_967_295),
+  frameRateHz: z.literal(50),
+  frameCount: z.number().int().positive(),
+  title: plainTextSchema.max(200),
+  author: plainTextSchema.max(200),
+  comment: plainTextSchema.max(500),
+} as const;
+
+export const ym6ConversionSchema = z.discriminatedUnion('tool', [
+  z.strictObject({
+    tool: z.literal('ym2149-psg2ym6'),
+    ...ym6ConversionCommon,
+    psgSha256: sha256Schema,
+    psgByteLength: z.number().int().positive(),
+  }),
+  z.strictObject({
+    tool: z.literal('zxmusicfm-ay-capture'),
+    ...ym6ConversionCommon,
+    sourceSha256: sha256Schema,
+    sourceByteLength: z.number().int().positive(),
+    subsong: z.number().int().positive(),
+    durationSource: z.enum(['source', 'override']),
+  }),
+]);
+export type Ym6ConversionProvenance = z.infer<typeof ym6ConversionSchema>;
 
 export const generatedProvenanceSchema = z.strictObject({
   schemaVersion: z.literal(1),
@@ -104,7 +129,6 @@ export const generatedProvenanceSchema = z.strictObject({
   chipClockHz: z.number().int().min(1).max(4_294_967_295),
   frameRateHz: z.number().int().min(1).max(65_535),
   channelLayout: channelLayoutSchema,
-  runtimeMode: z.enum(['copy', 'convert', 'normalize']),
   runtimeFormat: runtimeFormatSchema,
   runtimeSha256: sha256Schema,
   runtimeByteLength: z.number().int().positive(),
@@ -123,7 +147,9 @@ export const generatedProvenanceSchema = z.strictObject({
   waveformSha256: sha256Schema,
   measuredLoudnessLufs: loudnessLufsSchema,
   normalizationGainDb: normalizationGainDbSchema,
+  peakLimitedFrom: normalizationGainDbSchema.optional(),
   trackerConversion: trackerConversionSchema.nullable(),
+  ym6Conversion: ym6ConversionSchema,
   preparationTool: z.literal('zxmusicfm-content-v1'),
   engine: z.strictObject({
     name: z.literal('ym2149-rs'),
@@ -165,7 +191,9 @@ const generatedTrackSchema = z
     chipClockHz: z.number().int().min(1).max(4_294_967_295),
     frameRateHz: z.number().int().min(1).max(65_535),
     channelLayout: channelLayoutSchema,
+    measuredLoudnessLufs: loudnessLufsSchema,
     normalizationGainDb: normalizationGainDbSchema,
+    peakLimitedFrom: normalizationGainDbSchema.optional(),
     waveformByteOffset: z.number().int().nonnegative(),
     waveformByteLength: z.literal(WAVEFORM_BYTES_PER_TRACK),
     year: z.number().int().min(1970).max(9999).optional(),
