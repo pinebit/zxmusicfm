@@ -103,7 +103,7 @@ test('fits the acceptance widths and stacks only when space requires it', async 
     browserName !== 'chromium',
     'Responsive matrix runs once in Chromium.',
   );
-  for (const width of [320, 375, 768, 1024, 1440]) {
+  for (const width of [320, 375, 430, 760, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
     const dimensions = await page.evaluate(() => ({
@@ -131,9 +131,36 @@ test('fits the acceptance widths and stacks only when space requires it', async 
       volume === null
     )
       continue;
-    if (width <= 760)
+    if (width <= 760) {
       expect(track.y).toBeGreaterThan(meters.y + meters.height - 1);
-    else expect(Math.abs(meters.y - track.y)).toBeLessThan(2);
+      const wordmark = await page.locator('.brand-wordmark').boundingBox();
+      const play = await page.locator('.play-button').first().boundingBox();
+      const waveform = await page
+        .locator('.waveform-control')
+        .first()
+        .boundingBox();
+      const trackMain = await page.locator('.track-main').first().boundingBox();
+      expect(wordmark).not.toBeNull();
+      expect(play).not.toBeNull();
+      expect(waveform).not.toBeNull();
+      expect(trackMain).not.toBeNull();
+      if (
+        wordmark !== null &&
+        play !== null &&
+        waveform !== null &&
+        trackMain !== null
+      ) {
+        expect(
+          Math.abs(wordmark.x + wordmark.width / 2 - width / 2),
+        ).toBeLessThan(1);
+        expect(Math.abs(waveform.x - play.x)).toBeLessThan(1);
+        expect(
+          Math.abs(
+            waveform.x + waveform.width - (trackMain.x + trackMain.width),
+          ),
+        ).toBeLessThan(1);
+      }
+    } else expect(Math.abs(meters.y - track.y)).toBeLessThan(2);
     expect(volume.x).toBeGreaterThan(transport.x + transport.width - 1);
     expect(
       Math.abs(
@@ -154,11 +181,52 @@ test('fits the acceptance widths and stacks only when space requires it', async 
         expect(Math.abs(titleBox.x - identityBox.x)).toBeLessThan(1);
       }
     }
+    if (width <= 430) {
+      const identity = await page
+        .locator('.track-identity')
+        .first()
+        .boundingBox();
+      const duration = await page
+        .locator('.track-meta time')
+        .first()
+        .boundingBox();
+      expect(identity).not.toBeNull();
+      expect(duration).not.toBeNull();
+      if (identity !== null && duration !== null) {
+        expect(Math.abs(identity.y - duration.y)).toBeLessThan(1);
+      }
+    }
   }
 
   await page.setViewportSize({ width: 720, height: 450 });
   await page.goto('/');
   await expect(page.locator('.meter-panel')).toHaveCSS('position', 'static');
+});
+
+test('returns to the mobile deck after it scrolls away', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Responsive behavior runs once in Chromium.',
+  );
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto('/');
+  const deck = page.getByRole('complementary', { name: 'Playback deck' });
+  await deck.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    window.scrollTo(0, window.scrollY + bounds.bottom + 1);
+  });
+
+  const jump = page.getByRole('button', { name: 'Back to player' });
+  await expect(jump).toBeVisible();
+  await jump.click();
+
+  await expect(deck).toBeFocused();
+  await expect
+    .poll(async () => (await deck.boundingBox())?.y ?? -1)
+    .toBeGreaterThanOrEqual(0);
 });
 
 test('supports reduced motion and the global playback shortcut', async ({

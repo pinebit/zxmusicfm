@@ -27,14 +27,14 @@
 }
 
 html {
-  min-width: 320px;
+  overflow-x: clip;
   background: #111315;
 }
 
 body {
-  min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  overflow-x: clip;
   background:
     radial-gradient(circle at 82% 0%, rgb(113 86 36 / 18%), transparent 30rem),
     linear-gradient(rgb(255 255 255 / 1.5%) 1px, transparent 1px), #111315;
@@ -132,6 +132,11 @@ h1 {
   animation: brand-letter-bounce 0.9s ease-out;
 }
 
+.brand-spectrum-pixels {
+  pointer-events: none;
+  filter: brightness(1.18);
+}
+
 h2 {
   margin-bottom: 0;
   font-size: clamp(1.35rem, 2.7vw, 2rem);
@@ -221,6 +226,10 @@ h3 {
   grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
   gap: clamp(1rem, 2vw, 2rem);
   align-items: start;
+}
+
+.deck-jump-button {
+  display: none;
 }
 
 .track-panel,
@@ -1717,10 +1726,19 @@ h3 {
 }
 
 @media (max-width: 760px) {
+  .app-shell {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
   .brand-header {
     align-items: center;
     row-gap: 1rem;
     padding: 0.85rem 1rem 1.1rem;
+  }
+
+  .brand-wordmark {
+    width: clamp(9.1rem, 32.2vw, 18.9rem);
+    margin-inline: auto;
   }
 
   .spectrum-stripe {
@@ -1743,6 +1761,40 @@ h3 {
 
   .meter-bank {
     gap: clamp(0.25rem, 2vw, 0.65rem);
+  }
+
+  .waveform-control,
+  .waveform-canvas {
+    min-height: 4.4rem;
+    height: 4.4rem;
+  }
+
+  .waveform-control {
+    width: calc(100% + 3.3rem);
+    margin-left: -3.3rem;
+  }
+
+  .deck-jump-button {
+    position: fixed;
+    right: calc(0.75rem + env(safe-area-inset-right));
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0.65rem;
+    color: #17191d;
+    background: var(--amber);
+    border: 1px solid #ffe29a;
+    border-radius: 0.45rem;
+    box-shadow: 0 0.5rem 1.2rem rgb(0 0 0 / 45%);
+  }
+
+  .deck-jump-button .control-icon {
+    width: 1.3rem;
+    height: 1.3rem;
   }
 }
 
@@ -1781,14 +1833,12 @@ h3 {
 
 @media (max-width: 1024px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
   .player-layout.deck-maximized {
-    padding: max(0.25rem, env(safe-area-inset-top))
-      max(0.25rem, env(safe-area-inset-right))
-      max(0.25rem, env(safe-area-inset-bottom))
-      max(0.25rem, env(safe-area-inset-left));
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   .player-layout.deck-maximized .meter-panel {
-    padding: 0.5rem;
+    padding: 0;
     scrollbar-width: none;
   }
 
@@ -1824,9 +1874,9 @@ h3 {
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 430px) {
   .app-shell {
-    width: calc(100% - 1rem);
+    width: calc(100% - 0.5rem);
   }
 
   .brand-header {
@@ -1857,18 +1907,18 @@ h3 {
 
   .track-meta {
     display: grid;
-    gap: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
   }
 
   .track-meta time {
-    justify-self: start;
+    justify-self: end;
     font-size: 0.75rem;
   }
 
-  .waveform-control,
-  .waveform-canvas {
-    min-height: 4.4rem;
-    height: 4.4rem;
+  .waveform-control {
+    width: calc(100% + 2.85rem);
+    margin-left: -2.85rem;
   }
 
   .meter-bank {

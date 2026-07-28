@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -253,6 +253,78 @@ describe('App', () => {
         name: 'Enter distraction-free mode',
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it('offers a way back to the deck after it scrolls above the viewport', async () => {
+    const user = userEvent.setup();
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    let observerCallback: IntersectionObserverCallback | undefined;
+    const observer = {
+      root: null,
+      rootMargin: '0px',
+      scrollMargin: '0px',
+      thresholds: [0],
+      observe,
+      unobserve: vi.fn(),
+      disconnect,
+      takeRecords: () => [],
+    } satisfies IntersectionObserver;
+
+    class StubIntersectionObserver implements IntersectionObserver {
+      readonly root = observer.root;
+      readonly rootMargin = observer.rootMargin;
+      readonly scrollMargin = observer.scrollMargin;
+      readonly thresholds = observer.thresholds;
+      readonly observe = observer.observe;
+      readonly unobserve = observer.unobserve;
+      readonly disconnect = observer.disconnect;
+      readonly takeRecords = observer.takeRecords;
+
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+    }
+
+    vi.stubGlobal('IntersectionObserver', StubIntersectionObserver);
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTrack)} />);
+
+    const deck = await screen.findByRole('complementary', {
+      name: 'Playback deck',
+    });
+    await waitFor(() => expect(observe).toHaveBeenCalledWith(deck));
+    const bounds = { bottom: -1 } as DOMRectReadOnly;
+    act(() => {
+      observerCallback?.(
+        [
+          {
+            boundingClientRect: bounds,
+            intersectionRatio: 0,
+            intersectionRect: bounds,
+            isIntersecting: false,
+            rootBounds: null,
+            target: deck,
+            time: 0,
+          },
+        ],
+        observer,
+      );
+    });
+
+    const scrollIntoView = vi.fn();
+    deck.scrollIntoView = scrollIntoView;
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Back to player',
+      }),
+    );
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start',
+    });
+    expect(deck).toHaveFocus();
+    expect(disconnect).not.toHaveBeenCalled();
   });
 
   it('explains why shuffle is unavailable on a single-track catalog', async () => {

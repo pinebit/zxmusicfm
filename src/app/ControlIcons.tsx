@@ -72,3 +72,11 @@ export function RestoreIcon() {
     </ControlIcon>
   );
 }
+
+export function UpIcon() {
+  return (
+    <ControlIcon>
+      <path d="m12 4-7 7 1.4 1.4L11 7.8V20h2V7.8l4.6 4.6L19 11z" />
+    </ControlIcon>
+  );
+}

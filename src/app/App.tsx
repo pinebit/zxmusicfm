@@ -32,9 +32,11 @@ import {
   PlayIcon,
   PreviousIcon,
   RestoreIcon,
+  UpIcon,
 } from './ControlIcons.tsx';
 import { formatTime } from './formatTime.ts';
 import { PianoKeyboard } from './PianoKeyboard.tsx';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion.ts';
 import { VolumeKnob } from './VolumeKnob.tsx';
 import { WaveformSeek } from './WaveformSeek.tsx';
 
@@ -149,19 +151,23 @@ function PlayerApplication({
     attempt: 0,
   });
   const [waveformAttempt, setWaveformAttempt] = useState(0);
+  const [canvasRestoreGeneration, setCanvasRestoreGeneration] = useState(0);
   const waveforms: WaveformState =
     loadedWaveforms.attempt === waveformAttempt
       ? loadedWaveforms
       : { status: 'loading', attempt: waveformAttempt };
   const [aboutOpen, setAboutOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+  const [deckPassed, setDeckPassed] = useState(false);
   const [mobilePortrait, setMobilePortrait] = useState(
     () => window.matchMedia(mobilePortraitQuery).matches,
   );
   const aboutTrigger = useRef<HTMLButtonElement>(null);
   const deckMaximizeTrigger = useRef<HTMLButtonElement>(null);
   const playerLayout = useRef<HTMLDivElement>(null);
+  const playbackDeck = useRef<HTMLElement>(null);
   const deckControls = useRef<HTMLDivElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
   const capable = hasRequiredCapabilities();
   const hasTracks = catalog.tracks.length > 0;
   const controlsDisabled = !capable || !hasTracks;
@@ -269,6 +275,27 @@ function PlayerApplication({
   }, [catalog, waveformAttempt]);
 
   useEffect(() => {
+    let restoreFrame = 0;
+    const scheduleCanvasRestore = () => {
+      if (document.visibilityState === 'hidden' || restoreFrame !== 0) return;
+      restoreFrame = window.requestAnimationFrame(() => {
+        restoreFrame = 0;
+        setCanvasRestoreGeneration((generation) => generation + 1);
+      });
+    };
+    const visibilityChange = () => {
+      if (document.visibilityState === 'visible') scheduleCanvasRestore();
+    };
+    document.addEventListener('visibilitychange', visibilityChange);
+    window.addEventListener('pageshow', scheduleCanvasRestore);
+    return () => {
+      document.removeEventListener('visibilitychange', visibilityChange);
+      window.removeEventListener('pageshow', scheduleCanvasRestore);
+      window.cancelAnimationFrame(restoreFrame);
+    };
+  }, []);
+
+  useEffect(() => {
     const pageHide = () => controller.persistNow();
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && deckMaximized) {
@@ -305,6 +332,19 @@ function PlayerApplication({
   ]);
 
   useEffect(() => controller.activate(), [controller]);
+
+  useEffect(() => {
+    const deck = playbackDeck.current;
+    if (deck === null || typeof IntersectionObserver !== 'function') return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry === undefined) return;
+      setDeckPassed(
+        !entry.isIntersecting && entry.boundingClientRect.bottom <= 0,
+      );
+    });
+    observer.observe(deck);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia(mobilePortraitQuery);
@@ -357,6 +397,15 @@ function PlayerApplication({
     setAboutOpen(false);
     window.setTimeout(() => aboutTrigger.current?.focus(), 0);
   }, []);
+  const jumpToDeck = useCallback(() => {
+    const deck = playbackDeck.current;
+    if (deck === null) return;
+    deck.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    deck.focus({ preventScroll: true });
+  }, [reducedMotion]);
   const shareApp = useCallback(() => {
     const shareData = { title: 'ZX RADIO', url: SHARE_URL };
     if (typeof navigator.share === 'function') {
@@ -511,6 +560,7 @@ function PlayerApplication({
                         showPosition={selected}
                         disabled={controlsDisabled || loading}
                         label={`Seek ${track.title}`}
+                        canvasRestoreGeneration={canvasRestoreGeneration}
                         onCommit={(seconds) =>
                           controller.seek(track.id, seconds)
                         }
@@ -545,7 +595,12 @@ function PlayerApplication({
           )}
         </section>
 
-        <aside className="meter-panel" aria-label="Playback deck">
+        <aside
+          ref={playbackDeck}
+          className="meter-panel"
+          aria-label="Playback deck"
+          tabIndex={-1}
+        >
           <div className="meter-heading">
             <div className="on-air-display">
               <p
@@ -700,6 +755,18 @@ function PlayerApplication({
           </div>
         </aside>
       </div>
+
+      {deckPassed && !deckMaximized ? (
+        <button
+          type="button"
+          className="deck-jump-button"
+          aria-label="Back to player"
+          title="Back to player"
+          onClick={jumpToDeck}
+        >
+          <UpIcon />
+        </button>
+      ) : null}
 
       <footer className="site-footer">
         <nav aria-label="Project, sharing, and support">

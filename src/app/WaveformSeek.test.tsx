@@ -25,16 +25,19 @@ function stubDrawingContext(): {
   readonly clearRect: ReturnType<typeof vi.fn>;
   readonly createLinearGradient: ReturnType<typeof vi.fn>;
   readonly addColorStop: ReturnType<typeof vi.fn>;
+  readonly drawImage: ReturnType<typeof vi.fn>;
+  readonly context: CanvasRenderingContext2D;
 } {
   const clearRect = vi.fn();
   const addColorStop = vi.fn();
   const createLinearGradient = vi.fn(() => ({ addColorStop }));
+  const drawImage = vi.fn();
   const context = {
     beginPath: vi.fn(),
     clearRect,
     clip: vi.fn(),
     createLinearGradient,
-    drawImage: vi.fn(),
+    drawImage,
     fill: vi.fn(),
     fillRect: vi.fn(),
     lineTo: vi.fn(),
@@ -45,7 +48,13 @@ function stubDrawingContext(): {
     stroke: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
-  return { clearRect, createLinearGradient, addColorStop };
+  return {
+    clearRect,
+    createLinearGradient,
+    addColorStop,
+    drawImage,
+    context,
+  };
 }
 
 function stubReducedMotion(reduce: boolean): void {
@@ -289,6 +298,51 @@ describe('WaveformSeek', () => {
 
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('rebuilds a discarded canvas surface inline after page restore', () => {
+    const { context, createLinearGradient, drawImage } = stubDrawingContext();
+    countingResizeObserver();
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      class {
+        readonly width: number;
+        readonly height: number;
+
+        constructor(width: number, height: number) {
+          this.width = width;
+          this.height = height;
+        }
+
+        getContext() {
+          return context;
+        }
+      },
+    );
+
+    const view = (canvasRestoreGeneration: number, position: number) => (
+      <WaveformSeek
+        waveform={waveform}
+        duration={120}
+        position={position}
+        showPosition={false}
+        disabled={false}
+        label="Seek test track"
+        canvasRestoreGeneration={canvasRestoreGeneration}
+        onCommit={vi.fn()}
+      />
+    );
+    const { rerender } = render(view(0, 0));
+    expect(drawImage).toHaveBeenCalledOnce();
+    expect(createLinearGradient).toHaveBeenCalledTimes(3);
+
+    rerender(view(1, 0));
+    expect(drawImage).toHaveBeenCalledOnce();
+    expect(createLinearGradient).toHaveBeenCalledTimes(6);
+
+    rerender(view(1, 1));
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(createLinearGradient).toHaveBeenCalledTimes(9);
   });
 
   it('keeps one resize observer and one animation loop across position updates', () => {

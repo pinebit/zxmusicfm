@@ -11,7 +11,7 @@ const musicSources = [
   { name: 'ZX-Art', url: 'https://zxart.ee/eng/music/' },
   { name: 'ZXTunes', url: 'https://zxtunes.com/' },
   { name: 'Demozoo', url: 'https://demozoo.org/' },
-  { name: 'AY/YM homepage', url: 'https://bulba.untergrund.net/music_e.htm' },
+  { name: 'AY homepage', url: 'https://bulba.untergrund.net/music_e.htm' },
   { name: 'CVGM.net', url: 'https://www.cvgm.net/' },
 ] as const;
 

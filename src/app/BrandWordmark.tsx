@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { usePrefersReducedMotion } from './usePrefersReducedMotion.ts';
 
@@ -50,6 +50,9 @@ const BOUNCEABLE = LETTERS.map((_, index) => index).filter((index) =>
 
 // Matches the brand-letter-bounce keyframe duration in styles.css.
 const BOUNCE_MS = 900;
+const SPECTRUM_REST_MIN_MS = 10_000;
+const SPECTRUM_REST_RANGE_MS = 10_000;
+const SPECTRUM_TRAVEL = WIDTH + 30;
 
 function pickNext(previous: number | null): number {
   const options = BOUNCEABLE.filter((index) => index !== previous);
@@ -60,6 +63,8 @@ function pickNext(previous: number | null): number {
 export function BrandWordmark() {
   const [bouncing, setBouncing] = useState<number | null>(null);
   const reducedMotion = usePrefersReducedMotion();
+  const spectrumId = useId().replaceAll(':', '');
+  const spectrumAnimation = useRef<SVGAnimateTransformElement>(null);
 
   useEffect(() => {
     if (reducedMotion) return;
@@ -82,6 +87,23 @@ export function BrandWordmark() {
     };
   }, [reducedMotion]);
 
+  useEffect(() => {
+    if (reducedMotion) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleSweep = () => {
+      const rest =
+        SPECTRUM_REST_MIN_MS + Math.random() * SPECTRUM_REST_RANGE_MS;
+      timer = setTimeout(() => {
+        spectrumAnimation.current?.beginElement();
+        scheduleSweep();
+      }, rest);
+    };
+    scheduleSweep();
+    return () => {
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [reducedMotion]);
+
   return (
     <svg
       className="brand-wordmark"
@@ -89,26 +111,69 @@ export function BrandWordmark() {
       aria-hidden="true"
       focusable="false"
     >
-      {LETTERS.map((letter, index) => (
-        <g
-          key={index}
-          className={`brand-letter${
-            bouncing === index && !reducedMotion ? ' is-bouncing' : ''
-          }`}
-        >
-          {letter.dots.map((dot, dotIndex) => (
-            <rect
-              key={dotIndex}
-              x={dot.cx - DOT_SIZE / 2}
-              y={dot.cy - DOT_SIZE / 2}
-              width={DOT_SIZE}
-              height={DOT_SIZE}
-              rx={DOT_CORNER}
-              ry={DOT_CORNER}
+      {!reducedMotion ? (
+        <defs>
+          <linearGradient
+            id={`${spectrumId}-spectrum-gradient`}
+            gradientUnits="userSpaceOnUse"
+            x1={-24}
+            y1={ROWS + 4}
+            x2={-8}
+            y2={-4}
+          >
+            <stop offset="0%" stopColor="transparent" />
+            <stop offset="5%" stopColor="var(--red)" />
+            <stop offset="25%" stopColor="var(--red)" />
+            <stop offset="25%" stopColor="var(--amber)" />
+            <stop offset="45%" stopColor="var(--amber)" />
+            <stop offset="45%" stopColor="var(--green)" />
+            <stop offset="65%" stopColor="var(--green)" />
+            <stop offset="65%" stopColor="var(--cyan)" />
+            <stop offset="85%" stopColor="var(--cyan)" />
+            <stop offset="90%" stopColor="transparent" />
+            <stop offset="100%" stopColor="transparent" />
+            <animateTransform
+              ref={spectrumAnimation}
+              attributeName="gradientTransform"
+              type="translate"
+              from="0 0"
+              to={`${SPECTRUM_TRAVEL} 0`}
+              dur="2.4s"
+              calcMode="linear"
+              fill="remove"
             />
-          ))}
-        </g>
-      ))}
+          </linearGradient>
+        </defs>
+      ) : null}
+      <g id={`${spectrumId}-wordmark-pixels`}>
+        {LETTERS.map((letter, index) => (
+          <g
+            key={index}
+            className={`brand-letter${
+              bouncing === index && !reducedMotion ? ' is-bouncing' : ''
+            }`}
+          >
+            {letter.dots.map((dot, dotIndex) => (
+              <rect
+                key={dotIndex}
+                x={dot.cx - DOT_SIZE / 2}
+                y={dot.cy - DOT_SIZE / 2}
+                width={DOT_SIZE}
+                height={DOT_SIZE}
+                rx={DOT_CORNER}
+                ry={DOT_CORNER}
+              />
+            ))}
+          </g>
+        ))}
+      </g>
+      {!reducedMotion ? (
+        <use
+          className="brand-spectrum-pixels"
+          href={`#${spectrumId}-wordmark-pixels`}
+          fill={`url(#${spectrumId}-spectrum-gradient)`}
+        />
+      ) : null}
     </svg>
   );
 }

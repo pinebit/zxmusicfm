@@ -16,6 +16,7 @@ type WaveformSeekProps = {
   readonly showPosition: boolean;
   readonly disabled: boolean;
   readonly label: string;
+  readonly canvasRestoreGeneration?: number;
   readonly onCommit: (seconds: number) => void;
 };
 
@@ -168,6 +169,7 @@ export function WaveformSeek({
   showPosition,
   disabled,
   label,
+  canvasRestoreGeneration = 0,
   onCommit,
 }: WaveformSeekProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -176,6 +178,8 @@ export function WaveformSeek({
   const pointerActive = useRef(false);
   const previewRef = useRef<number | undefined>(undefined);
   const staticLayer = useRef<StaticLayer | undefined>(undefined);
+  const drawStaticLayerInline = useRef(false);
+  const handledCanvasRestoreGeneration = useRef(canvasRestoreGeneration);
   const [preview, setPreview] = useState<number>();
   const [canvasFailed, setCanvasFailed] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
@@ -216,12 +220,19 @@ export function WaveformSeek({
       );
 
       const cached = staticLayer.current;
-      const usable =
+      let usable: StaticLayer | undefined;
+      if (drawStaticLayerInline.current) {
+        usable = undefined;
+      } else if (
         cached?.width === width &&
         cached.height === height &&
         cached.waveform === visualWaveform
-          ? cached
-          : createStaticLayer(width, height, ratio, visualWaveform);
+      ) {
+        usable = cached;
+      } else {
+        usable = createStaticLayer(width, height, ratio, visualWaveform);
+      }
+      drawStaticLayerInline.current = false;
       staticLayer.current = usable;
       if (usable === undefined) {
         drawStaticLanes(context, width, height, ratio, visualWaveform);
@@ -261,6 +272,26 @@ export function WaveformSeek({
     if (animating) return;
     drawWaveform(displayedPosition);
   }, [animating, displayedPosition, drawWaveform]);
+
+  // Android may discard canvas backing surfaces while an installed app is
+  // suspended. Rebuild both surfaces after the page wakes, drawing the static
+  // lanes inline once so a stale OffscreenCanvas cannot leave a black canvas.
+  useEffect(() => {
+    if (handledCanvasRestoreGeneration.current === canvasRestoreGeneration) {
+      return;
+    }
+    handledCanvasRestoreGeneration.current = canvasRestoreGeneration;
+    staticLayer.current = undefined;
+    drawStaticLayerInline.current = true;
+    const canvas = canvasRef.current;
+    if (canvas !== null) {
+      const backingWidth = canvas.width;
+      const backingHeight = canvas.height;
+      canvas.width = backingWidth;
+      canvas.height = backingHeight;
+    }
+    drawWaveform(positionRef.current);
+  }, [canvasRestoreGeneration, drawWaveform]);
 
   useEffect(() => {
     if (!animating) return;

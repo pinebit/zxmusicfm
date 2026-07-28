@@ -1,6 +1,6 @@
 # ZX RADIO
 
-ZX RADIO is a web player for a curated collection of ZX Spectrum AY/YM chip
+ZX RADIO is a web player for a curated collection of ZX Spectrum AY chip
 music.
 
 Nothing here is a recording. Each track is prepared offline into a finite,
