@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "5ff45a43ae90908c015698c9aee63aaeb2fd02ece93327426f0a491c6e87115e",
+  "psgByteLength": 173130,
+  "ym6Sha256": "260351d36ec08b8e5917fb8377a90f3109b6110ccc46cbc56f5a64da92a893c2",
+  "ym6ByteLength": 127065,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 7935,
+  "title": "Dreamless",
+  "author": "Mic",
+  "comment": "Converted from STP through ZXTune PSG by ZX-MUSIC.FM"
+}

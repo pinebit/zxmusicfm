@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:Mic_-_Dreamless_(1997)_(Enlight_1997).stp",
+  "sourceFormat": "STP",
+  "sourceSha256": "9a57e337eb98a35ccba0f113a99735b16b15e88fc8e8aec23e2c25c5ff0fd419",
+  "sourceByteLength": 7828,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "260351d36ec08b8e5917fb8377a90f3109b6110ccc46cbc56f5a64da92a893c2",
+  "runtimeByteLength": 127065,
+  "frameCount": 7935,
+  "durationSeconds": 158.7,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "cbf6861c51192df6c8b0b6e52d4dc5163fc5123d56c9e76816c5ef8df6463777",
+  "measuredLoudnessLufs": -7.22,
+  "normalizationGainDb": -1.78,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "STP",
+    "sourceSha256": "9a57e337eb98a35ccba0f113a99735b16b15e88fc8e8aec23e2c25c5ff0fd419",
+    "psgSha256": "5ff45a43ae90908c015698c9aee63aaeb2fd02ece93327426f0a491c6e87115e",
+    "psgByteLength": 173130
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "260351d36ec08b8e5917fb8377a90f3109b6110ccc46cbc56f5a64da92a893c2",
+    "ym6ByteLength": 127065,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 7935,
+    "title": "Dreamless",
+    "author": "Mic",
+    "comment": "Converted from STP through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "5ff45a43ae90908c015698c9aee63aaeb2fd02ece93327426f0a491c6e87115e",
+    "psgByteLength": 173130
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

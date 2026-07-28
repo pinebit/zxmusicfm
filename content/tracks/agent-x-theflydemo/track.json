@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "agent-x-theflydemo",
+  "order": 42,
+  "title": "TheFlyDemo",
+  "author": "Agent-X",
+  "sourceUrl": "https://zxart.ee/tune/62991",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC"
+}

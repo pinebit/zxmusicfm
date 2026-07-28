@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mcmacker-return-to-youth",
+  "order": 41,
+  "title": "Return to youth",
+  "author": "MCMACKER",
+  "sourceUrl": "https://zxart.ee/tune/366005",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2021
+}

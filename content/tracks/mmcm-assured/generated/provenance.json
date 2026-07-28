@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:MmcM_-_AsSuRed_(2000).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "c6aabb7fa1879dfe96fb419c083b97778f9288933bd0005872f197ee03850900",
+  "sourceByteLength": 2822,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "2940bd7743ffb4b33693fe6291a87af47556e91537bd55d4f062262adac8ea44",
+  "runtimeByteLength": 177160,
+  "frameCount": 11066,
+  "durationSeconds": 221.32,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "76cf8bcef403fa7adb64218bac8e8c783a9ec072addce4a10fae4210ed93aa32",
+  "measuredLoudnessLufs": -9.01,
+  "normalizationGainDb": 0.01,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "PT3",
+    "sourceSha256": "c6aabb7fa1879dfe96fb419c083b97778f9288933bd0005872f197ee03850900",
+    "psgSha256": "c77cce9a73d00554be2645d8c290b202198baa11a102458afdfbb57229e9363c",
+    "psgByteLength": 294867
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "2940bd7743ffb4b33693fe6291a87af47556e91537bd55d4f062262adac8ea44",
+    "ym6ByteLength": 177160,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 11066,
+    "title": "AsSuRed",
+    "author": "MmcM",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "c77cce9a73d00554be2645d8c290b202198baa11a102458afdfbb57229e9363c",
+    "psgByteLength": 294867
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

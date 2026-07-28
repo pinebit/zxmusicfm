@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:MmcM_-_Man_of_Art_(2015)_(Multimatograf_11,_1).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "86068604b2cd803caf805142789c885167711a8e81d5af9e07e14e6aea0b61df",
+  "sourceByteLength": 8883,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "718a18d8f97f6c44252839a450cd59b5402ecb7309e5411cddcca8aea2d6c113",
+  "runtimeByteLength": 138907,
+  "frameCount": 8675,
+  "durationSeconds": 173.5,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "76e7e751027b3b00e1e27a17d7dc425f12a6ff49617ad3313d778d1a870a0321",
+  "measuredLoudnessLufs": -9.86,
+  "normalizationGainDb": 0.86,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "PT3",
+    "sourceSha256": "86068604b2cd803caf805142789c885167711a8e81d5af9e07e14e6aea0b61df",
+    "psgSha256": "d4be27fd5512e70c2e57b84b948115979c0341ef742ea115cbdeb06d4b1b3b31",
+    "psgByteLength": 234658
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "718a18d8f97f6c44252839a450cd59b5402ecb7309e5411cddcca8aea2d6c113",
+    "ym6ByteLength": 138907,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8675,
+    "title": "Man of Art",
+    "author": "MmcM",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "d4be27fd5512e70c2e57b84b948115979c0341ef742ea115cbdeb06d4b1b3b31",
+    "psgByteLength": 234658
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

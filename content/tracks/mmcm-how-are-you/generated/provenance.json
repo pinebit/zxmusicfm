@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:MmcM_-_How_are_you_(2016)_(DiHalt_2016,_1).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "409f08f4a863cb09acebfd69fad8b7b8510a16a27dfe29743507975f10631674",
+  "sourceByteLength": 7294,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "c8f08a9df83253a6af0af5c57b32f1b7832e064aa31e4325d849dbdb0528b5b8",
+  "runtimeByteLength": 135709,
+  "frameCount": 8475,
+  "durationSeconds": 169.5,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "7b0db4c29e1c6f40fca72f2a7739fa8443241a45058a8299439a286236df2a74",
+  "measuredLoudnessLufs": -10.32,
+  "normalizationGainDb": 1.32,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "PT3",
+    "sourceSha256": "409f08f4a863cb09acebfd69fad8b7b8510a16a27dfe29743507975f10631674",
+    "psgSha256": "c915669e87b4a061081243b1cfc47288d49c5c3cb66fa801d5d95f9736e65db6",
+    "psgByteLength": 228508
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "c8f08a9df83253a6af0af5c57b32f1b7832e064aa31e4325d849dbdb0528b5b8",
+    "ym6ByteLength": 135709,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8475,
+    "title": "How are you?",
+    "author": "MmcM",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "c915669e87b4a061081243b1cfc47288d49c5c3cb66fa801d5d95f9736e65db6",
+    "psgByteLength": 228508
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mmcm-special-4-dihalt",
+  "order": 40,
+  "title": "SpEc!aL 4 diHaLt",
+  "author": "MmcM",
+  "sourceUrl": "https://zxart.ee/tune/417040",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2009
+}

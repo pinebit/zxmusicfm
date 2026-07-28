@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "117cb4af33c0f4dde7265f6f9e3e6486f6a25cd70fc77474ae7453c1f7e4c67b",
+  "psgByteLength": 208540,
+  "ym6Sha256": "ecef376e89596f7f30b83106644a0ca892ac1dac5fe118bcb01ed31f481e24cb",
+  "ym6ByteLength": 126049,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 7871,
+  "title": "SpEc!aL 4 diHaLt",
+  "author": "MmcM",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

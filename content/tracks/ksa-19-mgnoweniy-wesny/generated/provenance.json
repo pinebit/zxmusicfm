@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:KSA_-_19_MGNOWENIY_WESNY_(1996)_(Enlight_1996,_6).stp",
+  "sourceFormat": "STP",
+  "sourceSha256": "863b352836609f6832ce8ca222f570d7dd0b84ad058cbe2347b2d4deeacfe299",
+  "sourceByteLength": 4710,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "10febe823e38ddf5f9e7b84ed2916e46873ad42feab5ea7eee8f1c8e331f97cc",
+  "runtimeByteLength": 122978,
+  "frameCount": 7679,
+  "durationSeconds": 153.58,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "ed2a54f8b5c6f80802cd85a838b82501e7d9ce5071f9179811f9e79f423d31d6",
+  "measuredLoudnessLufs": -6.83,
+  "normalizationGainDb": -2.17,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "STP",
+    "sourceSha256": "863b352836609f6832ce8ca222f570d7dd0b84ad058cbe2347b2d4deeacfe299",
+    "psgSha256": "d4ea420ea986e06b9872146f9f9c064f2ec34848c79ac0458766142d9be66ac1",
+    "psgByteLength": 165962
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "10febe823e38ddf5f9e7b84ed2916e46873ad42feab5ea7eee8f1c8e331f97cc",
+    "ym6ByteLength": 122978,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 7679,
+    "title": "19 MGNOWENIY WESNY",
+    "author": "KSA",
+    "comment": "Converted from STP through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "d4ea420ea986e06b9872146f9f9c064f2ec34848c79ac0458766142d9be66ac1",
+    "psgByteLength": 165962
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

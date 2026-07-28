@@ -1,0 +1,10 @@
+{
+  "tool": "zxtune123",
+  "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+  "mode": "psg",
+  "optimization": 0,
+  "sourceFormat": "PT3",
+  "sourceSha256": "86068604b2cd803caf805142789c885167711a8e81d5af9e07e14e6aea0b61df",
+  "psgSha256": "d4be27fd5512e70c2e57b84b948115979c0341ef742ea115cbdeb06d4b1b3b31",
+  "psgByteLength": 234658
+}

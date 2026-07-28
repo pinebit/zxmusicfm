@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mmcm-how-are-you",
+  "order": 37,
+  "title": "How are you?",
+  "author": "MmcM",
+  "sourceUrl": "https://zxart.ee/tune/90228",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2016
+}

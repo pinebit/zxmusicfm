@@ -1,0 +1,16 @@
+{
+  "tool": "zxmusicfm-ay-capture",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "sourceSha256": "2680683131199ccb6d752e6985aa488ba5f8cf9b7cd85b8df09df4d44417f424",
+  "sourceByteLength": 3618,
+  "subsong": 1,
+  "durationSource": "source",
+  "ym6Sha256": "1b18dfd23a509f7a59525989062cc0422ea3aeb0624bf05ba7e082678c199dd5",
+  "ym6ByteLength": 186019,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 11620,
+  "title": "TheFlyDemo",
+  "author": "Agent-X",
+  "comment": "Captured from AY subsong 1 by ZX-MUSIC.FM"
+}

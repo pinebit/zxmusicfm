@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "d4be27fd5512e70c2e57b84b948115979c0341ef742ea115cbdeb06d4b1b3b31",
+  "psgByteLength": 234658,
+  "ym6Sha256": "718a18d8f97f6c44252839a450cd59b5402ecb7309e5411cddcca8aea2d6c113",
+  "ym6ByteLength": 138907,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8675,
+  "title": "Man of Art",
+  "author": "MmcM",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

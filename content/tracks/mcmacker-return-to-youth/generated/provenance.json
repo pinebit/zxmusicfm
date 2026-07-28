@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:MCMACKER_-_Return_to_youth_(2021)_(Демодуляция_2021,_1).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "fc23343a1c14d08d5a0f8e88a738b38e3772ddcf89ab782a363717073ea6e358",
+  "sourceByteLength": 5869,
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "3792d61cd925ba7e8e6bcac60ba3644cf8c3803d34e4976cc5bd54af54ab6d2d",
+  "runtimeByteLength": 74404,
+  "frameCount": 4643,
+  "durationSeconds": 92.86,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "5942eb2b36b2477b8ba61e1e979f85b30cd56c62c6e20bc14468b5b4784507dc",
+  "measuredLoudnessLufs": -11.75,
+  "normalizationGainDb": 1.66,
+  "peakLimitedFrom": 2.75,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "PT3",
+    "sourceSha256": "fc23343a1c14d08d5a0f8e88a738b38e3772ddcf89ab782a363717073ea6e358",
+    "psgSha256": "7cf954801cbb44fa3a8b3f1ebf33d5b3bfafc25c964edd73c7ada27f6608de6d",
+    "psgByteLength": 119058
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "3792d61cd925ba7e8e6bcac60ba3644cf8c3803d34e4976cc5bd54af54ab6d2d",
+    "ym6ByteLength": 74404,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 4643,
+    "title": "Return to youth",
+    "author": "MCMACKER",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "7cf954801cbb44fa3a8b3f1ebf33d5b3bfafc25c964edd73c7ada27f6608de6d",
+    "psgByteLength": 119058
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

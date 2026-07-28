@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "pator-smutek",
+  "order": 39,
+  "title": "Smutek",
+  "author": "Pator",
+  "sourceUrl": "https://zxart.ee/tune/366187",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2021
+}

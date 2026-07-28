@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mic-dreamless",
+  "order": 35,
+  "title": "Dreamless",
+  "author": "Mic",
+  "sourceUrl": "https://zxart.ee/tune/44159",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1997
+}

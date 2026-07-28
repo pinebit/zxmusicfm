@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "d4ea420ea986e06b9872146f9f9c064f2ec34848c79ac0458766142d9be66ac1",
+  "psgByteLength": 165962,
+  "ym6Sha256": "10febe823e38ddf5f9e7b84ed2916e46873ad42feab5ea7eee8f1c8e331f97cc",
+  "ym6ByteLength": 122978,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 7679,
+  "title": "19 MGNOWENIY WESNY",
+  "author": "KSA",
+  "comment": "Converted from STP through ZXTune PSG by ZX-MUSIC.FM"
+}

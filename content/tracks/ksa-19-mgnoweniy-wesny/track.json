@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ksa-19-mgnoweniy-wesny",
+  "order": 38,
+  "title": "19 MGNOWENIY WESNY",
+  "author": "KSA",
+  "sourceUrl": "https://zxart.ee/tune/72404",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 1996
+}

@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "2d0ea8cc68a91bfad818547544b9f80d915bac16b3883c3a693fcc44f8fb3125",
+  "psgByteLength": 168714,
+  "ym6Sha256": "d037fcd1a97e860ebe99159406778a37b995edf883ec4fa17e429658d4cc6663",
+  "ym6ByteLength": 99928,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 6239,
+  "title": "Smutek",
+  "author": "Pator",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

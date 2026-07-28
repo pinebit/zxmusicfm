@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mmcm-man-of-art",
+  "order": 36,
+  "title": "Man of Art",
+  "author": "MmcM",
+  "sourceUrl": "https://zxart.ee/tune/58781",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2015
+}

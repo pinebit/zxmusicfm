@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:Pator_-_Smutek_(2021).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "46fb9088a599eb8453a696e375eb328410d236c8db37ebdeef0748b6606d6642",
+  "sourceByteLength": 7725,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "d037fcd1a97e860ebe99159406778a37b995edf883ec4fa17e429658d4cc6663",
+  "runtimeByteLength": 99928,
+  "frameCount": 6239,
+  "durationSeconds": 124.78,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "0e51cbcfc00203f6d46338e0de3564d4d376339ac24d4382c244a16dd11baa44",
+  "measuredLoudnessLufs": -8.67,
+  "normalizationGainDb": -0.33,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "PT3",
+    "sourceSha256": "46fb9088a599eb8453a696e375eb328410d236c8db37ebdeef0748b6606d6642",
+    "psgSha256": "2d0ea8cc68a91bfad818547544b9f80d915bac16b3883c3a693fcc44f8fb3125",
+    "psgByteLength": 168714
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "d037fcd1a97e860ebe99159406778a37b995edf883ec4fa17e429658d4cc6663",
+    "ym6ByteLength": 99928,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 6239,
+    "title": "Smutek",
+    "author": "Pator",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "2d0ea8cc68a91bfad818547544b9f80d915bac16b3883c3a693fcc44f8fb3125",
+    "psgByteLength": 168714
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}
