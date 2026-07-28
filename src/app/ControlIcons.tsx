@@ -49,6 +49,14 @@ export function NextIcon() {
   );
 }
 
+export function MutedIcon() {
+  return (
+    <ControlIcon>
+      <path d="M2.5 9.5h3L9.5 6.5v11L5.5 14.5h-3zM13.9 9.9 15.4 8.4 21.1 14.1 19.6 15.6zM19.6 8.4 21.1 9.9 15.4 15.6 13.9 14.1z" />
+    </ControlIcon>
+  );
+}
+
 export function MaximizeIcon() {
   return (
     <ControlIcon>

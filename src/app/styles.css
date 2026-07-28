@@ -1301,15 +1301,50 @@ h3 {
 }
 
 .volume-knob-wrap {
+  --volume-knob-size: clamp(2.7rem, 4.8vw, 4.1rem);
+
+  position: relative;
   display: grid;
   place-items: center;
   gap: 0.25rem;
 }
 
+/* Printed on the dial rather than stacked beneath it. The deck leaves 11px
+   under the knob and the focus ring claims 6 of them, and anything in flow
+   would push the knob off the transport's centre line. It sits high on the
+   dial because the glyph only appears at zero, and at zero the pointer is
+   parked at -135deg, which sweeps the lower left. Cream, not red: red reads
+   2.9:1 against the lighter end of the hardware gradient, and the pulse would
+   take it further down. */
+.volume-muted-indicator {
+  position: absolute;
+  top: 31%;
+  left: 50%;
+  display: grid;
+  color: var(--cream);
+  transform: translate(-50%, -50%);
+}
+
+.volume-muted-indicator .control-icon {
+  width: calc(var(--volume-knob-size) * 0.32);
+  height: calc(var(--volume-knob-size) * 0.32);
+  animation: volume-muted-pulse 1.4s ease-in-out infinite;
+}
+
+/* 0.7 Hz, an order below the three-per-second flash threshold, and the trough
+   is 0.5 so the glyph holds 3:1 against the dial through the whole cycle. Only
+   the trough is a keyframe: the reduced-motion rule collapses the animation to
+   one 0.01ms pass, which has to land on a visible glyph, not a faded one. */
+@keyframes volume-muted-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .volume-knob {
   position: relative;
-  width: clamp(2.7rem, 4.8vw, 4.1rem);
-  height: clamp(2.7rem, 4.8vw, 4.1rem);
+  width: var(--volume-knob-size);
+  height: var(--volume-knob-size);
   touch-action: none;
   background: var(--hardware-surface);
   border: 1px solid #555b62;

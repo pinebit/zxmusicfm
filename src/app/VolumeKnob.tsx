@@ -1,5 +1,7 @@
 import { useRef, type CSSProperties } from 'react';
 
+import { MutedIcon } from './ControlIcons.tsx';
+
 type VolumeKnobProps = {
   readonly value: number;
   readonly disabled: boolean;
@@ -26,6 +28,7 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
     | undefined
   >(undefined);
   const percent = clamp(value);
+  const muted = !disabled && percent === 0;
 
   return (
     <div className="volume-knob-wrap">
@@ -38,6 +41,7 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
         aria-valuemax={100}
         aria-valuenow={percent}
         aria-valuetext={`${percent} percent`}
+        aria-describedby={muted ? 'volume-muted-status' : undefined}
         aria-disabled={disabled}
         style={
           {
@@ -100,6 +104,25 @@ export function VolumeKnob({ value, disabled, onChange }: VolumeKnobProps) {
       >
         <span aria-hidden="true" />
       </div>
+      {/*
+        The region swaps its contents rather than its visibility. A live region
+        that is hidden until it matters is one the screen reader first sees as
+        already populated, and announcing that is left to the implementation; a
+        region that stays exposed and gains content announces reliably. The
+        glyph carries no text, so the state needs a spoken twin beside it.
+      */}
+      <span
+        id="volume-muted-status"
+        className="volume-muted-indicator"
+        role="status"
+      >
+        {muted ? (
+          <>
+            <MutedIcon />
+            <span className="visually-hidden">Muted</span>
+          </>
+        ) : null}
+      </span>
     </div>
   );
 }
