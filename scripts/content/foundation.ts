@@ -8,7 +8,10 @@ import {
   unlink,
   writeFile,
 } from 'node:fs/promises';
+import { availableParallelism } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Worker } from 'node:worker_threads';
 
 import {
   generatedCatalogSchema,
@@ -37,6 +40,7 @@ import {
   initializeOfflineEngine,
   renderOffline,
 } from './offlineRender.ts';
+import type { PrepareTrackReply } from './prepareTrackWorker.ts';
 import { convertPsgToYm6 } from './psg2ym6.ts';
 import {
   convertTrackerToPsg,
@@ -62,7 +66,7 @@ export type TrackInput = {
   readonly sidecar: TrackSidecar;
 };
 
-type PreparedTrack = {
+export type PreparedTrack = {
   readonly input: TrackInput;
   readonly runtime: Uint8Array;
   readonly waveform: Uint8Array;
@@ -622,7 +626,7 @@ function measureLoudness(
   };
 }
 
-async function prepareTrack(input: TrackInput): Promise<PreparedTrack> {
+export async function prepareTrack(input: TrackInput): Promise<PreparedTrack> {
   const source = await readFile(input.sourcePath);
   if (source.length === 0)
     throw new Error(`${input.sourcePath}: source is empty.`);
@@ -763,11 +767,82 @@ function createWaveformPack(payloads: readonly Uint8Array[]): Buffer {
   ]);
 }
 
+// Each in-flight track holds its whole 48 kHz render, about 70 MB per minute of
+// audio, so the pool is bounded by memory as well as cores: eight six-minute
+// tracks stay well inside the 8 GB of Vercel's smallest build machine.
+const MAX_PREPARE_WORKERS = 8;
+
+/**
+ * Renders tracks on a pool of worker threads and returns them in input order.
+ * A failure stops further dispatch; once in-flight tracks drain, the earliest
+ * failing track's error is thrown, exactly as a sequential run would.
+ */
+async function prepareTracks(
+  root: string,
+  inputs: readonly TrackInput[],
+): Promise<PreparedTrack[]> {
+  const tracks: PreparedTrack[] = [];
+  const failures: { readonly index: number; readonly error: unknown }[] = [];
+  let next = 0;
+  // Joined from this module's own path because Vite rewrites the
+  // `new URL(..., import.meta.url)` form into a non-file URL under Vitest.
+  const workerPath = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'prepareTrackWorker.ts',
+  );
+
+  const runWorker = () =>
+    new Promise<void>((resolve) => {
+      const worker = new Worker(workerPath, { workerData: root });
+      let inFlight: number | undefined;
+      const dispatch = () => {
+        if (next < inputs.length && failures.length === 0) {
+          inFlight = next;
+          next += 1;
+          worker.postMessage(inputs[inFlight]);
+        } else {
+          inFlight = undefined;
+          void worker.terminate();
+        }
+      };
+      worker.on('message', (reply: PrepareTrackReply) => {
+        if (inFlight === undefined) return;
+        if (reply.ok) tracks[inFlight] = reply.track;
+        else failures.push({ index: inFlight, error: reply.error });
+        dispatch();
+      });
+      worker.on('error', (error) => {
+        if (inFlight !== undefined) failures.push({ index: inFlight, error });
+        inFlight = undefined;
+      });
+      worker.on('exit', () => {
+        if (inFlight !== undefined) {
+          failures.push({
+            index: inFlight,
+            error: new Error(
+              `${inputs[inFlight]?.sourcePath ?? 'track'}: preparation worker exited unexpectedly.`,
+            ),
+          });
+        }
+        resolve();
+      });
+      dispatch();
+    });
+
+  const workerCount = Math.min(
+    inputs.length,
+    availableParallelism(),
+    MAX_PREPARE_WORKERS,
+  );
+  await Promise.all(Array.from({ length: workerCount }, runWorker));
+  const [firstFailure] = failures.sort((a, b) => a.index - b.index);
+  if (firstFailure !== undefined) throw firstFailure.error;
+  return tracks;
+}
+
 async function prepareContent(root: string): Promise<PreparedContent> {
   const inputs = await discoverTrackInputs(root);
-  if (inputs.length > 0) await initializeOfflineEngine(root);
-  const tracks: PreparedTrack[] = [];
-  for (const input of inputs) tracks.push(await prepareTrack(input));
+  const tracks = await prepareTracks(root, inputs);
   const waveformBytes = createWaveformPack(
     tracks.map(({ waveform }) => waveform),
   );

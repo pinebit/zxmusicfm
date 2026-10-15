@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -90,6 +90,55 @@ describe('foundation content generation', () => {
       'generated catalog is stale or has unexpected bytes',
     );
   });
+
+  it('reports the earliest failing track when several fail', async () => {
+    // Tracks are prepared on worker threads and can fail in any order. The
+    // error must still name the track a sequential run would have stopped at.
+    const catalog = generatedCatalogSchema.parse(
+      JSON.parse(
+        await readFile(
+          path.join(process.cwd(), 'public', 'generated', 'catalog.json'),
+          'utf8',
+        ),
+      ) as unknown,
+    );
+    const shortest = [...catalog.tracks]
+      .sort((left, right) => left.durationSeconds - right.durationSeconds)
+      .slice(0, 3);
+    const root = await createTemporaryRoot();
+    await cp(path.join(process.cwd(), 'vendor'), path.join(root, 'vendor'), {
+      recursive: true,
+    });
+    for (const [index, track] of shortest.entries()) {
+      const directory = path.join(root, 'content', 'tracks', track.id);
+      await cp(
+        path.join(process.cwd(), 'content', 'tracks', track.id),
+        directory,
+        { recursive: true },
+      );
+      const sidecarPath = path.join(directory, 'track.json');
+      const sidecar = JSON.parse(await readFile(sidecarPath, 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      // A retitled sidecar no longer matches the title its committed YM6
+      // conversion embeds, so every track after the first is stale.
+      await writeFile(
+        sidecarPath,
+        JSON.stringify({
+          ...sidecar,
+          order: index + 1,
+          ...(index === 0 ? {} : { title: `${track.title} (retitled)` }),
+        }),
+      );
+    }
+
+    const validation = validateContent(root);
+    await expect(validation).rejects.toThrow(
+      path.join(root, 'content', 'tracks', shortest[1]?.id ?? '', 'source'),
+    );
+    await expect(validation).rejects.toThrow('YM6 conversion is stale');
+  }, 30_000);
 
   it('validates the generated real catalog and provenance', async () => {
     await expect(validateContent(process.cwd())).resolves.toBeDefined();

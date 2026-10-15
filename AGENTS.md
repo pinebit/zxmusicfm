@@ -77,7 +77,7 @@ src/
     loudness.ts                ITU-R BS.1770 measurement, build time only
     waveform.ts                waveform peak encoding/layout
 scripts/
-  content/{cli,foundation,offlineRender,psg2ym6,remote,tracker}.ts
+  content/{cli,foundation,offlineRender,prepareTrackWorker,psg2ym6,remote,tracker}.ts
   playback/{install-converter,rebuild-engine,verify-engine-artifacts}.*
 content/tracks/<permanent-id>/  authoritative source + sidecar + generated/
 public/generated/               catalog, hashed runtime YM, waveform pack
@@ -158,6 +158,7 @@ Never statically import `Ym2149PlaybackAdapter.ts`, the worklet, vendored glue, 
 - The audio hot path is isolated to the worklet: 1,024-sample WASM render, per-channel RMS, one register copy, and 128-frame ring drains. Do not add per-sample main-thread work.
 - Measured locally on arm64 with Node 24.14.1 at 48 kHz over 60 seconds each of `pator-solitude`, `klav-satisfaction-10`, `jason-c-brooke-ramparts-128k-title-1`, and `ziutek-shock7`, including block RMS and register reads: **5.75 ms per second of audio on average (0.58% of one core)**. AY tracks measured 6.25–6.34 ms/s; the YM track measured 4.09 ms/s. This is a regression baseline, not a phone guarantee.
 - A 128-frame quantum at 48 kHz has a 2.67 ms deadline, but block rendering amortizes allocation and typical work is far below the 21.3 ms represented by a 1,024-sample block. Re-measure before adding work in `fillRing` or `process`.
+- `content:validate` dominates the production build. Over 44 tracks (127 minutes of audio), measured locally on arm64 with Node 24.14.1: **54 s on one worker, 29 s on two, 16 s on four, 8.8 s on eight**. About 60% of its CPU is the engine itself; `renderOffline`'s per-sample loop runs over the whole catalog and must not allocate.
 - Runtime YM and waveform URLs remain content-hashed and immutable. HTML and `generated/catalog.json` revalidate. Production sourcemaps are hidden and unlinked.
 
 ## Accessibility and interface
@@ -181,6 +182,7 @@ Never statically import `Ym2149PlaybackAdapter.ts`, the worklet, vendored glue, 
 - PSG-backed tracks use the native `.tools/bin/psg2ym6` from the same `ENGINE_COMMIT` as WASM. Legacy direct PSG ending on a frame marker is normalized only for converter input by replacing that final marker with `0xFD`; authoritative bytes are unchanged.
 - `generated/ym6-conversion.json` records the route, engine/converter commit, input and output hashes/lengths, clock, frame rate/count, and metadata. Tracker tracks also retain `source.psg` and `tracker-conversion.json`.
 - Production validation and Vercel require no Docker, Rust, or network. They reuse committed conversion artifacts when hashes and parameters match, structurally parse strict YM6, then re-render waveforms/loudness/catalog with vendored WASM.
+- **Track preparation runs on a worker pool, and its output must equal a sequential run.** `prepareTrackWorker.ts` renders one track at a time per thread; results return in input order, and a failure stops dispatch and reports the earliest failing track once in-flight work drains. Each in-flight track holds its whole 48 kHz render, about 70 MB per minute of audio, so `MAX_PREPARE_WORKERS` (8) is a memory bound sized for Vercel's 8 GB build machines, not a core count.
 - Import/update/remove remains atomic. No `.content-stage-*` directory may survive. Invalid tracks are never silently omitted.
 
 ### Loudness normalization
@@ -225,7 +227,7 @@ The track page is an Angular SPA. Read its `og:audio` numeric ID, then query `ht
 - Adapter tests cover one worklet, message ordering, generation rejection, audible-time gates, real ZX-clock pitch, all channel orders, that a listener's order survives the worklet build and a track load, that envelope- and volume-driven voices shade alike, and plain normalization.
 - Worklet tests use real vendored WASM and cover non-silent A/B/C output, ring-boundary continuity, direct seek, R13 sentinel behavior, and exactly-once completion.
 - `engineSpectrum.test.ts` is the direct regression for the defect the fork fixes. Keep the -45/-55 dB thresholds.
-- Content tests cover signatures/types, conversion provenance and staleness, peak-limited loudness, deterministic generation, and atomic mutation.
+- Content tests cover signatures/types, conversion provenance and staleness, peak-limited loudness, deterministic generation, atomic mutation, and that parallel preparation reports the earliest failing track.
 - Browser journeys use real catalog, waveform, worklet, and WASM assets. `test:e2e` builds first and serves `dist`. `playback-worklet.spec.ts` is the only proof that the module transfer, the UTF-8 shim, and the self-contained bundle work outside Chromium; a worklet that fails to render still reports playing, so keep its position-advances and stereo-order assertions on every browser project.
 - Accessibility scans fail on serious/critical findings. Manual Chromium, Firefox, and WebKit listening still matters where automation cannot prove audible continuity or stereo image.
 
@@ -236,6 +238,7 @@ The track page is an Angular SPA. Read its `og:audio` numeric ID, then query `ht
 - Canvas 2D contexts are mocked and must expose every method the tested path calls.
 - Web Audio is absent. `src/test/audioContext.ts` supplies test-driven `currentTime`, gain capture, `audioWorklet.addModule`, and a scriptable `AudioWorkletNode.port`.
 - rAF callbacks receive their timestamp so tests can advance time deterministically.
+- Preparation workers load the engine from `<root>/vendor/ym2149/`, as the atomic-mutation stage does, so a content test that validates tracks in a temporary root copies `vendor/` into it.
 
 ## Linting
 
