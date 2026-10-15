@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "fd68b1bee94eb0d2554a6375ada620aa9e13471e930c34c2d8b4d40cb5265e12",
+  "psgByteLength": 227168,
+  "ym6Sha256": "f7e1d6e15ff66c0e17790922b06adcb06ccbc2c541568e93240ab45c0e39b35d",
+  "ym6ByteLength": 135257,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 8447,
+  "title": "Fantasia!",
+  "author": "RCL",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

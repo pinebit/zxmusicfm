@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "waveforms": {
-    "url": "/generated/waveforms.c316c546ddef566b1dc47ce99ea64a248daaa81e785621370e536e1612b79a6a.bin",
-    "sha256": "c316c546ddef566b1dc47ce99ea64a248daaa81e785621370e536e1612b79a6a",
-    "byteLength": 516112,
+    "url": "/generated/waveforms.ca14d363eff459b796192dae6a3195f5c80b88b39fd871e2ff16026850d78aa1.bin",
+    "sha256": "ca14d363eff459b796192dae6a3195f5c80b88b39fd871e2ff16026850d78aa1",
+    "byteLength": 540688,
     "formatVersion": 1,
     "bucketCount": 2048,
     "channelCount": 3
@@ -1023,6 +1023,55 @@
       "waveformByteLength": 12288,
       "runtimeUrl": "/generated/tracks/agent-x-theflydemo.1b18dfd23a509f7a59525989062cc0422ea3aeb0624bf05ba7e082678c199dd5.ym",
       "waveformByteOffset": 503824
+    },
+    {
+      "id": "rcl-fantasia",
+      "order": 43,
+      "title": "Fantasia!",
+      "author": "RCL",
+      "sourceUrl": "https://zxart.ee/tune/601533",
+      "subsong": 1,
+      "sourceFormat": "PT3",
+      "runtimeFormat": "YM6",
+      "runtimeSha256": "f7e1d6e15ff66c0e17790922b06adcb06ccbc2c541568e93240ab45c0e39b35d",
+      "runtimeByteLength": 135257,
+      "durationSeconds": 168.94,
+      "durationSource": "source",
+      "chipType": "AY",
+      "chipClockHz": 1773400,
+      "frameRateHz": 50,
+      "channelLayout": "ACB",
+      "measuredLoudnessLufs": -9.46,
+      "normalizationGainDb": 0.46,
+      "waveformByteLength": 12288,
+      "year": 2026,
+      "runtimeUrl": "/generated/tracks/rcl-fantasia.f7e1d6e15ff66c0e17790922b06adcb06ccbc2c541568e93240ab45c0e39b35d.ym",
+      "waveformByteOffset": 516112
+    },
+    {
+      "id": "kuvo-free-sky",
+      "order": 44,
+      "title": "Free sky",
+      "author": "KUVO",
+      "sourceUrl": "https://zxart.ee/tune/496809",
+      "subsong": 1,
+      "sourceFormat": "PT3",
+      "runtimeFormat": "YM6",
+      "runtimeSha256": "28e35719853360dd42de2f6af894ced7fea992e0d9c8a9d73f433cf0ed3c9840",
+      "runtimeByteLength": 123289,
+      "durationSeconds": 153.98,
+      "durationSource": "source",
+      "chipType": "YM",
+      "chipClockHz": 1773400,
+      "frameRateHz": 50,
+      "channelLayout": "ABC",
+      "measuredLoudnessLufs": -12.67,
+      "normalizationGainDb": 2.58,
+      "peakLimitedFrom": 3.67,
+      "waveformByteLength": 12288,
+      "year": 2021,
+      "runtimeUrl": "/generated/tracks/kuvo-free-sky.28e35719853360dd42de2f6af894ced7fea992e0d9c8a9d73f433cf0ed3c9840.ym",
+      "waveformByteOffset": 528400
     }
   ]
 }

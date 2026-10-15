@@ -1,0 +1,14 @@
+{
+  "tool": "ym2149-psg2ym6",
+  "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+  "psgSha256": "b091454f91b03d5251c3af7155cc86d97a1efe422d58873a6cfc43d3a01ae4a8",
+  "psgByteLength": 207490,
+  "ym6Sha256": "28e35719853360dd42de2f6af894ced7fea992e0d9c8a9d73f433cf0ed3c9840",
+  "ym6ByteLength": 123289,
+  "clockHz": 1773400,
+  "frameRateHz": 50,
+  "frameCount": 7699,
+  "title": "Free sky",
+  "author": "KUVO",
+  "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM"
+}

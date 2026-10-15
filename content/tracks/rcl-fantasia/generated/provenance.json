@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "originalFileName": "filename:RCL_-_Fantasia!_(2026)_(Undefined_2026_Summer,_5).pt3",
+  "sourceFormat": "PT3",
+  "sourceSha256": "9717824bcfb2dec88bae7eeed81e3bc901fd6418282f3e06fe8f780a44f5507e",
+  "sourceByteLength": 3684,
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "runtimeFormat": "YM6",
+  "runtimeSha256": "f7e1d6e15ff66c0e17790922b06adcb06ccbc2c541568e93240ab45c0e39b35d",
+  "runtimeByteLength": 135257,
+  "frameCount": 8447,
+  "durationSeconds": 168.94,
+  "durationSource": "source",
+  "durationOverride": null,
+  "waveformSha256": "ad6ff59b86f71fca66c66faeb373c9d240e3d20cad7685522cf3d5f2d1c4df09",
+  "measuredLoudnessLufs": -9.46,
+  "normalizationGainDb": 0.46,
+  "trackerConversion": {
+    "tool": "zxtune123",
+    "commit": "8e8228ee8c1fa0bb5e63e5c8254603aa86bcef2a",
+    "mode": "psg",
+    "optimization": 0,
+    "sourceFormat": "PT3",
+    "sourceSha256": "9717824bcfb2dec88bae7eeed81e3bc901fd6418282f3e06fe8f780a44f5507e",
+    "psgSha256": "fd68b1bee94eb0d2554a6375ada620aa9e13471e930c34c2d8b4d40cb5265e12",
+    "psgByteLength": 227168
+  },
+  "ym6Conversion": {
+    "tool": "ym2149-psg2ym6",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f",
+    "ym6Sha256": "f7e1d6e15ff66c0e17790922b06adcb06ccbc2c541568e93240ab45c0e39b35d",
+    "ym6ByteLength": 135257,
+    "clockHz": 1773400,
+    "frameRateHz": 50,
+    "frameCount": 8447,
+    "title": "Fantasia!",
+    "author": "RCL",
+    "comment": "Converted from PT3 through ZXTune PSG by ZX-MUSIC.FM",
+    "psgSha256": "fd68b1bee94eb0d2554a6375ada620aa9e13471e930c34c2d8b4d40cb5265e12",
+    "psgByteLength": 227168
+  },
+  "preparationTool": "zxmusicfm-content-v1",
+  "engine": {
+    "name": "ym2149-rs",
+    "commit": "5bb4886fb35032db07980e5fdac408db54c7796f"
+  }
+}

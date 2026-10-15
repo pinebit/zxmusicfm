@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "rcl-fantasia",
+  "order": 43,
+  "title": "Fantasia!",
+  "author": "RCL",
+  "sourceUrl": "https://zxart.ee/tune/601533",
+  "subsong": 1,
+  "chipType": "AY",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ACB",
+  "year": 2026
+}

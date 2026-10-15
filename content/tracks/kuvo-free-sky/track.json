@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "kuvo-free-sky",
+  "order": 44,
+  "title": "Free sky",
+  "author": "KUVO",
+  "sourceUrl": "https://zxart.ee/tune/496809",
+  "subsong": 1,
+  "chipType": "YM",
+  "chipClockHz": 1773400,
+  "frameRateHz": 50,
+  "channelLayout": "ABC",
+  "year": 2021
+}
