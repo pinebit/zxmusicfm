@@ -20,6 +20,20 @@ const AY_CAPTURE_SAMPLE_RATE = 44_100;
 const RENDER_CHUNK_SAMPLES = OFFLINE_SAMPLE_RATE;
 const CHANNEL_COUNT = 3;
 const CHANNEL_ORDERS: readonly ChannelOrder[] = ['ABC', 'ACB', 'BAC'];
+const CHANNEL_INDEX: Readonly<Record<ChannelId, number>> = { A: 0, B: 1, C: 2 };
+// Every ear of every order as an [outer, centre] pair of interleaved channel
+// offsets, resolved once so the per-sample peak scan reads the render directly.
+const EAR_CHANNEL_OFFSETS: readonly (readonly [number, number])[] =
+  CHANNEL_ORDERS.flatMap((order) => {
+    const [left, centre, right] = Array.from(
+      order,
+      (id) => CHANNEL_INDEX[id as ChannelId],
+    ) as [number, number, number];
+    return [
+      [left, centre],
+      [right, centre],
+    ] as const;
+  });
 
 export type OfflineRender = {
   readonly sampleRate: typeof OFFLINE_SAMPLE_RATE;
@@ -146,29 +160,25 @@ export function renderOffline(
         player.generateSamplesWithChannels(count),
         count,
       );
+      // This loop runs once per output sample of the whole catalog, so it
+      // allocates nothing and reads only typed arrays.
       for (let index = 0; index < count; index += 1) {
         const base = index * CHANNEL_COUNT;
-        const values = {
-          A: generated[base] ?? 0,
-          B: generated[base + 1] ?? 0,
-          C: generated[base + 2] ?? 0,
-        };
+        const a = generated[base] ?? 0;
+        const b = generated[base + 1] ?? 0;
+        const c = generated[base + 2] ?? 0;
         const outputIndex = offset + index;
-        channels.A[outputIndex] = values.A;
-        channels.B[outputIndex] = values.B;
-        channels.C[outputIndex] = values.C;
-        mix[outputIndex] = (values.A + values.B + values.C) * MIX_HEADROOM;
+        channels.A[outputIndex] = a;
+        channels.B[outputIndex] = b;
+        channels.C[outputIndex] = c;
+        mix[outputIndex] = (a + b + c) * MIX_HEADROOM;
 
-        for (const order of CHANNEL_ORDERS) {
-          const left =
-            (Math.abs(values[order[0] as ChannelId]) +
-              CENTER_GAIN * Math.abs(values[order[1] as ChannelId])) *
+        for (const [outer, centre] of EAR_CHANNEL_OFFSETS) {
+          const ear =
+            (Math.abs(generated[base + outer] ?? 0) +
+              CENTER_GAIN * Math.abs(generated[base + centre] ?? 0)) *
             MIX_HEADROOM;
-          const right =
-            (Math.abs(values[order[2] as ChannelId]) +
-              CENTER_GAIN * Math.abs(values[order[1] as ChannelId])) *
-            MIX_HEADROOM;
-          worstEarPeak = Math.max(worstEarPeak, left, right);
+          worstEarPeak = Math.max(worstEarPeak, ear);
         }
       }
       offset += count;
