@@ -56,6 +56,44 @@ const catalogWithTrack: GeneratedCatalog = {
   ],
 };
 
+const catalogWithTwoTracks: GeneratedCatalog = {
+  ...catalogWithTrack,
+  tracks: [
+    ...catalogWithTrack.tracks,
+    ...catalogWithTrack.tracks.map((track) => ({
+      ...track,
+      id: 'ramparts',
+      order: 2,
+      title: 'Ramparts',
+    })),
+  ],
+};
+
+// Places the selected row far below the viewport and records scrolls to it.
+function stubOffscreenSelectedRow(): ReturnType<typeof vi.fn> {
+  vi.stubGlobal(
+    'AudioContext',
+    class {
+      state = 'running';
+      close = () => Promise.resolve();
+      resume = () => Promise.resolve();
+    },
+  );
+  vi.stubGlobal('crypto', { subtle: {} });
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      const top = this.classList.contains('selected') ? 2000 : 0;
+      return { top, bottom: top + 100 } as DOMRect;
+    },
+  );
+  const scrollIntoView = vi.fn();
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scrollIntoView,
+  });
+  return scrollIntoView;
+}
+
 function stubMobilePortrait(): void {
   const noop = (): void => undefined;
   vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
@@ -81,6 +119,8 @@ afterEach(() => {
     );
   }
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
 });
 
 describe('App', () => {
@@ -325,6 +365,45 @@ describe('App', () => {
     });
     expect(deck).toHaveFocus();
     expect(disconnect).not.toHaveBeenCalled();
+  });
+
+  it('scrolls a newly selected track into view beside the sticky deck', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = stubOffscreenSelectedRow();
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTwoTracks)} />);
+
+    const deck = await screen.findByRole('complementary', {
+      name: 'Playback deck',
+    });
+    deck.style.position = 'sticky';
+    await user.click(screen.getByRole('button', { name: 'Play Ramparts' }));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'center',
+      }),
+    );
+    expect(scrollIntoView.mock.contexts).toEqual([
+      screen.getByRole('button', { name: /Ramparts$/ }).closest('li'),
+    ]);
+  });
+
+  it('keeps the stacked deck in view when the track changes from it', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = stubOffscreenSelectedRow();
+    render(<App catalogLoader={() => Promise.resolve(catalogWithTwoTracks)} />);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Play Ramparts' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Ramparts$/ }).closest('li'),
+      ).toHaveClass('selected'),
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('explains why shuffle is unavailable on a single-track catalog', async () => {

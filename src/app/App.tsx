@@ -167,6 +167,8 @@ function PlayerApplication({
   const playerLayout = useRef<HTMLDivElement>(null);
   const playbackDeck = useRef<HTMLElement>(null);
   const deckControls = useRef<HTMLDivElement>(null);
+  const trackList = useRef<HTMLOListElement>(null);
+  const followedTrackId = useRef(snapshot.selectedTrackId);
   const reducedMotion = usePrefersReducedMotion();
   const capable = hasRequiredCapabilities();
   const hasTracks = catalog.tracks.length > 0;
@@ -347,6 +349,31 @@ function PlayerApplication({
   }, []);
 
   useEffect(() => {
+    const trackId = snapshot.selectedTrackId;
+    if (trackId === followedTrackId.current) return;
+    followedTrackId.current = trackId;
+    const row = trackList.current?.querySelector<HTMLElement>(
+      '.track-row.selected',
+    );
+    const deck = playbackDeck.current;
+    if (row == null || deck === null || deckMaximized) return;
+    // A single-column layout stacks the deck above the list, so following
+    // the track there would scroll the controls away from a listener using
+    // them, unless they have already scrolled down into the list.
+    if (getComputedStyle(deck).position !== 'sticky' && !deckPassed) return;
+    const visibleTop =
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).scrollPaddingTop,
+      ) || 0;
+    const bounds = row.getBoundingClientRect();
+    if (bounds.top >= visibleTop && bounds.bottom <= window.innerHeight) return;
+    row.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'center',
+    });
+  }, [snapshot.selectedTrackId, deckMaximized, deckPassed, reducedMotion]);
+
+  useEffect(() => {
     const media = window.matchMedia(mobilePortraitQuery);
     const syncMobilePortrait = () => {
       setMobilePortrait(media.matches);
@@ -478,7 +505,7 @@ function PlayerApplication({
               <span>The development catalog is valid but currently empty.</span>
             </div>
           ) : (
-            <ol className="track-list">
+            <ol ref={trackList} className="track-list">
               {catalog.tracks.map((track, trackIndex) => {
                 const selected = snapshot.selectedTrackId === track.id;
                 const position = selected ? snapshot.positionSeconds : 0;
