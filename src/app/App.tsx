@@ -800,6 +800,14 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
   const [state, dispatch] = useReducer(catalogReducer, initialState);
   const [attempt, setAttempt] = useState(0);
   const [deckMaximized, setDeckMaximized] = useState(false);
+  const [headerCompact, setHeaderCompact] = useState(false);
+
+  useEffect(() => {
+    const update = () => setHeaderCompact(window.scrollY > 0);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -814,7 +822,7 @@ export function App({ catalogLoader = loadCatalog }: AppProps) {
 
   return (
     <main className={`app-shell${deckMaximized ? ' deck-focus-mode' : ''}`}>
-      <header className="brand-header">
+      <header className={`brand-header${headerCompact ? ' is-compact' : ''}`}>
         <div className="brand-titles">
           <h1>
             <span className="visually-hidden">ZX RADIO</span>

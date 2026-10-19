@@ -20,6 +20,25 @@
   --hardware-surface: linear-gradient(180deg, #42474e, #2b2f34);
   --hardware-shadow:
     inset 0 1px 0 rgb(255 255 255 / 12%), 0 0.18rem 0.3rem rgb(0 0 0 / 30%);
+
+  /* The brand header pins as a compact band: it scrolls up by
+     --brand-collapse, then sticks with only its bottom edge showing while the
+     wordmark scales to a third and drops into that band. Its layout height
+     never changes, so scroll anchoring has nothing to correct. */
+  --brand-pad-top: clamp(0.75rem, 2vw, 1.15rem);
+  --brand-pad-bottom: 1.3rem;
+  --brand-wordmark-width: clamp(13rem, 46vw, 27rem);
+  --brand-wordmark-height: calc(var(--brand-wordmark-width) * 7 / 47);
+  --brand-compact-shift: 0.55rem;
+  --brand-compact-gap: 0.6rem;
+  --brand-collapse: calc(
+    var(--brand-pad-top) + var(--brand-wordmark-height) * 2 / 3 +
+      var(--brand-compact-shift) - var(--brand-compact-gap)
+  );
+  --brand-pinned-height: calc(
+    var(--brand-compact-gap) + var(--brand-wordmark-height) / 3 +
+      var(--brand-pad-bottom) - var(--brand-compact-shift) + 1px
+  );
 }
 
 * {
@@ -28,6 +47,7 @@
 
 html {
   overflow-x: clip;
+  scroll-padding-top: calc(var(--brand-pinned-height) + 1rem);
   background: #111315;
 }
 
@@ -92,14 +112,31 @@ h3 {
 }
 
 .brand-header {
-  position: relative;
+  position: sticky;
+  top: calc(-1 * var(--brand-collapse));
+  z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   margin-bottom: clamp(0.9rem, 2.4vw, 1.5rem);
-  padding: clamp(0.75rem, 2vw, 1.15rem) clamp(0rem, 2vw, 1.4rem) 1.3rem;
+  padding: var(--brand-pad-top) clamp(0rem, 2vw, 1.4rem) var(--brand-pad-bottom);
   overflow: hidden;
   border-bottom: 1px solid #3d4146;
+
+  /* is-compact is set from scroll in App.tsx. The page glow shows through
+     at the top, and the spread shadow carries the band to the viewport
+     edges once content can slide underneath. */
+  background: rgb(17 19 21 / 0%);
+  box-shadow: 0 0 0 100vmax rgb(17 19 21 / 0%);
+  clip-path: inset(0 -100vmax);
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.brand-header.is-compact {
+  background: #111315;
+  box-shadow: 0 0 0 100vmax #111315;
 }
 
 .section-kicker {
@@ -121,11 +158,17 @@ h1 {
 
 .brand-wordmark {
   display: block;
-  width: clamp(13rem, 46vw, 27rem);
+  width: var(--brand-wordmark-width);
   height: auto;
+  transform-origin: left bottom;
   overflow: visible;
   color: var(--amber);
   fill: currentcolor;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.brand-header.is-compact .brand-wordmark {
+  transform: translateY(var(--brand-compact-shift)) scale(calc(1 / 3));
 }
 
 .brand-letter.is-bouncing {
@@ -244,7 +287,7 @@ h3 {
 
 .meter-panel {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--brand-pinned-height) + 1rem);
   isolation: isolate;
   padding: clamp(0.9rem, 2vw, 1.25rem);
   background:
@@ -1726,19 +1769,34 @@ h3 {
 }
 
 @media (max-width: 760px) {
+  /* Small enough already: the whole header pins as it is. */
+  :root {
+    --brand-pad-top: 0.85rem;
+    --brand-pad-bottom: 1.1rem;
+    --brand-wordmark-width: clamp(9.1rem, 32.2vw, 18.9rem);
+    --brand-pinned-height: calc(
+      var(--brand-pad-top) + var(--brand-wordmark-height) + 1.25rem +
+        var(--brand-pad-bottom) + 1px
+    );
+  }
+
   .app-shell {
     padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   }
 
   .brand-header {
+    top: 0;
     align-items: center;
     row-gap: 1rem;
-    padding: 0.85rem 1rem 1.1rem;
+    padding-inline: 1rem;
   }
 
   .brand-wordmark {
-    width: clamp(9.1rem, 32.2vw, 18.9rem);
     margin-inline: auto;
+  }
+
+  .brand-header.is-compact .brand-wordmark {
+    transform: none;
   }
 
   .spectrum-stripe {
